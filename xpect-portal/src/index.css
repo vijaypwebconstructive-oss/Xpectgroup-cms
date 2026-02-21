@@ -1,0 +1,130 @@
+@import "tailwindcss";
+
+/* @theme {
+  --color-primary: #135bec;
+  --color-background-light: #f6f6f8;
+  --color-background-dark: #101622;
+} */
+html, body {
+  font-family: "Inter Tight", system-ui, sans-serif;
+}
+
+
+/** @type {import('tailwindcss').Config} */
+/* export default {
+  theme: {
+    extend: {
+      fontFamily: {
+        sans: ["Inter Tight", "system-ui", "sans-serif"],
+      },
+    },
+  },
+  plugins: [],
+}; */
+
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+
+/* Custom scrollbar for better aesthetics */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+
+/* span.dot {
+  width: 14px;
+  height: 14px;
+  position: absolute;
+  border-radius: 50%;
+  background-color: rgb(16 185 129);
+  display: inline-block;
+  z-index: 999999 !important;
+  left: 65px;
+  bottom: 20px;
+  border: 2px solid #fff;
+} */
+
+.glass {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.group{
+  position: relative;
+}
+
+
+.td-verifcation {
+  min-width: 154px;
+}
+
+@layer utilities {
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: #f1f5f9;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: #94a3b8;
+    border-radius: 9999px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background-color: #64748b;
+  }
+}
+
+p{
+  font-family: "Montserrat", sans-serif;
+}
+
+@media (max-width: 1024px) {
+
+
+.employee-list {
+  overflow-x: scroll;
+}
+
+.employee-list::-webkit-scrollbar {
+  height: 6px;
+}
+
+}
+
+/* Print styles for PDF generation */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  
+  body {
+    background: white;
+  }
+  
+  .bg-white {
+    background: white !important;
+  }
+  
+  @page {
+    margin: 1cm;
+  }
+}
