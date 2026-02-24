@@ -27,7 +27,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate }) => {
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const data = await api.admin.getProfile();
+        const data = await api.admin.getProfile() as AdminProfile;
         setProfile(data);
       } catch (err) {
         console.warn('Failed to fetch admin profile:', err);
@@ -55,7 +55,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate }) => {
 
   const handleProfileUpdate = async () => {
     try {
-      const data = await api.admin.getProfile();
+      const data = await api.admin.getProfile() as AdminProfile;
       setProfile(data);
     } catch (err) {
       console.warn('Failed to refresh admin profile:', err);
@@ -69,7 +69,7 @@ const Header: React.FC<HeaderProps> = ({ currentView, onNavigate }) => {
   const showAddButton = currentView !== 'ONBOARDING';
 
   return (
-    <header className="flex items-center justify-between whitespace-nowrap border-b border-solid border-[#e7ebf3] bg-white px-6 md:px-10 py-3 sticky top-0 z-50">
+    <header className="flex items-center justify-between border-b border-solid border-[#e7ebf3] bg-white px-6 md:px-10 py-3 sticky top-0 z-50">
       <div className="flex items-center gap-3 text-[#0d121b] cursor-pointer" onClick={() => onNavigate('DASHBOARD')}>
         {/* <h2 className="text-xl font-black leading-tight tracking-tight text-[#101622]">Xpect Group</h2> */}
         <img src="/logo.webp" alt="Xpect Group" className="w-18 h-18" />

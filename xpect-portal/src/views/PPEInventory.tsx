@@ -84,21 +84,21 @@ const PPEInventory: React.FC<PPEInventoryProps> = ({ onBack }) => {
       )}
 
       {/* Stat cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
         {[
-          { label: 'Normal',        value: normal,      color: 'text-green-600', bar: 'bg-green-500', icon: 'inventory',      iconColor: 'text-green-600', pct: Math.round((normal / inventory.length) * 100) },
-          { label: 'Low Stock',     value: lowStock,    color: 'text-amber-500', bar: 'bg-amber-400', icon: 'production_quantity_limits', iconColor: 'text-amber-500', pct: Math.round((lowStock / inventory.length) * 100) },
-          { label: 'Out of Stock',  value: outOfStock,  color: 'text-red-600',   bar: 'bg-red-500',   icon: 'remove_shopping_cart',  iconColor: 'text-red-600',   pct: Math.round((outOfStock / inventory.length) * 100) },
+          { label: 'Normal',       value: normal,     icon: 'inventory',                 iconColor: 'text-[#2e4150]' },
+          { label: 'Low Stock',    value: lowStock,   icon: 'production_quantity_limits', iconColor: 'text-amber-500' },
+          { label: 'Out of Stock', value: outOfStock, icon: 'remove_shopping_cart',       iconColor: 'text-red-600'   },
         ].map(c => (
-          <div key={c.label} className="bg-white rounded-2xl border border-[#e7ebf3] shadow-sm p-5 flex flex-col gap-3">
-            <div className="flex items-center justify-between">
-              <p className="text-xs font-bold text-[#4c669a] uppercase tracking-wide">{c.label}</p>
-              <span className={`material-symbols-outlined text-[22px] ${c.iconColor}`}>{c.icon}</span>
-            </div>
-            <p className={`text-4xl font-black ${c.color}`}>{c.value} <span className="text-base font-bold">items</span></p>
-            <div className="h-1.5 rounded-full bg-[#e7ebf3] overflow-hidden">
-              <div className={`h-full rounded-full ${c.bar} transition-all duration-500`} style={{ width: `${c.pct}%` }} />
-            </div>
+          <div key={c.label} className="bg-white rounded-2xl border border-[#e7ebf3] shadow-sm sm:p-4 p-3 flex flex-col gap-3 items-start ">
+            <span className={`material-symbols-outlined text-[22px] sm:text-[30px] p-2 w-fit rounded-[12px] sm:p-3 bg-[#f2f6f9] ${c.iconColor}`}>{c.icon}</span>
+            <p className="text-xs font-bold text-[#4c669a] uppercase tracking-wide">{c.label}</p>
+            <p className="text-xl sm:text-3xl font-black text-[#000] font-bold">{c.value}</p>
+              
+            {/* <div className="flex flex-col gap-1 sm:gap-2 justify-between items-left">
+            
+
+            </div> */}
           </div>
         ))}
       </div>
@@ -107,7 +107,7 @@ const PPEInventory: React.FC<PPEInventoryProps> = ({ onBack }) => {
       {outOfStock > 0 && (
         <div className="flex items-center gap-3 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
           <span className="material-symbols-outlined text-red-500 text-[22px]">warning</span>
-          <div>
+          <div className="flex-1">
             <p className="text-red-800 text-sm font-bold">{outOfStock} item{outOfStock > 1 ? 's are' : ' is'} out of stock</p>
             <p className="text-red-600 text-xs">Restock immediately to ensure worker safety compliance.</p>
           </div>
@@ -116,13 +116,16 @@ const PPEInventory: React.FC<PPEInventoryProps> = ({ onBack }) => {
 
       {/* Inventory table */}
       <div className="bg-white rounded-2xl border border-[#e7ebf3] shadow-sm overflow-hidden">
-        <div className="px-5 py-4 border-b border-[#e7ebf3] flex items-center justify-between">
-          <h2 className="text-[#0d121b] text-base font-black">PPE Stock Inventory</h2>
+        <div className="px-5 py-4 border-b border-[#e7ebf3] flex items-center justify-between flex-wrap gap-3">
+          <div className="flex items-center gap-3">
+            <h2 className="text-[#0d121b] text-base font-semibold font-black">PPE Stock Inventory</h2>
+            <span className="bg-[#f2f6f9] text-[#4c669a] text-xs font-bold px-2.5 py-1 rounded-full">{inventory.length} items</span>
+          </div>
           <span className="text-xs text-[#4c669a]">Last updated: <span className="font-bold text-[#0d121b]">Today</span></span>
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[700px]">
+          <table className="w-full min-w-[800px]">
             <thead>
               <tr className="border-b border-[#e7ebf3] bg-[#f8fafc]">
                 <th className="text-left px-5 py-3 text-xs font-bold text-[#4c669a] uppercase tracking-wide">PPE Item</th>
@@ -144,17 +147,17 @@ const PPEInventory: React.FC<PPEInventoryProps> = ({ onBack }) => {
                   : 100;
                 return (
                   <React.Fragment key={item.id}>
-                    <tr className="hover:bg-[#f8fafc] transition-colors">
+                    <tr className="hover:bg-[#f8fafc] transition-colors group">
                       {/* PPE Item */}
                       <td className="px-5 py-4">
-                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-sm font-bold ${itemColor}`}>
-                          <span className="material-symbols-outlined text-[18px]">{icon}</span>
+                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold ${itemColor}`}>
+                          <span className="material-symbols-outlined text-[16px]">{icon}</span>
                           {item.ppeType}
                         </span>
                       </td>
                       {/* Available qty */}
                       <td className="px-4 py-4">
-                        <span className={`text-2xl font-black ${item.availableQuantity === 0 ? 'text-red-600' : item.availableQuantity < item.minimumStockLevel ? 'text-amber-600' : 'text-[#0d121b]'}`}>
+                        <span className={`text-sm font-bold ${item.availableQuantity === 0 ? 'text-red-600' : item.availableQuantity < item.minimumStockLevel ? 'text-amber-600' : 'text-[#0d121b]'}`}>
                           {item.availableQuantity}
                         </span>
                         <span className="text-[#4c669a] text-xs font-semibold ml-1">{item.unit}</span>
@@ -166,18 +169,18 @@ const PPEInventory: React.FC<PPEInventoryProps> = ({ onBack }) => {
                       {/* Stock level bar */}
                       <td className="px-4 py-4 w-40">
                         <div className="flex items-center gap-2">
-                          <div className="flex-1 h-2 rounded-full bg-[#e7ebf3] overflow-hidden">
+                          <div className="flex-1 h-1 rounded-full bg-[#e7ebf3] overflow-hidden">
                             <div className={`h-full rounded-full ${st.bar} transition-all duration-500`} style={{ width: `${stockPct}%` }} />
                           </div>
                           <span className="text-xs font-bold text-[#4c669a] w-8">{stockPct}%</span>
                         </div>
                       </td>
                       {/* Last restocked */}
-                      <td className="px-4 py-4 text-sm text-[#4c669a] font-medium">{formatDate(item.lastRestocked)}</td>
+                      <td className="px-4 py-4 text-sm text-[#4c669a] font-medium whitespace-nowrap">{formatDate(item.lastRestocked)}</td>
                       {/* Status */}
                       <td className="px-4 py-4">
-                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-black uppercase tracking-wide ${st.badge}`}>
-                          <span className={`w-1.5 h-1.5 rounded-full ${st.dot}`} />
+                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-black capitalize font-semibold tracking-wide ${st.badge}`}>
+                          <span className={`w-1.5 h-1.5 rounded-full font-semibold ${st.dot}`} />
                           {item.stockStatus}
                         </span>
                       </td>
@@ -186,14 +189,14 @@ const PPEInventory: React.FC<PPEInventoryProps> = ({ onBack }) => {
                         <div className="flex items-center justify-end gap-2">
                           <button
                             onClick={() => { setAddStockId(item.id); setAddStockQty(''); setAdjustId(null); }}
-                            className="text-xs font-black text-green-600 hover:text-green-800 uppercase tracking-wide transition-colors cursor-pointer"
+                            className="text-[#4c669a] text-xs font-black font-semibold capitalize tracking-wide transition-colors cursor-pointer hover:text-green-700"
                           >
                             Add Stock
                           </button>
                           <span className="text-[#e7ebf3]">|</span>
                           <button
                             onClick={() => { setAdjustId(item.id); setAdjustQty(item.availableQuantity.toString()); setAdjustMode('set'); setAddStockId(null); }}
-                            className="text-xs font-black text-[#2e4150] hover:text-[#4c669a] uppercase tracking-wide transition-colors cursor-pointer"
+                            className="text-[#4c669a] text-xs font-black font-semibold capitalize tracking-wide transition-colors cursor-pointer hover:text-[#0d121b]"
                           >
                             Adjust
                           </button>
@@ -282,8 +285,10 @@ const PPEInventory: React.FC<PPEInventoryProps> = ({ onBack }) => {
           </table>
         </div>
 
-        <div className="px-5 py-3 border-t border-[#e7ebf3] bg-[#f8fafc]">
-          <p className="text-xs text-[#4c669a]">Showing <span className="font-bold text-[#0d121b]">{inventory.length}</span> PPE item types</p>
+        <div className="px-5 py-3 border-t border-[#e7ebf3] bg-[#f8fafc] flex items-center justify-between">
+          <p className="text-xs text-[#4c669a]">
+            Showing <span className="font-bold text-[#0d121b]">{inventory.length}</span> PPE item types
+          </p>
         </div>
       </div>
     </div>

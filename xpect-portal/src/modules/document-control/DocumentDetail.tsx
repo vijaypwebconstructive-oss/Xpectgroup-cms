@@ -88,18 +88,18 @@ const DocumentDetail: React.FC<Props> = ({ docId, onBack }) => {
     <div className="min-h-full bg-[#f6f7fb]">
 
       {/* Header */}
-      <div className="bg-white border-b border-[#e7ebf3] px-8 py-5">
+      <div className="bg-white border-b border-[#e7ebf3] sm:px-8 px-4 sm:py-5 py-3">
         <button onClick={onBack} className="flex items-center gap-1.5 text-sm text-[#6b7a99] hover:text-[#0d121b] transition-colors mb-4">
           <span className="material-symbols-outlined text-[18px]">arrow_back</span>
           Back to Library
         </button>
-        <div className="flex items-start gap-4 flex-wrap">
+        <div className="flex items-start gap-4 flex-wrap flex-col sm:flex-row">
           <div className="w-12 h-12 rounded-xl bg-[#2e4150] flex items-center justify-center shrink-0">
             <span className="material-symbols-outlined text-white text-[24px]">description</span>
           </div>
           <div className="flex-1 min-w-0">
             <h1 className="text-xl font-bold text-[#0d121b] leading-tight">{freshDoc.title}</h1>
-            <div className="flex items-center gap-3 mt-1.5 flex-wrap">
+            <div className="flex items-center gap-3 mt-1.5 flex-wrap ">
               <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-[#f0f2f7] text-[#2e4150]">{freshDoc.category}</span>
               <span className="text-xs text-[#6b7a99] font-mono font-medium">Version {freshDoc.version}</span>
               <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${statusStyle(freshDoc.status)}`}>
@@ -128,13 +128,13 @@ const DocumentDetail: React.FC<Props> = ({ docId, onBack }) => {
         </div>
       )}
 
-      <div className="px-8 py-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="sm:px-8 px-4 sm:py-6 py-3 grid grid-cols-1 lg:grid-cols-3 gap-6">
 
         {/* Left column */}
         <div className="lg:col-span-2 space-y-5">
 
           {/* A) Document Information */}
-          <div className="bg-white rounded-xl border border-[#e7ebf3] shadow-sm p-6">
+          <div className="bg-white rounded-xl border border-[#e7ebf3] shadow-sm sm:p-6 p-3">
             <h2 className="text-base font-bold text-[#0d121b] mb-4 flex items-center gap-2">
               <span className="material-symbols-outlined text-[18px] text-[#6b7a99]">info</span>
               Document Information
@@ -156,7 +156,7 @@ const DocumentDetail: React.FC<Props> = ({ docId, onBack }) => {
           </div>
 
           {/* B) File preview placeholder */}
-          <div className="bg-white rounded-xl border border-[#e7ebf3] shadow-sm p-6">
+          <div className="bg-white rounded-xl border border-[#e7ebf3] shadow-sm sm:p-6 p-3">
             <h2 className="text-base font-bold text-[#0d121b] mb-4 flex items-center gap-2">
               <span className="material-symbols-outlined text-[18px] text-[#6b7a99]">attach_file</span>
               Document File
@@ -185,7 +185,7 @@ const DocumentDetail: React.FC<Props> = ({ docId, onBack }) => {
           </div>
 
           {/* C) Version History */}
-          <div className="bg-white rounded-xl border border-[#e7ebf3] shadow-sm p-6">
+          <div className="bg-white rounded-xl border border-[#e7ebf3] shadow-sm sm:p-6 p-3">
             <h2 className="text-base font-bold text-[#0d121b] mb-5 flex items-center gap-2">
               <span className="material-symbols-outlined text-[18px] text-[#6b7a99]">history</span>
               Version History
@@ -224,7 +224,7 @@ const DocumentDetail: React.FC<Props> = ({ docId, onBack }) => {
 
         {/* Right column — Approval Panel */}
         <div className="space-y-5">
-          <div className="bg-white rounded-xl border border-[#e7ebf3] shadow-sm p-6">
+          <div className="bg-white rounded-xl border border-[#e7ebf3] shadow-sm sm:p-6 p-3">
             <h2 className="text-base font-bold text-[#0d121b] mb-1 flex items-center gap-2">
               <span className="material-symbols-outlined text-[18px] text-[#6b7a99]">fact_check</span>
               Approval Panel

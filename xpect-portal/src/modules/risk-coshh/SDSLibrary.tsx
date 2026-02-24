@@ -26,14 +26,6 @@ const liveStatus = (sds: typeof MOCK_SDS[0]): SDSStatus => {
   return 'valid';
 };
 
-const Skeleton = () => (
-  <tr className="animate-pulse">
-    {[...Array(6)].map((_, i) => (
-      <td key={i} className="px-4 py-4"><div className="h-4 bg-gray-100 rounded w-3/4" /></td>
-    ))}
-  </tr>
-);
-
 const SDSLibrary: React.FC<Props> = ({ onBack, onNavigateCOSHH }) => {
   const [search, setSearch]       = useState('');
   const [statusFilter, setStatus] = useState<SDSStatus | ''>('');
@@ -55,10 +47,10 @@ const SDSLibrary: React.FC<Props> = ({ onBack, onNavigateCOSHH }) => {
   }), [sdsList]);
 
   return (
-    <div className="min-h-full bg-[#f6f7fb]">
+    <div className="min-h-full bg-[#f6f7fb] w-screen sm:max-w-full">
 
       {/* Header */}
-      <div className="bg-white border-b border-[#e7ebf3] px-8 py-5">
+      <div className="bg-white border-b border-[#e7ebf3] sm:px-8 px-4 sm:py-5 py-3">
         <button onClick={onBack} className="flex items-center gap-1.5 text-sm text-[#6b7a99] hover:text-[#0d121b] transition-colors mb-4">
           <span className="material-symbols-outlined text-[18px]">arrow_back</span>
           Back to Risk Assessments
@@ -70,7 +62,7 @@ const SDSLibrary: React.FC<Props> = ({ onBack, onNavigateCOSHH }) => {
             </div>
             <div>
               <h1 className="text-xl font-bold text-[#0d121b]">SDS Library</h1>
-              <p className="text-sm text-[#6b7a99]">Safety Data Sheets — all registered chemicals</p>
+              <p className="text-base text-[#4c669a]">Safety Data Sheets — all registered chemicals</p>
             </div>
           </div>
           <div className="flex gap-2">
@@ -87,7 +79,7 @@ const SDSLibrary: React.FC<Props> = ({ onBack, onNavigateCOSHH }) => {
         </div>
       </div>
 
-      <div className="px-8 py-6 space-y-5">
+      <div className="sm:px-8 px-4 sm:py-6 py-3 space-y-5">
 
         {/* Stats */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -97,14 +89,16 @@ const SDSLibrary: React.FC<Props> = ({ onBack, onNavigateCOSHH }) => {
             { label: 'Review Soon',   value: stats.reviewSoon, icon: 'schedule',   bg: 'bg-amber-50 text-amber-600' },
             { label: 'Expired',       value: stats.expired,    icon: 'cancel',     bg: 'bg-red-50 text-red-600' },
           ].map(s => (
-            <div key={s.label} className="bg-white rounded-xl border border-[#e7ebf3] shadow-sm p-4 flex items-center gap-3">
+            <div key={s.label} className="bg-white rounded-xl border border-[#e7ebf3] shadow-sm p-4 flex items-start gap-3 flex-col">
               <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${s.bg}`}>
                 <span className="material-symbols-outlined text-[20px]">{s.icon}</span>
               </div>
-              <div>
-                <p className="text-xl font-bold text-[#0d121b]">{s.value}</p>
-                <p className="text-xs text-[#6b7a99]">{s.label}</p>
-              </div>
+              <p className="text-xs font-bold text-[#4c669a] uppercase tracking-wide">{s.label}</p>
+              <p className="text-xl sm:text-[30px] font-bold text-[#0d121b]">{s.value}</p>
+               
+              {/* <div>
+                
+              </div> */}
             </div>
           ))}
         </div>
@@ -141,7 +135,7 @@ const SDSLibrary: React.FC<Props> = ({ onBack, onNavigateCOSHH }) => {
               className="w-full pl-9 pr-4 py-2 bg-[#f6f7fb] border border-[#e7ebf3] rounded-lg text-sm text-[#0d121b] placeholder:text-[#6b7a99] focus:outline-none focus:ring-2 focus:ring-[#2e4150]/20" />
           </div>
           <select value={statusFilter} onChange={e => setStatus(e.target.value as SDSStatus | '')}
-            className="px-3 py-2 bg-[#f6f7fb] border border-[#e7ebf3] rounded-lg text-sm text-[#0d121b] focus:outline-none focus:ring-2 focus:ring-[#2e4150]/20 min-w-[150px]">
+            className="px-3 py-2 bg-[#f6f7fb] border border-[#e7ebf3] rounded-lg text-sm text-[#0d121b] focus:outline-none focus:ring-2 focus:ring-[#2e4150]/20 min-w-full sm:min-w-[150px] ">
             <option value="">All Statuses</option>
             <option value="valid">Valid</option>
             <option value="review_soon">Review Soon</option>
@@ -180,9 +174,9 @@ const SDSLibrary: React.FC<Props> = ({ onBack, onNavigateCOSHH }) => {
                     const days = daysUntil(s.reviewDate);
                     return (
                       <tr key={s.id} className="hover:bg-[#f6f7fb] transition-colors">
-                        <td className="px-4 py-4">
+                        <td className="px-4 py-4 min-w-[200px]">
                           <div className="flex items-center gap-2.5">
-                            <span className="material-symbols-outlined text-[18px] text-[#6b7a99]">picture_as_pdf</span>
+                            {/* <span className="material-symbols-outlined text-[18px] text-[#6b7a99]">picture_as_pdf</span> */}
                             <div>
                               <p className="font-semibold text-[#0d121b]">{s.chemicalName}</p>
                               {chemical && <p className="text-xs text-[#6b7a99]">{chemical.hazardType}</p>}
@@ -201,7 +195,7 @@ const SDSLibrary: React.FC<Props> = ({ onBack, onNavigateCOSHH }) => {
                         </td>
                         <td className="px-4 py-4">
                           <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${sb.cls}`}>
-                            <span className="material-symbols-outlined text-[14px]">{sb.icon}</span>
+                            {/* <span className="material-symbols-outlined text-[14px]">{sb.icon}</span> */}
                             {sb.label}
                           </span>
                         </td>

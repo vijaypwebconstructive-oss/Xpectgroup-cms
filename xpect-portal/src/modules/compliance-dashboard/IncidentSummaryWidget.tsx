@@ -40,7 +40,7 @@ const IncidentSummaryWidget: React.FC<IncidentSummaryWidgetProps> = ({ summary }
 
   return (
     <div className="bg-white rounded-xl border border-[#e7ebf3] flex flex-col">
-      <div className="px-5 py-4 border-b border-[#e7ebf3] flex items-center justify-between">
+      <div className="px-5 py-4 border-b border-[#e7ebf3] flex items-start sm:items-center gap-2 justify-between sm:flex-row flex-col gap-2">
         <div className="flex items-center gap-2">
           <span className="material-symbols-outlined text-[20px] text-red-600">crisis_alert</span>
           <div>
@@ -58,10 +58,10 @@ const IncidentSummaryWidget: React.FC<IncidentSummaryWidgetProps> = ({ summary }
 
       <div className="p-5">
         {/* Stat cards */}
-        <div className="grid grid-cols-3 gap-3 mb-5">
+        <div className="grid sm:grid-cols-3 grid-cols-1 gap-3 mb-5">
           {stats.map(stat => (
-            <div key={stat.label} className={`rounded-xl p-4 border text-center ${stat.bg} ${stat.border}`}>
-              <div className={`flex justify-center mb-2`}>
+            <div key={stat.label} className={`rounded-xl p-4 border text-start sm:text-center ${stat.bg} ${stat.border}`}>
+              <div className={`flex justify-start sm:justify-center mb-2`}>
                 <span className={`material-symbols-outlined text-[24px] ${stat.color}`}>{stat.icon}</span>
               </div>
               <p className={`text-3xl font-bold ${stat.color}`}>{stat.count}</p>

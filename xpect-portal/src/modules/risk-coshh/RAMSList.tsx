@@ -18,14 +18,6 @@ const statusBadge = (status: RAMSStatus) => {
 
 const fmt = (d: string) => d ? new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
 
-const Skeleton = () => (
-  <tr className="animate-pulse">
-    {[...Array(6)].map((_, i) => (
-      <td key={i} className="px-4 py-4"><div className="h-4 bg-gray-100 rounded w-3/4" /></td>
-    ))}
-  </tr>
-);
-
 const RAMSList: React.FC<Props> = ({ onSelectRAMS, onBack }) => {
   const [search, setSearch]       = useState('');
   const [statusFilter, setStatus] = useState<RAMSStatus | ''>('');
@@ -40,8 +32,8 @@ const RAMSList: React.FC<Props> = ({ onSelectRAMS, onBack }) => {
   const stats = { total: MOCK_RAMS.length, approved: MOCK_RAMS.filter(r => r.status === 'approved').length, draft: MOCK_RAMS.filter(r => r.status === 'draft').length };
 
   return (
-    <div className="min-h-full bg-[#f6f7fb]">
-      <div className="bg-white border-b border-[#e7ebf3] px-8 py-5">
+    <div className="min-h-full bg-[#f6f7fb] w-screen sm:w-full sm:max-w-full">
+      <div className="bg-white border-b border-[#e7ebf3] sm:px-8 px-4 sm:py-5 py-3">
         <button onClick={onBack} className="flex items-center gap-1.5 text-sm text-[#6b7a99] hover:text-[#0d121b] transition-colors mb-4">
           <span className="material-symbols-outlined text-[18px]">arrow_back</span>
           Back to Risk Assessments
@@ -53,7 +45,7 @@ const RAMSList: React.FC<Props> = ({ onSelectRAMS, onBack }) => {
             </div>
             <div>
               <h1 className="text-xl font-bold text-[#0d121b]">RAMS — Method Statements</h1>
-              <p className="text-sm text-[#6b7a99]">Risk Assessment & Method Statements linked to client sites</p>
+              <p className="text-base text-[#4c669a]">Risk Assessment & Method Statements linked to client sites</p>
             </div>
           </div>
           <button className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#2e4150] text-white text-sm font-semibold hover:bg-[#3a5268] transition-colors shadow-sm">
@@ -63,22 +55,23 @@ const RAMSList: React.FC<Props> = ({ onSelectRAMS, onBack }) => {
         </div>
       </div>
 
-      <div className="px-8 py-6 space-y-5">
+      <div className="sm:px-8 px-4 sm:py-6 py-3 space-y-5">
 
         {/* Stats */}
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
           {[
             { label: 'Total RAMS',  value: stats.total,    icon: 'assignment',    bg: 'bg-blue-50 text-blue-600' },
             { label: 'Approved',    value: stats.approved, icon: 'verified',      bg: 'bg-green-50 text-green-600' },
             { label: 'Draft',       value: stats.draft,    icon: 'draft',         bg: 'bg-gray-100 text-gray-600' },
           ].map(s => (
-            <div key={s.label} className="bg-white rounded-xl border border-[#e7ebf3] shadow-sm p-4 flex items-center gap-3">
+            <div key={s.label} className="bg-white rounded-xl border border-[#e7ebf3] shadow-sm sm:p-4 p-2 flex items-start gap-3 flex-col">
               <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${s.bg}`}>
                 <span className="material-symbols-outlined text-[20px]">{s.icon}</span>
               </div>
               <div>
-                <p className="text-xl font-bold text-[#0d121b]">{s.value}</p>
-                <p className="text-xs text-[#6b7a99]">{s.label}</p>
+              <p className="text-xs font-bold text-[#4c669a] uppercase tracking-wide">{s.label}</p>
+                <p className="text-xl sm:text-[30px] font-bold text-[#0d121b]">{s.value}</p>
+                
               </div>
             </div>
           ))}
@@ -92,7 +85,7 @@ const RAMSList: React.FC<Props> = ({ onSelectRAMS, onBack }) => {
               className="w-full pl-9 pr-4 py-2 bg-[#f6f7fb] border border-[#e7ebf3] rounded-lg text-sm text-[#0d121b] placeholder:text-[#6b7a99] focus:outline-none focus:ring-2 focus:ring-[#2e4150]/20" />
           </div>
           <select value={statusFilter} onChange={e => setStatus(e.target.value as RAMSStatus | '')}
-            className="px-3 py-2 bg-[#f6f7fb] border border-[#e7ebf3] rounded-lg text-sm text-[#0d121b] focus:outline-none focus:ring-2 focus:ring-[#2e4150]/20 min-w-[160px]">
+            className="px-3 py-2 bg-[#f6f7fb] border border-[#e7ebf3] rounded-lg text-sm text-[#0d121b] focus:outline-none focus:ring-2 focus:ring-[#2e4150]/20 sm:min-w-[160px] min-w-full">
             <option value="">All Statuses</option>
             <option value="approved">Approved</option>
             <option value="review_required">Review Required</option>

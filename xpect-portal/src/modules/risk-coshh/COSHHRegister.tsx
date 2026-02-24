@@ -15,14 +15,6 @@ const hazardColor = (type: string) => {
   return                                   'bg-gray-100 text-gray-600 border border-gray-200';
 };
 
-const Skeleton = () => (
-  <tr className="animate-pulse">
-    {[...Array(7)].map((_, i) => (
-      <td key={i} className="px-4 py-4"><div className="h-4 bg-gray-100 rounded w-3/4" /></td>
-    ))}
-  </tr>
-);
-
 const COSHHRegister: React.FC<Props> = ({ onSelectChemical, onBack, onNavigateSDS }) => {
   const [search, setSearch]       = useState('');
   const [hazardFilter, setHazard] = useState('');
@@ -43,10 +35,10 @@ const COSHHRegister: React.FC<Props> = ({ onSelectChemical, onBack, onNavigateSD
   };
 
   return (
-    <div className="min-h-full bg-[#f6f7fb]">
+    <div className="min-h-full bg-[#f6f7fb] w-screen sm:w-full sm:max-w-full">
 
       {/* Header */}
-      <div className="bg-white border-b border-[#e7ebf3] px-8 py-5">
+      <div className="bg-white border-b border-[#e7ebf3] sm:px-8 px-4 sm:py-5 py-3">
         <button onClick={onBack} className="flex items-center gap-1.5 text-sm text-[#6b7a99] hover:text-[#0d121b] transition-colors mb-4">
           <span className="material-symbols-outlined text-[18px]">arrow_back</span>
           Back to Risk Assessments
@@ -58,7 +50,7 @@ const COSHHRegister: React.FC<Props> = ({ onSelectChemical, onBack, onNavigateSD
             </div>
             <div>
               <h1 className="text-xl font-bold text-[#0d121b]">COSHH Chemical Register</h1>
-              <p className="text-sm text-[#6b7a99]">Control of Substances Hazardous to Health</p>
+              <p className="text-base text-[#4c669a]">Control of Substances Hazardous to Health</p>
             </div>
           </div>
           <div className="flex gap-2">
@@ -75,29 +67,30 @@ const COSHHRegister: React.FC<Props> = ({ onSelectChemical, onBack, onNavigateSD
         </div>
       </div>
 
-      <div className="px-8 py-6 space-y-5">
+      <div className="sm:px-8 px-4 sm:py-6 py-3 space-y-5">
 
         {/* Stats + SDS warning */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="bg-white rounded-xl border border-[#e7ebf3] shadow-sm p-4 flex items-center gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+          <div className="bg-white rounded-xl border border-[#e7ebf3] shadow-sm p-4 flex items-start gap-3 flex-col">
             <div className="w-10 h-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
               <span className="material-symbols-outlined text-[20px]">science</span>
             </div>
-            <div><p className="text-xl font-bold text-[#0d121b]">{stats.total}</p><p className="text-xs text-[#6b7a99]">Registered Chemicals</p></div>
+            <div><p className="text-xs font-bold text-[#4c669a] uppercase tracking-wide">Registered Chemicals</p><p className="text-xl sm:text-[30px] font-bold text-[#0d121b]">{stats.total}</p></div>
           </div>
-          <div className="bg-white rounded-xl border border-[#e7ebf3] shadow-sm p-4 flex items-center gap-3">
+          <div className="bg-white rounded-xl border border-[#e7ebf3] shadow-sm p-4 flex items-start gap-3 flex-col">
             <div className="w-10 h-10 rounded-lg bg-red-50 text-red-600 flex items-center justify-center shrink-0">
               <span className="material-symbols-outlined text-[20px]">warning</span>
             </div>
-            <div><p className="text-xl font-bold text-[#0d121b]">{stats.high}</p><p className="text-xs text-[#6b7a99]">High Hazard Chemicals</p></div>
+            <div><p className="text-xs font-bold text-[#4c669a] uppercase tracking-wide">High Hazard Chemicals</p><p className="text-xl sm:text-[30px] font-bold text-[#0d121b]">{stats.high}</p></div>
           </div>
-          <div className={`rounded-xl border shadow-sm p-4 flex items-center gap-3 ${stats.noSDS > 0 ? 'bg-red-50 border-red-200' : 'bg-white border-[#e7ebf3]'}`}>
+          <div className={`rounded-xl border shadow-sm p-4 flex items-start gap-3 flex-col bg-white border-[#e7ebf3] `}>
             <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${stats.noSDS > 0 ? 'bg-red-100 text-red-600' : 'bg-green-50 text-green-600'}`}>
               <span className="material-symbols-outlined text-[20px]">{stats.noSDS > 0 ? 'gpp_bad' : 'verified'}</span>
             </div>
             <div>
-              <p className={`text-xl font-bold ${stats.noSDS > 0 ? 'text-red-600' : 'text-[#0d121b]'}`}>{stats.noSDS}</p>
-              <p className="text-xs text-[#6b7a99]">Missing SDS Sheets</p>
+            <p className="text-xs font-bold text-[#4c669a] uppercase tracking-wide">Missing SDS Sheets</p>
+              <p className={`text-xl sm:text-[30px] font-bold ${stats.noSDS > 0 ? 'text-red-600' : 'text-[#0d121b]'}`}>{stats.noSDS}</p>
+              
             </div>
           </div>
         </div>
@@ -177,8 +170,8 @@ const COSHHRegister: React.FC<Props> = ({ onSelectChemical, onBack, onNavigateSD
                       </td>
                       <td className="px-4 py-4">
                         {c.sdsAvailable
-                          ? <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700 border border-green-200"><span className="material-symbols-outlined text-[14px]">check</span>Yes</span>
-                          : <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700 border border-red-200"><span className="material-symbols-outlined text-[14px]">close</span>Missing</span>
+                          ? <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700 border border-green-200">Yes</span>
+                          : <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-700 border border-red-200">Missing</span>
                         }
                       </td>
                       <td className="px-4 py-4 text-right">

@@ -54,9 +54,9 @@ const AlertsPanel: React.FC<AlertsPanelProps> = ({ alerts }) => {
   const warningCount = alerts.filter(a => a.severity === 'warning').length;
 
   return (
-    <div className="bg-white rounded-xl border border-[#e7ebf3] flex flex-col h-full">
+    <div className="bg-white rounded-xl border border-[#e7ebf3]">
       {/* Header */}
-      <div className="px-5 py-4 border-b border-[#e7ebf3] flex items-center justify-between">
+      <div className="px-5 py-4 border-b border-[#e7ebf3] flex items-start sm:items-center gap-2 justify-between sm:flex-row flex-col">
         <div className="flex items-center gap-2">
           <span className="material-symbols-outlined text-[20px] text-red-600">notifications_active</span>
           <h3 className="text-sm font-bold text-[#0d121b]">Live Alerts</h3>
@@ -72,13 +72,14 @@ const AlertsPanel: React.FC<AlertsPanelProps> = ({ alerts }) => {
               {warningCount} warnings
             </span>
           )}
+          <span className="text-xs text-[#00c950] bg-[#00c950]/10 text-[#00c950] px-2 py-0.5 rounded-full ml-2">{alerts.length} active</span>
         </div>
       </div>
 
-      {/* Alert list */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-3">
+      {/* Alert grid — horizontal wrap */}
+      <div className="p-4">
         {sorted.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-12 text-center">
+          <div className="flex flex-col items-center justify-center py-8 text-center">
             <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center mb-3">
               <span className="material-symbols-outlined text-[24px] text-green-600">check_circle</span>
             </div>
@@ -86,43 +87,38 @@ const AlertsPanel: React.FC<AlertsPanelProps> = ({ alerts }) => {
             <p className="text-xs text-[#6b7a99] mt-1">No compliance alerts at this time</p>
           </div>
         ) : (
-          sorted.map(alert => {
-            const cfg = severityConfig[alert.severity];
-            return (
-              <div
-                key={alert.id}
-                className={`rounded-xl border p-4 ${cfg.bg} ${cfg.border}`}
-              >
-                <div className="flex items-start gap-3">
-                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${cfg.iconBg}`}>
-                    <span className={`material-symbols-outlined text-[18px] ${cfg.iconColor}`}>{cfg.icon}</span>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1 flex-wrap">
-                      <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${cfg.badgeBg} ${cfg.badgeText}`}>
-                        {cfg.label}
-                      </span>
-                      <span className={`text-xs font-semibold ${cfg.subColor}`}>{alert.module}</span>
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3">
+            {sorted.map(alert => {
+              const cfg = severityConfig[alert.severity];
+              return (
+                <div
+                  key={alert.id}
+                  className={`rounded-xl border p-4 ${cfg.bg} ${cfg.border}`}
+                >
+                  <div className="flex items-start gap-3">
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${cfg.iconBg}`}>
+                      <span className={`material-symbols-outlined text-[18px] ${cfg.iconColor}`}>{cfg.icon}</span>
                     </div>
-                    <p className={`text-sm font-medium leading-snug ${cfg.textColor}`}>{alert.message}</p>
-                    <p className={`text-xs mt-1.5 ${cfg.subColor}`}>
-                      {alert.timestamp === new Date().toISOString().split('T')[0]
-                        ? 'Today'
-                        : new Date(alert.timestamp).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
-                    </p>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${cfg.badgeBg} ${cfg.badgeText}`}>
+                          {cfg.label}
+                        </span>
+                        <span className={`text-xs font-semibold ${cfg.subColor}`}>{alert.module}</span>
+                      </div>
+                      <p className={`text-sm font-medium leading-snug ${cfg.textColor}`}>{alert.message}</p>
+                      <p className={`text-xs mt-1.5 ${cfg.subColor}`}>
+                        {alert.timestamp === new Date().toISOString().split('T')[0]
+                          ? 'Today'
+                          : new Date(alert.timestamp).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+                      </p>
+                    </div>
                   </div>
                 </div>
-              </div>
-            );
-          })
+              );
+            })}
+          </div>
         )}
-      </div>
-
-      {/* Footer */}
-      <div className="px-5 py-3 border-t border-[#e7ebf3]">
-        <p className="text-xs text-[#6b7a99] text-center">
-          Alerts auto-update based on module data — {alerts.length} active
-        </p>
       </div>
     </div>
   );

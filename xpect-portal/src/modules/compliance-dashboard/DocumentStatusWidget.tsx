@@ -43,7 +43,7 @@ const DocumentStatusWidget: React.FC<DocumentStatusWidgetProps> = ({ summary, on
 
   return (
     <div className="bg-white rounded-xl border border-[#e7ebf3] flex flex-col">
-      <div className="px-5 py-4 border-b border-[#e7ebf3] flex items-center justify-between">
+      <div className="px-5 py-4 border-b border-[#e7ebf3] flex items-start sm:items-center gap-2 justify-between sm:flex-row flex-col gap-2">
         <div className="flex items-center gap-2">
           <span className="material-symbols-outlined text-[20px] text-[#2e4150]">folder_managed</span>
           <div>

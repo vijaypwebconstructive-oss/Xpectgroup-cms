@@ -36,10 +36,10 @@ const Section: React.FC<SectionProps> = ({
 }) => (
   <div className={`bg-white rounded-xl border shadow-sm overflow-hidden ${accent}`}>
     {/* Section header */}
-    <div className="px-6 py-4 border-b border-[#e7ebf3] flex items-center justify-between gap-3">
+    <div className="sm:px-6 px-3 sm:py-4 py-3 border-b border-[#e7ebf3] flex items-center justify-between gap-3">
       <div className="flex items-center gap-3">
         <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${iconColor}`}>
-          <span className="material-symbols-outlined text-[18px]">{icon}</span>
+          <span className="material-symbols-outlined text-[18px] p-2">{icon}</span>
         </div>
         <div>
           <h2 className="text-sm font-bold text-[#0d121b]">{title}</h2>
@@ -62,7 +62,7 @@ const Section: React.FC<SectionProps> = ({
           <button
             key={doc.id}
             onClick={() => onSelect(doc.id)}
-            className="w-full flex items-center gap-4 px-6 py-4 text-left hover:bg-[#f6f7fb] transition-colors group"
+            className="w-full flex sm:items-center items-start gap-4 sm:px-6 px-3 sm:py-4 py-3 text-left hover:bg-[#f6f7fb] transition-colors group"
           >
             {/* Category dot */}
             <div className="w-2 h-2 rounded-full bg-current shrink-0 mt-1" style={{ color: 'inherit' }} />
@@ -138,7 +138,7 @@ const ReviewCalendar: React.FC<Props> = ({ onSelectDoc, onBack }) => {
     <div className="min-h-full bg-[#f6f7fb]">
 
       {/* Header */}
-      <div className="bg-white border-b border-[#e7ebf3] px-8 py-5">
+      <div className="bg-white border-b border-[#e7ebf3] sm:px-8 px-4 sm:py-5 py-3">
         <button onClick={onBack} className="flex items-center gap-1.5 text-sm text-[#6b7a99] hover:text-[#0d121b] transition-colors mb-4">
           <span className="material-symbols-outlined text-[18px]">arrow_back</span>
           Back to Library
@@ -150,47 +150,50 @@ const ReviewCalendar: React.FC<Props> = ({ onSelectDoc, onBack }) => {
             </div>
             <div>
               <h1 className="text-xl font-bold text-[#0d121b]">Review Calendar</h1>
-              <p className="text-sm text-[#6b7a99]">Track document review schedules and deadlines</p>
+              <p className="text-base text-[#4c669a]">Track document review schedules and deadlines</p>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="px-8 py-6 space-y-5">
+      <div className="sm:px-8 px-4 sm:py-6 py-3 space-y-5">
 
         {/* Summary bar */}
-        <div className="grid grid-cols-3 gap-4">
-          <div className="bg-white rounded-xl border border-[#e7ebf3] shadow-sm p-4 flex items-center gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+          <div className="bg-white rounded-xl border border-[#e7ebf3] shadow-sm sm:p-4 p-3 flex items-start flex-col gap-3">
             <div className="w-10 h-10 rounded-lg bg-red-50 flex items-center justify-center shrink-0">
               <span className="material-symbols-outlined text-red-500 text-[20px]">warning</span>
             </div>
             <div>
-              <p className="text-2xl font-bold text-red-600">{overdue.length}</p>
-              <p className="text-xs text-[#6b7a99]">Overdue Reviews</p>
+            <p className="text-xs font-bold text-[#4c669a] uppercase tracking-wide">Overdue Reviews</p>
+              <p className="text-xl sm:text-[30px] font-bold text-black">{overdue.length}</p>
+              
             </div>
           </div>
-          <div className="bg-white rounded-xl border border-[#e7ebf3] shadow-sm p-4 flex items-center gap-3">
+          <div className="bg-white rounded-xl border border-[#e7ebf3] shadow-sm sm:p-4 p-3 flex items-start flex-col gap-3">
             <div className="w-10 h-10 rounded-lg bg-amber-50 flex items-center justify-center shrink-0">
               <span className="material-symbols-outlined text-amber-500 text-[20px]">schedule</span>
             </div>
             <div>
-              <p className="text-2xl font-bold text-amber-600">{dueSoon.length}</p>
-              <p className="text-xs text-[#6b7a99]">Due Within 30 Days</p>
+            <p className="text-xs font-bold text-[#4c669a] uppercase tracking-wide">Due soon</p>
+              <p className="text-xl sm:text-[30px] font-bold text-black">{dueSoon.length}</p>
+              
             </div>
           </div>
-          <div className="bg-white rounded-xl border border-[#e7ebf3] shadow-sm p-4 flex items-center gap-3">
+            <div className="bg-white rounded-xl border border-[#e7ebf3] shadow-sm sm:p-4 p-3 flex items-start flex-col gap-3">
             <div className="w-10 h-10 rounded-lg bg-green-50 flex items-center justify-center shrink-0">
               <span className="material-symbols-outlined text-green-500 text-[20px]">check_circle</span>
             </div>
             <div>
-              <p className="text-2xl font-bold text-green-600">{upToDate.length}</p>
-              <p className="text-xs text-[#6b7a99]">Up to Date</p>
+            <p className="text-xs font-bold text-[#4c669a] uppercase tracking-wide">Up to Date</p>
+              <p className="text-xl sm:text-[30px] font-bold text-black">{upToDate.length}</p>
+              
             </div>
           </div>
         </div>
 
         {/* ISO compliance note */}
-        <div className="flex items-start gap-3 bg-[#2e4150] rounded-xl px-5 py-4">
+        <div className="flex items-start gap-3 bg-[#2e4150] rounded-xl sm:px-5 px-3 sm:py-4 py-3">
           <span className="material-symbols-outlined text-white/70 text-[20px] shrink-0 mt-0.5">verified_user</span>
           <div>
             <p className="text-sm font-semibold text-white">ISO 9001 Document Review Requirement</p>

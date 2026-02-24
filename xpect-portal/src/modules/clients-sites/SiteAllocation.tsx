@@ -50,7 +50,7 @@ const SiteAllocation: React.FC<SiteAllocationProps> = ({ onBack }) => {
   const [confirmWorker, setConfirmWorker]   = useState<typeof PERSONNEL[0] | null>(null);
 
   const selectedSite = MOCK_SITES.find(s => s.id === selectedSiteId);
-  const siteClient   = selectedSite ? MOCK_CLIENTS.find(c => c.id === selectedSite.clientId) : undefined;
+  const _siteClient  = selectedSite ? MOCK_CLIENTS.find(c => c.id === selectedSite.clientId) : undefined; void _siteClient;
   const existingWorkers = selectedSite ? getAssignmentsBySite(selectedSiteId) : [];
 
   const filteredPersonnel = PERSONNEL.filter(p =>
@@ -66,26 +66,27 @@ const SiteAllocation: React.FC<SiteAllocationProps> = ({ onBack }) => {
   };
 
   return (
-    <div className="flex-1 flex flex-col bg-white min-h-screen">
+    <div className="flex-1 flex flex-col bg-[#f2f6f9] min-h-screen max-w-screen sm:w-full sm:max-w-full ">
 
       {/* ── Header ── */}
-      <div className="px-8 pt-8 pb-0">
+      <div className=" sm:px-8 px-4 sm:pt-8 pt-3 pb-0">
         <button onClick={onBack} className="flex items-center gap-1.5 text-[#6b7a99] text-sm font-semibold hover:text-[#0d121b] transition-colors cursor-pointer mb-3">
           <span className="material-symbols-outlined text-[18px]">arrow_back</span>
           Back to Sites
         </button>
-        <h1 className="text-[#0d121b] text-2xl font-black">Site Allocation</h1>
-        <p className="text-[#6b7a99] text-sm mt-1">Assign qualified personnel to work locations based on compliance matrix.</p>
+        <h1 className="text-[#0d121b] text-2xl font-black font-semibold sm:text-[28px]">Site Allocation</h1>
+        <p className="text-[#4c669a] text-base mt-1">Assign qualified personnel to work locations based on compliance matrix.</p>
+        <p className="text-ms font-bold text-[#333] capitalize  tracking-wider px-1 pt-3">Select Work Site</p>
       </div>
 
       {/* ── Two-panel layout ── */}
-      <div className="flex flex-col lg:flex-row gap-5 px-8 mt-6 mb-8">
+      <div className="flex flex-col lg:flex-row gap-5 sm:px-8 px-4 sm:mt-6 mt-3 mb-8">
 
         {/* LEFT — Site selector */}
         <div className="lg:w-[380px] shrink-0 space-y-3">
-          <p className="text-xs font-bold text-[#6b7a99] uppercase tracking-wider px-1">Select Work Site</p>
+          {/* <p className="text-xs font-bold text-[#6b7a99] uppercase tracking-wider px-1">Select Work Site</p> */}
 
-          <div className="rounded-xl border border-[#e7ebf3] overflow-hidden bg-white shadow-sm divide-y divide-[#f0f2f7]">
+          <div className="rounded-xl border border-[#e7ebf3] overflow-y-scroll h-[560px] bg-white shadow-sm divide-y divide-[#f0f2f7]">
             {MOCK_SITES.slice(0, 6).map(site => {
               const cl = MOCK_CLIENTS.find(c => c.id === site.clientId);
               const isSelected = site.id === selectedSiteId;
@@ -95,7 +96,7 @@ const SiteAllocation: React.FC<SiteAllocationProps> = ({ onBack }) => {
                 <button
                   key={site.id}
                   onClick={() => setSelectedSiteId(site.id)}
-                  className={`w-full text-left px-4 py-4 transition-all cursor-pointer ${isSelected ? 'bg-[#2e4150]/5 border-l-2 border-[#2e4150]' : 'hover:bg-[#fafbfc]'}`}
+                  className={`w-full text-left px-4 py-4 transition-all cursor-pointer ${isSelected ? 'bg-[#2e4150]/5 border-l-2 border-[#2e4150]/50' : 'hover:bg-[#fafbfc]'}`}
                 >
                   <div className="flex items-start gap-2">
                     <span className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${RISK_DOT[site.riskLevel]}`} />
@@ -132,14 +133,14 @@ const SiteAllocation: React.FC<SiteAllocationProps> = ({ onBack }) => {
             </div>
           </div>
         </div>
-
+      
         {/* RIGHT — Available Personnel */}
-        <div className="flex-1 min-w-0">
-          <div className="rounded-xl border border-[#e7ebf3] shadow-sm bg-white overflow-hidden h-full">
+        <div className="flex-1  overflow-x-scroll sm:min-w-0  max-w-[350px] sm:max-w-full ">
+          <div className="rounded-xl border border-[#e7ebf3] shadow-sm bg-white h-full min-w-[500px]">
 
             {/* Panel header */}
-            <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-[#e7ebf3]">
-              <p className="text-base font-black text-[#0d121b]">Available Personnel</p>
+            <div className="flex items-center justify-between gap-3 sm:px-5 px-3 sm:py-4 py-3 border-b border-[#e7ebf3]">
+              <p className="text-base font-black font-semibold text-[#0d121b]">Available Personnel</p>
               <label className="flex items-center h-9 bg-[#f6f7fb] rounded-lg px-3 border border-[#e7ebf3] focus-within:border-[#2e4150]/40 transition-all w-52">
                 <span className="material-symbols-outlined text-[#9aa5be] text-[16px] mr-1.5">search</span>
                 <input
@@ -152,7 +153,7 @@ const SiteAllocation: React.FC<SiteAllocationProps> = ({ onBack }) => {
             </div>
 
             {/* Column headers */}
-            <div className="grid grid-cols-[1fr_auto_auto] gap-4 px-5 py-2 bg-[#f8fafc] border-b border-[#e7ebf3]">
+            <div className="grid grid-cols-[1fr_auto_auto] gap-4 px-5 py-2 bg-[#f8fafc] border-b border-[#e7ebf3] ">
               <p className="text-xs font-bold text-[#6b7a99] uppercase tracking-wider">Worker</p>
               <p className="text-xs font-bold text-[#6b7a99] uppercase tracking-wider w-44 text-center">Compliance Indicator</p>
               <p className="text-xs font-bold text-[#6b7a99] uppercase tracking-wider w-32 text-right">Action</p>
@@ -174,7 +175,7 @@ const SiteAllocation: React.FC<SiteAllocationProps> = ({ onBack }) => {
                   : [];
 
                 return (
-                  <div key={person.id} className="grid grid-cols-[1fr_auto_auto] gap-4 items-center px-5 py-4">
+                  <div key={person.id} className="grid grid-cols-[1fr_auto_auto] min-w-full gap-4 items-center px-5 py-4">
                     {/* Worker info */}
                     <div className="flex items-center gap-3 min-w-0">
                       <div className={`w-10 h-10 rounded-full ${person.workerAvatarColor} flex items-center justify-center shrink-0 text-white text-sm font-black`}>

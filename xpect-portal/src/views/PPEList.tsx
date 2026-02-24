@@ -44,22 +44,22 @@ const PPEList: React.FC<PPEListProps> = ({ onOpenDetail, onOpenIssue, onOpenInve
   return (
     <div className="space-y-6">
       {/* Stat cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 ">
         {[
-          { label: 'Total Issued',     value: MOCK_PPE_RECORDS.length, color: 'text-[#0d121b]',   bar: 'bg-[#2e4150]', pct: 100,                                             icon: 'inventory_2',      iconColor: 'text-[#2e4150]' },
-          { label: 'Valid',            value: valid,                   color: 'text-green-600',   bar: 'bg-green-500', pct: Math.round((valid / MOCK_PPE_RECORDS.length)*100),  icon: 'check_circle',     iconColor: 'text-green-600' },
-          { label: 'Due Soon',         value: dueSoon,                 color: 'text-amber-500',   bar: 'bg-amber-400', pct: Math.round((dueSoon / MOCK_PPE_RECORDS.length)*100),icon: 'schedule',         iconColor: 'text-amber-500' },
-          { label: 'Overdue',          value: overdue,                 color: 'text-red-600',     bar: 'bg-red-500',   pct: Math.round((overdue / MOCK_PPE_RECORDS.length)*100), icon: 'warning',          iconColor: 'text-red-600' },
+          { label: 'Total Issued', value: MOCK_PPE_RECORDS.length, icon: 'inventory_2',  iconColor: 'text-[#2e4150]' },
+          { label: 'Valid',        value: valid,                   icon: 'check_circle', iconColor: 'text-green-600' },
+          { label: 'Due Soon',     value: dueSoon,                 icon: 'schedule',     iconColor: 'text-amber-500' },
+          { label: 'Overdue',      value: overdue,                 icon: 'warning',      iconColor: 'text-red-600'   },
         ].map(c => (
-          <div key={c.label} className="bg-white rounded-2xl border border-[#e7ebf3] shadow-sm p-5 flex flex-col gap-3">
-            <div className="flex items-center justify-between">
-              <p className="text-xs font-bold text-[#4c669a] uppercase tracking-wide">{c.label}</p>
-              <span className={`material-symbols-outlined text-[22px] ${c.iconColor}`}>{c.icon}</span>
-            </div>
-            <p className={`text-4xl font-black ${c.color}`}>{c.value}</p>
-            <div className="h-1.5 rounded-full bg-[#e7ebf3] overflow-hidden">
-              <div className={`h-full rounded-full ${c.bar} transition-all duration-500`} style={{ width: `${c.pct}%` }} />
-            </div>
+          <div key={c.label} className="bg-white rounded-2xl border border-[#e7ebf3] shadow-sm sm:p-4 p-3 flex flex-col gap-3 items-start relative">
+          <span className={`material-symbols-outlined text-[22px] sm:text-[30px] p-2 w-fit rounded-[12px] sm:p-3 bg-[#f2f6f9] ${c.iconColor}`}>{c.icon}</span>
+          <p className="text-xs font-bold text-[#4c669a] uppercase tracking-wide">{c.label}</p>
+          <p className="sm:text-[30px] text-xl font-bold text-[#000]">{c.value}</p>
+          
+            {/* <div className="flex flex-col gap-1 sm:gap-2 justify-between items-left">
+              
+              
+            </div> */}
           </div>
         ))}
       </div>
@@ -70,7 +70,7 @@ const PPEList: React.FC<PPEListProps> = ({ onOpenDetail, onOpenIssue, onOpenInve
           <span className="material-symbols-outlined text-red-500 text-[22px]">warning</span>
           <div className="flex-1">
             <p className="text-red-800 text-sm font-bold">{overdue} worker{overdue > 1 ? 's have' : ' has'} overdue PPE replacement</p>
-            <p className="text-red-600 text-xs">Immediate action required to maintain compliance.</p>
+            <p className="text-red-600 text-xs mt-0.5">Immediate action required to maintain safety compliance.</p>
           </div>
         </div>
       )}
@@ -78,50 +78,56 @@ const PPEList: React.FC<PPEListProps> = ({ onOpenDetail, onOpenIssue, onOpenInve
       {/* Pending acknowledgement banner */}
       {pending > 0 && (
         <div className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
-          <span className="material-symbols-outlined text-amber-500 text-[22px]">pending_actions</span>
-          <p className="text-amber-800 text-sm font-bold">{pending} worker acknowledgement{pending > 1 ? 's' : ''} still pending</p>
+          <span className="material-symbols-outlined text-amber-500 text-[22px]">pending</span>
+          <div className="flex-1">
+            <p className="text-amber-800 text-sm font-bold">{pending} acknowledgement{pending > 1 ? 's' : ''} pending</p>
+            <p className="text-amber-600 text-xs mt-0.5">Workers have not yet confirmed receipt of their PPE.</p>
+          </div>
         </div>
       )}
 
       {/* Table card */}
       <div className="bg-white rounded-2xl border border-[#e7ebf3] shadow-sm overflow-hidden">
-        {/* Toolbar */}
-        <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 border-b border-[#e7ebf3]">
-          <div className="flex items-center gap-3 flex-wrap">
-            <h2 className="text-[#0d121b] text-base font-black">PPE Issuance Records</h2>
-            <span className="text-xs font-bold bg-[#e7ebf3] text-[#4c669a] px-2.5 py-1 rounded-full">{filtered.length} records</span>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            {/* Worker search */}
-            <label className="flex items-center h-9 bg-[#f6f6f8] rounded-lg px-3 border border-transparent focus-within:border-[#2e4150]/30 transition-all">
-              <span className="material-symbols-outlined text-[#4c669a] text-[18px] mr-1">search</span>
+
+        {/* Filter bar */}
+        <div className="flex items-center gap-3 px-5 py-4 border-b border-[#e7ebf3] flex-wrap">
+          <div className="flex items-center gap-3 flex-1 flex-wrap">
+            <div className="flex items-center h-9 bg-[#f6f6f8] border border-transparent rounded-lg px-3 flex-1 min-w-[160px] focus-within:border-[#2e4150]/40 transition-all">
+              <span className="material-symbols-outlined text-[#9aa5be] text-[18px] mr-2">search</span>
               <input
-                className="bg-transparent border-none text-[#0d121b] placeholder:text-[#4c669a] text-sm outline-none w-32"
-                placeholder="Search worker…"
+                className="bg-transparent border-none text-[#0d121b] placeholder:text-[#9aa5be] text-sm outline-none w-full"
+                placeholder="Search worker name..."
                 value={workerFilter}
                 onChange={e => setWorkerFilter(e.target.value)}
               />
-            </label>
-            {/* PPE type filter */}
+            </div>
             <select
-              className="h-9 bg-[#f6f6f8] border border-transparent rounded-lg px-3 text-sm text-[#0d121b] outline-none cursor-pointer"
               value={typeFilter}
               onChange={e => setTypeFilter(e.target.value as PPEItemType | '')}
+              className="h-9 bg-[#f6f6f8] border border-transparent rounded-lg px-3 text-sm text-[#0d121b] outline-none cursor-pointer font-semibold sm:min-w-[160px] min-w-full"
             >
               <option value="">All PPE Types</option>
               {ALL_PPE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
             </select>
-            {/* Status filter */}
             <select
-              className="h-9 bg-[#f6f6f8] border border-transparent rounded-lg px-3 text-sm text-[#0d121b] outline-none cursor-pointer"
               value={statusFilter}
               onChange={e => setStatusFilter(e.target.value as PPEStatus | '')}
+              className="h-9 bg-[#f6f6f8] border border-transparent rounded-lg px-3 text-sm text-[#0d121b] outline-none cursor-pointer font-semibold sm:min-w-[160px] min-w-full"
             >
               <option value="">All Statuses</option>
               <option value="Valid">Valid</option>
               <option value="Due Soon">Due Soon</option>
               <option value="Overdue">Overdue</option>
             </select>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={onOpenInventory}
+              className="flex items-center gap-2 rounded-full border border-[#e7ebf3] bg-white text-[#0d121b] text-xs font-bold hover:bg-[#f6f6f8] transition-all px-4 h-9 cursor-pointer"
+            >
+              <span className="material-symbols-outlined text-[16px]">inventory_2</span>
+              Inventory
+            </button>
             <button
               onClick={onOpenIssue}
               className="flex items-center gap-2 rounded-full bg-[#2e4150] text-white text-xs font-bold hover:bg-[#2e4150]/90 transition-all px-4 h-9 cursor-pointer"
@@ -132,9 +138,15 @@ const PPEList: React.FC<PPEListProps> = ({ onOpenDetail, onOpenIssue, onOpenInve
           </div>
         </div>
 
+        {/* Table header with count */}
+        <div className="px-5 py-3 border-b border-[#e7ebf3] flex items-center gap-3">
+          <h2 className="text-[#0d121b] text-sm font-black">PPE Issuance Records</h2>
+          <span className="bg-[#f2f6f9] text-[#4c669a] text-xs font-bold px-2.5 py-1 rounded-full">{filtered.length} records</span>
+        </div>
+
         {/* Table */}
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[900px]">
+          <table className="w-full min-w-[1000px]">
             <thead>
               <tr className="border-b border-[#e7ebf3] bg-[#f8fafc]">
                 <th className="text-left px-5 py-3 text-xs font-bold text-[#4c669a] uppercase tracking-wide">Worker Name</th>
@@ -156,57 +168,50 @@ const PPEList: React.FC<PPEListProps> = ({ onOpenDetail, onOpenIssue, onOpenInve
                   </td>
                 </tr>
               ) : filtered.map(record => {
-                const st = STATUS_STYLES[record.status];
+                const st   = STATUS_STYLES[record.status];
                 const icon = PPE_ITEM_ICONS[record.ppeType];
                 const itemColor = PPE_ITEM_COLORS[record.ppeType];
+                const ackStyle  = ACK_STYLES[record.acknowledgement.status];
                 return (
                   <tr key={record.id} className="hover:bg-[#f8fafc] transition-colors group">
                     {/* Worker */}
                     <td className="px-5 py-4">
                       <div className="flex items-center gap-3">
-                        <div className={`w-9 h-9 rounded-full ${record.workerAvatarColor} shrink-0 flex items-center justify-center`}>
+                        <div className={`w-8 h-8 rounded-full ${record.workerAvatarColor} flex items-center justify-center shrink-0`}>
                           <span className="text-white text-xs font-black">{record.workerInitials}</span>
                         </div>
                         <div>
                           <p className="text-sm font-bold text-[#0d121b]">{record.workerName}</p>
                           <p className="text-xs text-[#4c669a]">{record.workerLocation}</p>
                         </div>
-                        {record.status === 'Overdue' && (
-                          <span className="material-symbols-outlined text-red-500 text-[18px]" title="Overdue PPE">warning</span>
-                        )}
                       </div>
                     </td>
                     {/* PPE Item */}
                     <td className="px-4 py-4">
                       <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold ${itemColor}`}>
-                        <span className="material-symbols-outlined text-[16px]">{icon}</span>
+                        <span className="material-symbols-outlined text-[14px]">{icon}</span>
                         {record.ppeType}
                       </span>
                     </td>
                     {/* Issue Date */}
-                    <td className="px-4 py-4 text-sm text-[#4c669a] font-medium">{formatDate(record.issueDate)}</td>
+                    <td className="px-4 py-4 text-sm text-[#4c669a] font-medium whitespace-nowrap">{formatDate(record.issueDate)}</td>
                     {/* Condition */}
-                    <td className="px-4 py-4">
-                      <span className="text-sm font-semibold text-[#0d121b]">{record.conditionAtIssue}</span>
-                    </td>
+                    <td className="px-4 py-4 text-sm font-medium text-[#0d121b]">{record.conditionAtIssue}</td>
                     {/* Next Replacement */}
-                    <td className="px-4 py-4">
+                    <td className="px-4 py-4 whitespace-nowrap">
                       <span className={`text-sm font-semibold ${record.status === 'Overdue' ? 'text-red-600' : record.status === 'Due Soon' ? 'text-amber-600' : 'text-[#0d121b]'}`}>
                         {formatDate(record.nextReplacementDue)}
                       </span>
                     </td>
                     {/* Acknowledgement */}
                     <td className="px-4 py-4">
-                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold ${ACK_STYLES[record.acknowledgement.status]}`}>
-                        <span className="material-symbols-outlined text-[14px]">
-                          {record.acknowledgement.status === 'Acknowledged' ? 'task_alt' : 'schedule'}
-                        </span>
+                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold ${ackStyle}`}>
                         {record.acknowledgement.status}
                       </span>
                     </td>
                     {/* Status */}
                     <td className="px-4 py-4">
-                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-black uppercase tracking-wide ${st.badge}`}>
+                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-black font-semibold uppercase tracking-wide ${st.badge}`}>
                         <span className={`w-1.5 h-1.5 rounded-full ${st.dot}`} />
                         {st.label}
                       </span>
@@ -215,7 +220,7 @@ const PPEList: React.FC<PPEListProps> = ({ onOpenDetail, onOpenIssue, onOpenInve
                     <td className="px-5 py-4 text-right">
                       <button
                         onClick={() => onOpenDetail(record)}
-                        className="text-[#2e4150] text-xs font-black uppercase tracking-wide hover:text-[#4c669a] transition-colors cursor-pointer opacity-0 group-hover:opacity-100"
+                        className="text-[#4c669a] text-xs font-black capitalize tracking-wide transition-colors cursor-pointer"
                       >
                         View
                       </button>
@@ -232,13 +237,6 @@ const PPEList: React.FC<PPEListProps> = ({ onOpenDetail, onOpenIssue, onOpenInve
           <p className="text-xs text-[#4c669a]">
             Showing <span className="font-bold text-[#0d121b]">{filtered.length}</span> of <span className="font-bold text-[#0d121b]">{MOCK_PPE_RECORDS.length}</span> records
           </p>
-          <button
-            onClick={onOpenInventory}
-            className="text-xs font-bold text-[#2e4150] hover:text-[#4c669a] flex items-center gap-1 transition-colors cursor-pointer"
-          >
-            <span className="material-symbols-outlined text-[16px]">inventory</span>
-            View Inventory
-          </button>
         </div>
       </div>
     </div>

@@ -42,26 +42,18 @@ const fmtDate = (d: string) =>
 const fmtTime = (d: string) =>
   new Date(d).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
 
-// ── Skeleton ──────────────────────────────────────────────────────────────────
-
-const Skeleton = () => (
-  <tr className="animate-pulse">
-    {[...Array(8)].map((_, i) => (
-      <td key={i} className="px-4 py-4"><div className="h-4 bg-gray-100 rounded w-3/4" /></td>
-    ))}
-  </tr>
-);
 
 // ── Stat card ─────────────────────────────────────────────────────────────────
 
 const StatCard: React.FC<{ label: string; value: number; icon: string; bg: string; textCls?: string }> = ({ label, value, icon, bg, textCls }) => (
-  <div className="bg-white rounded-xl border border-[#e7ebf3] shadow-sm p-5 flex items-center gap-4">
+  <div className="bg-white rounded-xl border border-[#e7ebf3] shadow-sm sm:p-5 p-2 flex flex-col  items-start gap-4">
     <div className={`w-11 h-11 rounded-lg flex items-center justify-center shrink-0 ${bg}`}>
       <span className="material-symbols-outlined text-[22px]">{icon}</span>
     </div>
     <div>
-      <p className={`text-2xl font-bold ${textCls ?? 'text-[#0d121b]'}`}>{value}</p>
-      <p className="text-xs text-[#6b7a99] mt-0.5">{label}</p>
+    <p className="text-xs font-bold text-[#4c669a] uppercase tracking-wide">{label}</p>
+      <p className={`text-2xl sm:text-[30px] font-bold text-black`}>{value}</p>
+      
     </div>
   </div>
 );
@@ -97,18 +89,18 @@ const IncidentsList: React.FC<Props> = ({ onSelectIncident, onCreateIncident, on
   const hasFilters = search || severityFilter || statusFilter || typeFilter;
 
   return (
-    <div className="min-h-full bg-[#f6f7fb]">
+    <div className="min-h-full bg-[#f6f7fb] w-screen sm:w-full">
 
       {/* Header */}
-      <div className="bg-white border-b border-[#e7ebf3] px-8 py-6">
+      <div className="sm:px-8 px-4 sm:py-6 py-3">
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
-            <h1 className="text-2xl font-bold text-[#0d121b]">Incidents & Corrective Actions</h1>
-            <p className="text-sm text-[#6b7a99] mt-1">ISO 45001 Incident Investigation & Management</p>
+            <h1 className="text-lg sm:text-xl font-bold text-[#0d121b]">Incidents & Corrective Actions</h1>
+            <p className="text-base text-[#6b7a99] mt-1">ISO 45001 Incident Investigation & Management</p>
           </div>
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-2 flex-nowrap">
             <button onClick={onNavigateActions}
-              className="relative flex items-center gap-2 px-4 py-2 rounded-xl border border-[#e7ebf3] text-sm font-semibold text-[#2e4150] bg-white hover:bg-[#f6f7fb] transition-colors">
+              className="relative flex items-start text-left gap-2 px-4 py-2 rounded-xl border border-[#e7ebf3] text-sm font-semibold text-[#2e4150] bg-white hover:bg-[#f6f7fb] transition-colors">
               <span className="material-symbols-outlined text-[18px]">build_circle</span>
               Corrective Actions
               {stats.overdueActions > 0 && (
@@ -126,10 +118,10 @@ const IncidentsList: React.FC<Props> = ({ onSelectIncident, onCreateIncident, on
         </div>
       </div>
 
-      <div className="px-8 py-6 space-y-6">
+      <div className="sm:px-8 px-4 sm:py-6 py-3 space-y-6  sm:max-w-full">
 
         {/* Stat cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 max-w-[350px] sm:max-w-full">
           <StatCard label="Total Incidents"      value={stats.total}          icon="report_problem"   bg="bg-blue-50 text-blue-600" />
           <StatCard label="Open Incidents"       value={stats.open}           icon="radio_button_unchecked" bg="bg-red-50 text-red-600" textCls={stats.open > 0 ? 'text-red-600' : 'text-[#0d121b]'} />
           <StatCard label="High / Critical"      value={stats.critical}       icon="warning"          bg="bg-red-50 text-red-600" />
@@ -137,7 +129,7 @@ const IncidentsList: React.FC<Props> = ({ onSelectIncident, onCreateIncident, on
         </div>
 
         {/* Filters */}
-        <div className="bg-white rounded-xl border border-[#e7ebf3] shadow-sm p-4 flex flex-wrap gap-3 items-center">
+        <div className="bg-white rounded-xl border border-[#e7ebf3] shadow-sm p-4 flex flex-col sm:flex-row flex-wrap gap-3">
           <div className="relative flex-1 min-w-[200px]">
             <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[18px] text-[#6b7a99]">search</span>
             <input type="text" placeholder="Search by ID, worker or site…" value={search} onChange={e => setSearch(e.target.value)}
@@ -222,7 +214,7 @@ const IncidentsList: React.FC<Props> = ({ onSelectIncident, onCreateIncident, on
                         </td>
                         <td className="px-4 py-4">
                           <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${sb.cls}`}>
-                            <span className="material-symbols-outlined text-[13px]">{sb.icon}</span>
+                            {/* <span className="material-symbols-outlined text-[13px]">{sb.icon}</span> */}
                             {inc.status}
                           </span>
                         </td>

@@ -9,6 +9,14 @@ html, body {
   font-family: "Inter Tight", system-ui, sans-serif;
 }
 
+body{
+  /* overflow-x: hidden; */
+  overflow-y: scroll !important;
+}
+
+.content-area {
+  width: calc(100% - 256px);
+}
 
 /** @type {import('tailwindcss').Config} */
 /* export default {

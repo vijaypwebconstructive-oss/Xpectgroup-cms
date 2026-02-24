@@ -143,7 +143,7 @@ const IncidentCreate: React.FC<Props> = ({ onBack, onCreated }) => {
     <div className="min-h-full bg-[#f6f7fb]">
 
       {/* Header */}
-      <div className="bg-white border-b border-[#e7ebf3] px-8 py-5">
+      <div className="bg-white border-b border-[#e7ebf3] sm:px-8 px-4 sm:py-5 py-3">
         <button onClick={onBack} className="flex items-center gap-1.5 text-sm text-[#6b7a99] hover:text-[#0d121b] transition-colors mb-4">
           <span className="material-symbols-outlined text-[18px]">arrow_back</span>
           Back to Incidents
@@ -153,8 +153,8 @@ const IncidentCreate: React.FC<Props> = ({ onBack, onCreated }) => {
             <span className="material-symbols-outlined text-white text-[20px]">report_problem</span>
           </div>
           <div>
-            <h1 className="text-xl font-bold text-[#0d121b]">Report an Incident</h1>
-            <p className="text-sm text-[#6b7a99]">Complete all sections to submit an incident report</p>
+            <h1 className="sm:text-xl text-lg font-bold text-[#0d121b]">Report an Incident</h1>
+            <p className="text-base text-[#4c669a]">Complete all sections to submit an incident report</p>
           </div>
         </div>
       </div>
@@ -187,12 +187,12 @@ const IncidentCreate: React.FC<Props> = ({ onBack, onCreated }) => {
         </div>
       </div>
 
-      <div className="px-8 py-6 max-w-3xl">
+      <div className="sm:px-8 px-4 sm:py-6 py-3 max-w-3xl">
         <form onSubmit={handleSubmit} noValidate>
 
           {/* ── Step 1: Basic Info ─────────────────────────────────────────────── */}
           {step === 1 && (
-            <div className="bg-white rounded-xl border border-[#e7ebf3] shadow-sm p-6 space-y-5">
+            <div className="bg-white rounded-xl border border-[#e7ebf3] shadow-sm sm:p-6 p-4 space-y-5">
               <h2 className="text-base font-bold text-[#0d121b] flex items-center gap-2">
                 <span className="material-symbols-outlined text-[18px] text-[#6b7a99]">info</span>
                 Section A — Basic Information
@@ -277,7 +277,7 @@ const IncidentCreate: React.FC<Props> = ({ onBack, onCreated }) => {
 
           {/* ── Step 2: Injury/Damage ──────────────────────────────────────────── */}
           {step === 2 && (
-            <div className="bg-white rounded-xl border border-[#e7ebf3] shadow-sm p-6 space-y-5">
+            <div className="bg-white rounded-xl border border-[#e7ebf3] shadow-sm sm:p-6 p-4 space-y-5">
               <h2 className="text-base font-bold text-[#0d121b] flex items-center gap-2">
                 <span className="material-symbols-outlined text-[18px] text-[#6b7a99]">medical_services</span>
                 Section B — Injury & Property Damage
@@ -293,7 +293,7 @@ const IncidentCreate: React.FC<Props> = ({ onBack, onCreated }) => {
                         form.injuryOccurred === val
                           ? val ? 'bg-red-600 text-white border-red-600' : 'bg-[#2e4150] text-white border-[#2e4150]'
                           : 'bg-[#f6f7fb] text-[#6b7a99] border-[#e7ebf3] hover:border-[#2e4150]/30'
-                      }`}>{val ? 'Yes — Injury Occurred' : 'No — No Injury'}</button>
+                      }`}>{val ? 'Yes ' : 'No'}</button>
                   ))}
                 </div>
               </div>
@@ -328,7 +328,7 @@ const IncidentCreate: React.FC<Props> = ({ onBack, onCreated }) => {
 
           {/* ── Step 3: Immediate Action ───────────────────────────────────────── */}
           {step === 3 && (
-            <div className="bg-white rounded-xl border border-[#e7ebf3] shadow-sm p-6 space-y-5">
+            <div className="bg-white rounded-xl border border-[#e7ebf3] shadow-sm sm:p-6 p-4 space-y-5">
               <h2 className="text-base font-bold text-[#0d121b] flex items-center gap-2">
                 <span className="material-symbols-outlined text-[18px] text-[#6b7a99]">bolt</span>
                 Section C — Immediate Actions Taken

@@ -35,7 +35,7 @@ export const CleanersProvider: React.FC<CleanersProviderProps> = ({ children }) 
     try {
       setLoading(true);
       setError(null);
-      const data = await api.cleaners.getAll();
+      const data = await api.cleaners.getAll() as Cleaner[];
       setCleaners(data);
     } catch (err: any) {
       console.error('Failed to fetch cleaners:', err);
@@ -61,7 +61,7 @@ export const CleanersProvider: React.FC<CleanersProviderProps> = ({ children }) 
   const addCleaner = async (cleaner: Cleaner) => {
     try {
       setError(null);
-      const newCleaner = await api.cleaners.create(cleaner);
+      const newCleaner = await api.cleaners.create(cleaner) as Cleaner;
       setCleaners(prev => [...prev, newCleaner]);
     } catch (err: any) {
       console.error('Failed to add cleaner:', err);
@@ -73,7 +73,7 @@ export const CleanersProvider: React.FC<CleanersProviderProps> = ({ children }) 
   const updateCleaner = async (id: string, updates: Partial<Cleaner>) => {
     try {
       setError(null);
-      const updatedCleaner = await api.cleaners.update(id, updates);
+      const updatedCleaner = await api.cleaners.update(id, updates) as Cleaner;
       setCleaners(prev => prev.map(c => c.id === id ? updatedCleaner : c));
     } catch (err: any) {
       console.error('Failed to update cleaner:', err);

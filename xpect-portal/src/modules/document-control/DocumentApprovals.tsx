@@ -31,7 +31,7 @@ const DocumentApprovals: React.FC<Props> = ({ onSelectDoc, onBack }) => {
     <div className="min-h-full bg-[#f6f7fb]">
 
       {/* Header */}
-      <div className="bg-white border-b border-[#e7ebf3] px-8 py-5">
+      <div className="bg-white border-b border-[#e7ebf3] sm:px-8 sm:py-5 px-4 py-3">
         <button onClick={onBack} className="flex items-center gap-1.5 text-sm text-[#6b7a99] hover:text-[#0d121b] transition-colors mb-4">
           <span className="material-symbols-outlined text-[18px]">arrow_back</span>
           Back to Library
@@ -43,13 +43,13 @@ const DocumentApprovals: React.FC<Props> = ({ onSelectDoc, onBack }) => {
             </div>
             <div>
               <h1 className="text-xl font-bold text-[#0d121b]">Document Approvals</h1>
-              <p className="text-sm text-[#6b7a99]">{pending.length} document{pending.length !== 1 ? 's' : ''} awaiting approval</p>
+              <p className="text-base text-[#4c669a]">{pending.length} document{pending.length !== 1 ? 's' : ''} awaiting approval</p>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="px-8 py-6">
+      <div className="sm:px-8 px-4 sm:py-6 py-3">
 
         {/* Info banner */}
         <div className="mb-5 flex items-start gap-3 bg-blue-50 border border-blue-200 rounded-xl px-5 py-4">

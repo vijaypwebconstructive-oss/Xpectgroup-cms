@@ -2,10 +2,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import { AppView } from '../types';
 import api from '../services/api';
 import ProfileModal from './ProfileModal';
-import { csNavigate, CSView } from '../modules/clients-sites/csNavStore';
-import { docNavigate, DocView } from '../modules/document-control/docNavStore';
-import { riskNavigate, RiskView } from '../modules/risk-coshh/riskNavStore';
-import { incidentNavigate, IncidentView } from '../modules/incidents/incidentNavStore';
+import { csNavigate, CSView, getState as getCSState, subscribe as subscribeCS } from '../modules/clients-sites/csNavStore';
+import { docNavigate, DocView, getDocState, subscribeDoc } from '../modules/document-control/docNavStore';
+import { riskNavigate, RiskView, getRiskState, subscribeRisk } from '../modules/risk-coshh/riskNavStore';
+import { incidentNavigate, IncidentView, getIncidentState, subscribeIncident } from '../modules/incidents/incidentNavStore';
 
 interface AdminLayoutProps {
   children: React.ReactNode;
@@ -40,10 +40,16 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, currentView, onNavi
   const [isIncidentsOpen, setIsIncidentsOpen]             = useState(INCIDENTS_VIEWS.includes(currentView));
   const dropdownRef = useRef<HTMLDivElement>(null);
 
+  // Active sub-view tracking for modules that manage their own URL
+  const [activeCSView, setActiveCSView]           = useState<CSView>(getCSState().view);
+  const [activeDocView, setActiveDocView]         = useState<DocView>(getDocState().view);
+  const [activeRiskView, setActiveRiskView]       = useState<RiskView>(getRiskState().view);
+  const [activeIncidentView, setActiveIncidentView] = useState<IncidentView>(getIncidentState().view);
+
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const data = await api.admin.getProfile();
+        const data = await api.admin.getProfile() as AdminProfile;
         setProfile(data);
       } catch (err) {
         console.warn('Failed to fetch admin profile:', err);
@@ -66,7 +72,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, currentView, onNavi
 
   const handleProfileUpdate = async () => {
     try {
-      const data = await api.admin.getProfile();
+      const data = await api.admin.getProfile() as AdminProfile;
       setProfile(data);
     } catch (err) {
       console.warn('Failed to refresh admin profile:', err);
@@ -91,6 +97,28 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, currentView, onNavi
     }
   }, [currentView]);
 
+  // Subscribe to each module's nav store so active sub-item highlights correctly
+  useEffect(() => {
+    const unCS  = subscribeCS(s  => setActiveCSView(s.view));
+    const unDoc = subscribeDoc(s => setActiveDocView(s.view));
+    const unRisk = subscribeRisk(s => setActiveRiskView(s.view));
+    const unInc  = subscribeIncident(s => setActiveIncidentView(s.view));
+
+    // Also sync on browser back/forward
+    const onPop = () => {
+      setActiveCSView(getCSState().view);
+      setActiveDocView(getDocState().view);
+      setActiveRiskView(getRiskState().view);
+      setActiveIncidentView(getIncidentState().view);
+    };
+    window.addEventListener('popstate', onPop);
+
+    return () => {
+      unCS(); unDoc(); unRisk(); unInc();
+      window.removeEventListener('popstate', onPop);
+    };
+  }, []);
+
   const handleNav = (view: AppView) => {
     onNavigate(view);
     setIsSidebarOpen(false);
@@ -98,12 +126,44 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, currentView, onNavi
 
   const sidebarContent = (
     <div className="flex flex-col h-full bg-[#2e4150] w-64">
-      {/* Logo */}
-      <div
-        className="flex items-center px-6 py-5 border-b border-white/10 cursor-pointer shrink-0"
-        onClick={() => handleNav('DASHBOARD')}
-      >
-        <img src="/logo.webp" alt="Xpect Group" className="h-10 w-auto" />
+      {/* Admin profile — top of sidebar */}
+      <div className="px-3 pb-3 pt-3 border-b border-white/10 shrink-0" ref={dropdownRef}>
+        <button
+          type="button"
+          className="w-full flex items-center gap-3 px-3 py-3 rounded-xl cursor-pointer hover:bg-white/10 transition-all text-left"
+          onClick={() => setIsProfileDropdownOpen(prev => !prev)}
+        >
+          <div
+            className="w-9 h-9 rounded-full border-2 border-white/30 bg-cover bg-center shrink-0 flex items-center justify-center bg-white/10"
+            style={{ backgroundImage: profile.profilePicture ? `url('${profile.profilePicture}')` : 'none' }}
+          >
+            {!profile.profilePicture && (
+              <span className="material-symbols-outlined text-white/70 text-xl">person</span>
+            )}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-white text-sm font-bold truncate">{profile.name || 'Admin'}</p>
+            <p className="text-white/50 text-xs truncate">{profile.role || 'Administrator'}</p>
+          </div>
+          <span className="material-symbols-outlined text-white/50 text-base transition-transform duration-200" style={{ transform: isProfileDropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}>
+            expand_more
+          </span>
+        </button>
+        {isProfileDropdownOpen && (
+          <div className="mt-1 bg-white rounded-xl shadow-lg py-2 animate-in fade-in slide-in-from-top-2 duration-200">
+            <div className="px-4 py-2 border-b border-gray-100">
+              <p className="font-bold text-gray-900 text-sm truncate">{profile.name || 'Admin'}</p>
+              <p className="text-xs text-gray-500 truncate">{profile.email || 'admin@xpectgroup.com'}</p>
+            </div>
+            <button
+              onClick={() => { setIsProfileModalOpen(true); setIsProfileDropdownOpen(false); }}
+              className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2 transition-colors"
+            >
+              <span className="material-symbols-outlined text-base">edit</span>
+              Edit Profile
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Nav links */}
@@ -169,9 +229,9 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, currentView, onNavi
               </button>
               <button
                 onClick={() => handleNav('TRAINING_CERTIFICATION')}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all cursor-pointer ${
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all cursor-pointer text-left ${
                   currentView === 'TRAINING_CERTIFICATION'
-                    ? 'bg-white/15 text-white'
+                    ? 'bg-white/15 text-white '
                     : 'text-white/60 hover:bg-white/10 hover:text-white'
                 }`}
               >
@@ -228,7 +288,11 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, currentView, onNavi
                     // 2. Tell App.tsx to render ClientSitesModule if not already
                     onNavigate('CLIENTS_SITES');
                   }}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all cursor-pointer text-white/60 hover:bg-white/10 hover:text-white"
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all cursor-pointer ${
+                    currentView === 'CLIENTS_SITES' && (activeCSView === csView || (csView === 'clients' && activeCSView === 'client-detail') || (csView === 'sites' && activeCSView === 'site-detail'))
+                      ? 'bg-white/15 text-white'
+                      : 'text-white/60 hover:bg-white/10 hover:text-white'
+                  }`}
                 >
                   <span className="material-symbols-outlined text-[18px]">{icon}</span>
                   {label}
@@ -270,7 +334,11 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, currentView, onNavi
                     incidentNavigate(incView);
                     onNavigate('INCIDENTS');
                   }}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all cursor-pointer text-white/60 hover:bg-white/10 hover:text-white"
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all cursor-pointer ${
+                    currentView === 'INCIDENTS' && (activeIncidentView === incView || (incView === 'list' && activeIncidentView === 'detail'))
+                      ? 'bg-white/15 text-white'
+                      : 'text-white/60 hover:bg-white/10 hover:text-white'
+                  }`}
                 >
                   <span className="material-symbols-outlined text-[18px]">{icon}</span>
                   {label}
@@ -314,7 +382,11 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, currentView, onNavi
                     riskNavigate(riskView);
                     onNavigate('RISK_COSHH');
                   }}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all cursor-pointer text-white/60 hover:bg-white/10 hover:text-white"
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all cursor-pointer ${
+                    currentView === 'RISK_COSHH' && (activeRiskView === riskView || (riskView === 'risk-list' && activeRiskView === 'risk-detail') || (riskView === 'rams-list' && activeRiskView === 'rams-detail') || (riskView === 'coshh-register' && activeRiskView === 'coshh-detail'))
+                      ? 'bg-white/15 text-white'
+                      : 'text-white/60 hover:bg-white/10 hover:text-white'
+                  }`}
                 >
                   <span className="material-symbols-outlined text-[18px]">{icon}</span>
                   {label}
@@ -358,7 +430,11 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, currentView, onNavi
                     docNavigate(docView);
                     onNavigate('DOCUMENT_CONTROL');
                   }}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all cursor-pointer text-white/60 hover:bg-white/10 hover:text-white"
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all cursor-pointer ${
+                    currentView === 'DOCUMENT_CONTROL' && (activeDocView === docView || (docView === 'library' && activeDocView === 'detail'))
+                      ? 'bg-white/15 text-white'
+                      : 'text-white/60 hover:bg-white/10 hover:text-white'
+                  }`}
                 >
                   <span className="material-symbols-outlined text-[18px]">{icon}</span>
                   {label}
@@ -369,46 +445,21 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, currentView, onNavi
         </div>
       </nav>
 
-      {/* Profile section */}
-      <div className="px-3 pb-4 pt-3 border-t border-white/10 shrink-0" ref={dropdownRef}>
-        {isProfileDropdownOpen && (
-          <div className="mb-2 bg-white rounded-xl shadow-lg py-2 animate-in fade-in slide-in-from-bottom-2 duration-200">
-            <div className="px-4 py-2 border-b border-gray-100">
-              <p className="font-bold text-gray-900 text-sm truncate">{profile.name || 'Admin'}</p>
-              <p className="text-xs text-gray-500 truncate">{profile.email || 'admin@xpectgroup.com'}</p>
-            </div>
-            <button
-              onClick={() => { setIsProfileModalOpen(true); setIsProfileDropdownOpen(false); }}
-              className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2 transition-colors"
-            >
-              <span className="material-symbols-outlined text-base">edit</span>
-              Edit Profile
-            </button>
-          </div>
-        )}
-
+      {/* Add User — fixed bottom */}
+      <div className="px-3 py-3 border-t border-white/10 shrink-0">
         <button
-          type="button"
-          className="w-full flex items-center gap-3 px-3 py-3 rounded-xl cursor-pointer hover:bg-white/10 transition-all text-left"
-          onClick={() => setIsProfileDropdownOpen(prev => !prev)}
+          onClick={() => handleNav('STAFF_INVITES')}
+          className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all cursor-pointer ${
+            currentView === 'STAFF_INVITES'
+              ? 'bg-white/20 text-white'
+              : 'text-white/70 hover:bg-white/10 hover:text-white'
+          }`}
         >
-          <div
-            className="w-9 h-9 rounded-full border-2 border-white/30 bg-cover bg-center shrink-0 flex items-center justify-center bg-white/10"
-            style={{ backgroundImage: profile.profilePicture ? `url('${profile.profilePicture}')` : 'none' }}
-          >
-            {!profile.profilePicture && (
-              <span className="material-symbols-outlined text-white/70 text-xl">person</span>
-            )}
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-white text-sm font-bold truncate">{profile.name || 'Admin'}</p>
-            <p className="text-white/50 text-xs truncate">{profile.role || 'Administrator'}</p>
-          </div>
-          <span className="material-symbols-outlined text-white/50 text-base transition-transform duration-200" style={{ transform: isProfileDropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}>
-            expand_more
-          </span>
+          <span className="material-symbols-outlined text-[20px]">person_add</span>
+          Add User
         </button>
       </div>
+
     </div>
   );
 
@@ -433,23 +484,23 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, currentView, onNavi
       )}
 
       {/* Content area */}
-      <div className="flex flex-col flex-1 lg:ml-64 min-h-screen">
+      <div className="flex flex-col flex-1 lg:ml-64 min-h-screen content-area">
         {/* Mobile top bar */}
-        <div className="lg:hidden flex items-center justify-between px-4 py-3 bg-[#2e4150] sticky top-0 z-30">
+        <div className="lg:hidden flex items-center justify-between px-4 py-3 bg-[#f5f5f5] sticky top-0 z-30 shadow-[1px_1px_20px_10px_rgba(0,0,0,0.1)]">
           <button
             type="button"
             onClick={() => setIsSidebarOpen(true)}
-            className="p-2 rounded-lg hover:bg-white/10 transition-colors"
+            className="p-2 rounded-lg bg-[#2e4150] transition-colors flex items-center justify-center"
           >
             <span className="material-symbols-outlined text-white">menu</span>
           </button>
           <img
             src="/logo.webp"
             alt="Xpect Group"
-            className="h-8 w-auto cursor-pointer"
+            className="h-[50px] w-auto cursor-pointer"
             onClick={() => handleNav('DASHBOARD')}
           />
-          <div className="w-10" />
+          {/* <div className="w-10" /> */}
         </div>
 
         <main className="flex-1 bg-[#f2f6f9]">

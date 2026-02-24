@@ -25,12 +25,6 @@ const approvalBadge = (status: ApprovalStatus) => ({
   not_approved: { cls: 'bg-red-100 text-red-700 border border-red-200',        label: 'Not Approved', icon: 'cancel' },
 }[status]);
 
-const PPE_ICONS: Record<string, string> = {
-  'Gloves': 'back_hand', 'Safety shoes': 'footprint', 'Eye protection': 'visibility',
-  'Mask': 'masks', 'Hi-vis vest': 'emoji_people', 'Apron': 'dry_cleaning',
-  'Hard hat': 'construction', 'Safety harness': 'settings_accessibility',
-};
-
 const InfoRow: React.FC<{ label: string; value: string }> = ({ label, value }) => (
   <div>
     <p className="text-xs font-semibold text-[#6b7a99] uppercase tracking-wide mb-0.5">{label}</p>

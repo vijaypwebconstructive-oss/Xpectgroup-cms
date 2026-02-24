@@ -7,7 +7,6 @@ interface ClientsListProps {
   onNavigateAllocation: () => void;
 }
 
-// Project color palette badges
 const STATUS_BADGE = {
   Valid:    'bg-green-100 text-green-700 border border-green-200',
   Expiring: 'bg-amber-100 text-amber-700 border border-amber-200',
@@ -44,62 +43,65 @@ const ClientsList: React.FC<ClientsListProps> = ({ onSelectClient }) => {
   const nonCompliant  = MOCK_ASSIGNMENTS.filter(a => a.complianceStatus === 'Non-Compliant').length;
 
   return (
-    <div className="flex-1 flex flex-col bg-white min-h-screen">
+    <div className="space-y-6 max-w-screen sm:w-full sm:max-w-full">
 
-      {/* ── Page header ── */}
-      <div className="px-8 pt-8 pb-0 flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-[#0d121b] text-2xl font-black">Clients &amp; Sites</h1>
-          <p className="text-[#6b7a99] text-sm mt-1">Enterprise workforce compliance management.</p>
-        </div>
-        <button className="flex items-center gap-2 h-10 px-5 rounded-lg bg-[#2e4150] text-white text-sm font-bold hover:bg-[#253545] transition-all cursor-pointer shadow-sm shrink-0">
-          <span className="material-symbols-outlined text-[18px]">add</span>
-          Add Client
-        </button>
-      </div>
-
-      {/* ── Stat cards ── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 px-8 pt-6">
+      {/* Stat cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: 'Total Clients',  value: totalClients, color: 'text-[#0d121b]' },
-          { label: 'Active Sites',   value: totalSites,   color: 'text-[#0d121b]' },
-          { label: 'Expiring Soon',  value: expiringSoon, color: 'text-amber-500' },
-          { label: 'Non-Compliant',  value: nonCompliant, color: 'text-red-500' },
+          { label: 'Total Clients',  value: totalClients, icon: 'handshake',     iconColor: 'text-[#2e4150]' },
+          { label: 'Active Sites',   value: totalSites,   icon: 'location_city', iconColor: 'text-[#2e4150]' },
+          { label: 'Expiring Soon',  value: expiringSoon, icon: 'schedule',      iconColor: 'text-amber-500' },
+          { label: 'Non-Compliant',  value: nonCompliant, icon: 'warning',       iconColor: 'text-red-600'   },
         ].map(s => (
-          <div key={s.label} className="bg-white rounded-xl border border-[#e7ebf3] shadow-sm p-5">
-            <p className="text-xs font-semibold text-[#6b7a99] uppercase tracking-wide">{s.label}</p>
-            <p className={`text-4xl font-black mt-1 ${s.color}`}>{s.value}</p>
+          <div key={s.label} className="bg-white rounded-2xl border border-[#e7ebf3] shadow-sm sm:p-4 p-3 flex flex-col gap-3 items-start">
+                          <span className={`material-symbols-outlined text-[22px] sm:text-[30px] p-2 w-fit rounded-[12px] sm:p-3 bg-[#f2f6f9] ${s.iconColor}`}>{s.icon}</span>
+                          <p className="text-xs font-bold text-[#4c669a] uppercase tracking-wide">{s.label}</p>
+                          <p className=" font-bold text-[#000] sm:text-[30px] text-xl">{s.value}</p>
+            
+
+            {/* <div className="flex flex-col gap-1 sm:gap-2 justify-between items-left">
+           
+            </div> */}
           </div>
         ))}
       </div>
 
-      {/* ── Table card ── */}
-      <div className="mx-8 mt-6 mb-8 rounded-xl border border-[#e7ebf3] shadow-sm overflow-hidden bg-white">
+      {/* Table card */}
+      <div className="bg-white rounded-2xl border border-[#e7ebf3] shadow-sm overflow-hidden">
 
         {/* Search + filter bar */}
-        <div className="flex items-center gap-3 px-4 py-3 border-b border-[#e7ebf3]">
-          <label className="flex items-center flex-1 h-9 bg-[#f6f7fb] rounded-lg px-3 border border-[#e7ebf3] focus-within:border-[#2e4150]/40 transition-all">
-            <span className="material-symbols-outlined text-[#9aa5be] text-[18px] mr-2">search</span>
-            <input
-              className="bg-transparent border-none text-[#0d121b] placeholder:text-[#9aa5be] text-sm outline-none w-full"
-              placeholder="Search company name..."
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-            />
-          </label>
-          <div className="relative shrink-0">
+        <div className="flex items-start gap-3 sm:px-5 px-3 sm:py-4 py-3 border-b border-[#e7ebf3] flex-wrap">
+          <div className="flex items-center gap-3 flex-1 flex-wrap">
+            <div className="flex items-center h-9 bg-[#f6f6f8] border border-transparent rounded-lg px-3 flex-1 min-w-[180px] focus-within:border-[#2e4150]/40 transition-all">
+              <span className="material-symbols-outlined text-[#9aa5be] text-[18px] mr-2">search</span>
+              <input
+                className="bg-transparent border-none text-[#0d121b] placeholder:text-[#9aa5be] text-sm outline-none w-full"
+                placeholder="Search company name..."
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+              />
+            </div>
             <select
               value={industryFilter}
               onChange={e => setIndustryFilter(e.target.value)}
-              className="h-9 appearance-none bg-[#f6f7fb] border border-[#e7ebf3] rounded-lg pl-3 pr-8 text-sm text-[#0d121b] outline-none cursor-pointer font-medium"
+              className="h-9 bg-[#f6f6f8] border border-transparent rounded-lg px-3 text-sm text-[#0d121b] outline-none cursor-pointer font-semibold"
             >
               <option value="">All Industries</option>
               {['Office','School','Healthcare','Construction','Retail','Hospitality'].map(i => (
                 <option key={i} value={i}>{i}</option>
               ))}
             </select>
-            <span className="material-symbols-outlined text-[#9aa5be] text-[16px] absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none">expand_more</span>
           </div>
+          <button className="flex items-center gap-2 rounded-full bg-[#2e4150] text-white text-xs font-bold hover:bg-[#2e4150]/90 transition-all px-4 h-9 cursor-pointer shrink-0">
+            <span className="material-symbols-outlined text-[16px]">add</span>
+            Add Client
+          </button>
+        </div>
+
+        {/* Table header with record count */}
+        <div className="px-5 py-3 border-b border-[#e7ebf3] flex items-center gap-3">
+          <h2 className="text-[#0d121b] text-sm sm:text-base font-black font-semibold">Client Records</h2>
+          <span className="bg-[#f2f6f9] text-[#4c669a] text-xs font-bold px-2.5 py-1 rounded-full">{filtered.length} records</span>
         </div>
 
         {/* Table */}
@@ -107,51 +109,47 @@ const ClientsList: React.FC<ClientsListProps> = ({ onSelectClient }) => {
           <table className="w-full min-w-[820px]">
             <thead>
               <tr className="border-b border-[#e7ebf3] bg-[#f8fafc]">
-                {['Client Company Name','Industry Type','Total Sites','Active Workers','Contract End','Compliance Status','Actions'].map((h, i) => (
-                  <th key={h} className={`py-3 text-xs font-bold text-[#6b7a99] uppercase tracking-wider ${i === 0 ? 'text-left px-6' : i === 6 ? 'text-right px-6' : 'text-left px-4'}`}>
-                    {h}
-                  </th>
-                ))}
+                <th className="text-left px-5 py-3 text-xs font-bold text-[#4c669a] uppercase tracking-wide">Client Company Name</th>
+                <th className="text-left px-4 py-3 text-xs font-bold text-[#4c669a] uppercase tracking-wide">Industry Type</th>
+                <th className="text-left px-4 py-3 text-xs font-bold text-[#4c669a] uppercase tracking-wide">Total Sites</th>
+                <th className="text-left px-4 py-3 text-xs font-bold text-[#4c669a] uppercase tracking-wide">Active Workers</th>
+                <th className="text-left px-4 py-3 text-xs font-bold text-[#4c669a] uppercase tracking-wide">Contract End</th>
+                <th className="text-left px-4 py-3 text-xs font-bold text-[#4c669a] uppercase tracking-wide">Compliance Status</th>
+                <th className="text-right px-5 py-3 text-xs font-bold text-[#4c669a] uppercase tracking-wide">Action</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#f0f2f7]">
+            <tbody className="divide-y divide-[#e7ebf3]">
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-16 text-center">
-                    <span className="material-symbols-outlined text-[#d1d5db] text-5xl block mb-2">search_off</span>
-                    <p className="text-[#6b7a99] text-sm font-semibold">No clients match your search</p>
+                  <td colSpan={7} className="px-5 py-14 text-center">
+                    <span className="material-symbols-outlined text-[#c7c7c7] text-5xl block mb-2">search_off</span>
+                    <p className="text-[#4c669a] text-sm font-semibold">No clients match your search</p>
                   </td>
                 </tr>
               ) : filtered.map(c => (
-                <tr key={c.id} className="hover:bg-[#fafbfc] transition-colors">
-                  {/* Client Name */}
-                  <td className="px-6 py-4">
+                <tr key={c.id} className="hover:bg-[#f8fafc] transition-colors group">
+                  <td className="px-5 py-4">
                     <p className="text-sm font-bold text-[#0d121b]">{c.name}</p>
-                    <p className="text-xs text-[#6b7a99] mt-0.5">{c.contactPerson}</p>
+                    <p className="text-xs text-[#4c669a] mt-0.5">{c.contactPerson}</p>
                   </td>
-                  {/* Industry */}
                   <td className="px-4 py-4 text-sm text-[#0d121b] font-medium">{c.industry}</td>
-                  {/* Sites */}
                   <td className="px-4 py-4 text-sm font-semibold text-[#0d121b]">{c.siteCount}</td>
-                  {/* Workers */}
                   <td className="px-4 py-4 text-sm font-semibold text-[#0d121b]">{c.workerCount}</td>
-                  {/* Contract end */}
-                  <td className="px-4 py-4 text-sm font-semibold text-[#0d121b]">
+                  <td className="px-4 py-4 text-sm font-semibold text-[#0d121b] whitespace-nowrap">
                     {formatDate(c.contractEnd)}
                   </td>
-                  {/* Status */}
                   <td className="px-4 py-4">
-                    <span className={`inline-flex items-center px-2.5 py-1 rounded text-xs font-bold uppercase tracking-wide ${STATUS_BADGE[c.health]}`}>
+                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold font-black uppercase tracking-wide ${STATUS_BADGE[c.health]}`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${c.health === 'Valid' ? 'bg-green-500' : c.health === 'Expiring' ? 'bg-amber-400' : 'bg-red-500'}`} />
                       {STATUS_LABEL[c.health]}
                     </span>
                   </td>
-                  {/* Action */}
-                  <td className="px-6 py-4 text-right">
+                  <td className="px-5 py-4 text-right font-semibold">
                     <button
                       onClick={() => onSelectClient(c.id)}
-                      className="text-[#2e4150] text-xs font-bold hover:text-[#2e4150]/70 transition-colors uppercase tracking-wide cursor-pointer"
+                      className="text-[#4c669a] text-xs font-black capitalize tracking-wide transition-colors cursor-pointer"
                     >
-                      View Details
+                      View
                     </button>
                   </td>
                 </tr>
@@ -161,9 +159,9 @@ const ClientsList: React.FC<ClientsListProps> = ({ onSelectClient }) => {
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-3 border-t border-[#e7ebf3] bg-[#f8fafc]">
-          <p className="text-xs text-[#6b7a99] text-center">
-            © 2024 Xpect Group. All worker records are encrypted and stored in compliance with GDPR regulations.
+        <div className="px-5 py-3 border-t border-[#e7ebf3] bg-[#f8fafc] flex items-center justify-between">
+          <p className="text-xs text-[#4c669a]">
+            Showing <span className="font-bold text-[#0d121b]">{filtered.length}</span> of <span className="font-bold text-[#0d121b]">{MOCK_CLIENTS.length}</span> clients
           </p>
         </div>
       </div>

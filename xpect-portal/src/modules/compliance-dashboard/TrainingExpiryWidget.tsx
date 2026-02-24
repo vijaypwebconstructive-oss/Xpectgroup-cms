@@ -16,7 +16,7 @@ const TrainingExpiryWidget: React.FC<TrainingExpiryWidgetProps> = ({ records }) 
 
   return (
     <div className="bg-white rounded-xl border border-[#e7ebf3] flex flex-col">
-      <div className="px-5 py-4 border-b border-[#e7ebf3] flex items-center justify-between">
+      <div className="p-3 border-b border-[#e7ebf3] flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className="material-symbols-outlined text-[20px] text-amber-600">school</span>
           <div>
@@ -39,14 +39,14 @@ const TrainingExpiryWidget: React.FC<TrainingExpiryWidgetProps> = ({ records }) 
           <p className="text-xs text-[#6b7a99] mt-1">No certificates expiring in the next 30 days</p>
         </div>
       ) : (
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto max-h-[350px]">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-[#e7ebf3]">
-                <th className="text-left px-5 py-3 text-xs font-semibold text-[#6b7a99] uppercase tracking-wider">Employee</th>
-                <th className="text-left px-5 py-3 text-xs font-semibold text-[#6b7a99] uppercase tracking-wider">Training</th>
-                <th className="text-left px-5 py-3 text-xs font-semibold text-[#6b7a99] uppercase tracking-wider">Expiry Date</th>
-                <th className="text-left px-5 py-3 text-xs font-semibold text-[#6b7a99] uppercase tracking-wider">Days Left</th>
+                <th className="text-left p-3 text-xs font-semibold text-[#6b7a99] uppercase tracking-wider">Employee</th>
+                <th className="text-left p-3 text-xs font-semibold text-[#6b7a99] uppercase tracking-wider">Training</th>
+                <th className="text-left p-3 text-xs font-semibold text-[#6b7a99] uppercase tracking-wider">Expiry Date</th>
+                <th className="text-left p-3 text-xs font-semibold text-[#6b7a99] uppercase tracking-wider">Days Left</th>
               </tr>
             </thead>
             <tbody>
@@ -54,7 +54,7 @@ const TrainingExpiryWidget: React.FC<TrainingExpiryWidgetProps> = ({ records }) 
                 const style = getRowStyle(record.daysRemaining);
                 return (
                   <tr key={record.id} className={`border-b border-[#e7ebf3] last:border-0 ${style.row}`}>
-                    <td className="px-5 py-3">
+                    <td className="p-3">
                       <div className="flex items-center gap-2">
                         <div className="w-7 h-7 rounded-full bg-[#2e4150] flex items-center justify-center flex-shrink-0">
                           <span className="text-white text-xs font-bold">{record.employee.charAt(0)}</span>
@@ -62,11 +62,11 @@ const TrainingExpiryWidget: React.FC<TrainingExpiryWidgetProps> = ({ records }) 
                         <span className="font-medium text-[#0d121b]">{record.employee}</span>
                       </div>
                     </td>
-                    <td className="px-5 py-3 text-[#0d121b]">{record.training}</td>
-                    <td className="px-5 py-3 text-[#6b7a99]">
+                    <td className="p-3 text-[#0d121b]">{record.training}</td>
+                    <td className="p-3 text-[#6b7a99]">
                       {new Date(record.expiryDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
                     </td>
-                    <td className="px-5 py-3">
+                    <td className="">
                       <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${style.badge}`}>
                         {record.daysRemaining} days
                       </span>

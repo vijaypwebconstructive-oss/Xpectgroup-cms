@@ -6,7 +6,7 @@ interface ThankYouViewProps {
   onNavigate: (view: AppView) => void;
 }
 
-const ThankYouView: React.FC<ThankYouViewProps> = ({ onNavigate }) => {
+const ThankYouView: React.FC<ThankYouViewProps> = ({ onNavigate: _onNavigate }) => {
   const [formData, setFormData] = useState<any>(null);
   const [applicationRef, setApplicationRef] = useState<string>('');
 

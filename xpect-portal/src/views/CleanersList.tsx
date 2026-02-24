@@ -469,8 +469,8 @@ const CleanersList: React.FC<CleanersListProps> = ({ cleaners, onNavigate }) => 
   };
 
   return (
-    <div className="flex-1 flex flex-col w-full py-[15px] sm:py-8 px-4 sm:px-6 md:px-10 animate-in slide-in-from-bottom-4 duration-500 min-h-[calc(100vh-160px)]">
-      <div className="w-full  space-y-6">
+    <div className="flex-1 flex flex-col sm:w-full py-[15px] sm:py-[30px] px-4 sm:px-[30px] animate-in slide-in-from-bottom-4 duration-500 min-h-[calc(100vh-160px)] max-w-screen sm:w-full sm:max-w-full">
+      <div className="  space-y-6 ">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex flex-col gap-1">
             <h1 className="text-[#0d121b] text-[1.6rem] sm:text-2xl font-black font-bold">Staff Management</h1>
@@ -536,7 +536,7 @@ const CleanersList: React.FC<CleanersListProps> = ({ cleaners, onNavigate }) => 
         </div>
 
         {filteredCleaners.length > 0 || isMockMode ? (
-          <div className="bg-white rounded-2xl border border-[#e7ebf3] shadow-sm lg:overflow-x-scroll scrollbar-thin employee-list">
+          <div className="bg-white rounded-2xl border border-[#e7ebf3] shadow-sm overflow-hidden employee-list">
             {/* WordPress-style bulk actions bar: dropdown + Apply (always visible above table) */}
             <div className="flex flex-wrap items-center gap-3 px-4 py-3 border-b border-[#e7ebf3] bg-gray-50/50">
               <select
@@ -564,6 +564,7 @@ const CleanersList: React.FC<CleanersListProps> = ({ cleaners, onNavigate }) => 
                 </span>
               )}
             </div>
+            <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-gray-50 border-b border-[#e7ebf3] text-[#4c669a] text-[10px] uppercase tracking-widest font-black">
@@ -650,6 +651,7 @@ const CleanersList: React.FC<CleanersListProps> = ({ cleaners, onNavigate }) => 
                 ))}
               </tbody>
             </table>
+            </div>
           </div>
         ) : (
           <div className="bg-white rounded-2xl border border-[#e7ebf3] p-20 flex flex-col items-center justify-center text-center shadow-sm">

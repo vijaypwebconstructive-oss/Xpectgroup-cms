@@ -16,13 +16,6 @@ const statusBadge = (status: ActionStatus, overdue: boolean) => {
   return                               { cls: 'bg-red-100 text-red-700 border border-red-200',         icon: 'radio_button_unchecked', label: 'Open' };
 };
 
-const Skeleton = () => (
-  <tr className="animate-pulse">
-    {[...Array(7)].map((_, i) => (
-      <td key={i} className="px-4 py-4"><div className="h-4 bg-gray-100 rounded w-3/4" /></td>
-    ))}
-  </tr>
-);
 
 const CorrectiveActions: React.FC<Props> = ({ onBack, onSelectIncident }) => {
   const [statusFilter, setStatus] = useState<ActionStatus | ''>('');
@@ -62,10 +55,10 @@ const CorrectiveActions: React.FC<Props> = ({ onBack, onSelectIncident }) => {
   }), [enriched]);
 
   return (
-    <div className="min-h-full bg-[#f6f7fb]">
+    <div className="min-h-full bg-[#f6f7fb] max-w-[350px] sm:max-w-full">
 
       {/* Header */}
-      <div className="bg-white border-b border-[#e7ebf3] px-8 py-5">
+      <div className="bg-white border-b border-[#e7ebf3] sm:px-8 px-4 sm:py-5 py-3">
         <button onClick={onBack} className="flex items-center gap-1.5 text-sm text-[#6b7a99] hover:text-[#0d121b] transition-colors mb-4">
           <span className="material-symbols-outlined text-[18px]">arrow_back</span>
           Back to Incidents
@@ -76,17 +69,17 @@ const CorrectiveActions: React.FC<Props> = ({ onBack, onSelectIncident }) => {
               <span className="material-symbols-outlined text-white text-[20px]">build_circle</span>
             </div>
             <div>
-              <h1 className="text-xl font-bold text-[#0d121b]">Corrective Actions</h1>
-              <p className="text-sm text-[#6b7a99]">Track all corrective actions across incidents</p>
+              <h1 className="text-lg sm:text-xl font-bold text-[#0d121b]">Corrective Actions</h1>
+              <p className="text-base text-[#4c669a]">Track all corrective actions across incidents</p>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="px-8 py-6 space-y-5">
+      <div className="sm:px-8 px-4 sm:py-6 py-3 space-y-5">
 
         {/* Stats */}
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4 max-w-[350px] sm:max-w-full">
           {[
             { label: 'Total',       value: stats.total,      bg: 'bg-blue-50 text-blue-600',   icon: 'build_circle' },
             { label: 'Open',        value: stats.open,       bg: 'bg-red-50 text-red-600',     icon: 'radio_button_unchecked' },
@@ -94,13 +87,14 @@ const CorrectiveActions: React.FC<Props> = ({ onBack, onSelectIncident }) => {
             { label: 'Completed',   value: stats.completed,  bg: 'bg-green-50 text-green-600', icon: 'check_circle' },
             { label: 'Overdue',     value: stats.overdue,    bg: 'bg-red-100 text-red-700',    icon: 'error' },
           ].map(s => (
-            <div key={s.label} className="bg-white rounded-xl border border-[#e7ebf3] shadow-sm p-4 flex items-center gap-3">
-              <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${s.bg}`}>
+            <div key={s.label} className="bg-white rounded-xl border border-[#e7ebf3] shadow-sm p-4 flex items-start gap-4 flex-col">
+              <div className={`w-7 h-7 sm:w-9 sm:h-9 rounded-lg flex items-center justify-center shrink-0 ${s.bg}`}>
                 <span className="material-symbols-outlined text-[18px]">{s.icon}</span>
               </div>
               <div>
-                <p className={`text-xl font-bold ${s.label === 'Overdue' && s.value > 0 ? 'text-red-600' : 'text-[#0d121b]'}`}>{s.value}</p>
-                <p className="text-xs text-[#6b7a99]">{s.label}</p>
+              <p className="text-xs font-bold text-[#4c669a] uppercase tracking-wide">{s.label}</p>
+                <p className={`text-xl sm:text-[30px] font-bold ${s.label === 'Overdue' && s.value > 0 ? 'text-red-600' : 'text-[#0d121b]'}`}>{s.value}</p>
+               
               </div>
             </div>
           ))}
@@ -143,7 +137,7 @@ const CorrectiveActions: React.FC<Props> = ({ onBack, onSelectIncident }) => {
 
         {/* Table */}
         <div className="bg-white rounded-xl border border-[#e7ebf3] shadow-sm overflow-hidden">
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto max-h-[500px] sm:max-h-full">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-[#e7ebf3] bg-[#f6f7fb]">
@@ -200,7 +194,7 @@ const CorrectiveActions: React.FC<Props> = ({ onBack, onSelectIncident }) => {
                         </td>
                         <td className="px-4 py-4">
                           <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${sb.cls}`}>
-                            <span className="material-symbols-outlined text-[13px]">{sb.icon}</span>
+                            {/* <span className="material-symbols-outlined text-[13px]">{sb.icon}</span> */}
                             {sb.label}
                           </span>
                         </td>

@@ -16,7 +16,7 @@ const SiteComplianceWidget: React.FC<SiteComplianceWidgetProps> = ({ issues }) =
 
   return (
     <div className="bg-white rounded-xl border border-[#e7ebf3] flex flex-col">
-      <div className="px-5 py-4 border-b border-[#e7ebf3] flex items-center justify-between">
+      <div className="p-3 border-b border-[#e7ebf3] flex items-start sm:items-center gap-2 justify-between sm:flex-row flex-col gap-2">
         <div className="flex items-center gap-2">
           <span className="material-symbols-outlined text-[20px] text-[#2e4150]">location_city</span>
           <div>
@@ -43,10 +43,10 @@ const SiteComplianceWidget: React.FC<SiteComplianceWidgetProps> = ({ issues }) =
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-[#e7ebf3]">
-                <th className="text-left px-5 py-3 text-xs font-semibold text-[#6b7a99] uppercase tracking-wider">Site</th>
-                <th className="text-left px-5 py-3 text-xs font-semibold text-[#6b7a99] uppercase tracking-wider">Client</th>
-                <th className="text-left px-5 py-3 text-xs font-semibold text-[#6b7a99] uppercase tracking-wider">Issue</th>
-                <th className="text-left px-5 py-3 text-xs font-semibold text-[#6b7a99] uppercase tracking-wider">Severity</th>
+                <th className="text-left p-3 text-xs font-semibold text-[#6b7a99] uppercase tracking-wider">Site</th>
+                <th className="text-left p-3 text-xs font-semibold text-[#6b7a99] uppercase tracking-wider">Client</th>
+                <th className="text-left p-3 text-xs font-semibold text-[#6b7a99] uppercase tracking-wider">Issue</th>
+                <th className="text-left p-3 text-xs font-semibold text-[#6b7a99] uppercase tracking-wider">Severity</th>
               </tr>
             </thead>
             <tbody>
@@ -54,17 +54,17 @@ const SiteComplianceWidget: React.FC<SiteComplianceWidgetProps> = ({ issues }) =
                 const cfg = severityConfig[issue.severity];
                 return (
                   <tr key={issue.id} className="border-b border-[#e7ebf3] last:border-0 hover:bg-[#f5f7fa] transition-colors">
-                    <td className="px-5 py-3">
+                    <td className="p-3">
                       <div className="flex items-center gap-2">
                         <div className={`w-2 h-2 rounded-full flex-shrink-0 ${cfg.dot}`} />
                         <span className="font-medium text-[#0d121b] whitespace-nowrap">{issue.site}</span>
                       </div>
                     </td>
-                    <td className="px-5 py-3 text-[#6b7a99] whitespace-nowrap">{issue.client}</td>
-                    <td className="px-5 py-3 text-[#0d121b] max-w-xs">
+                    <td className="p-3 text-[#6b7a99] whitespace-nowrap ">{issue.client}</td>
+                    <td className="p-3 text-[#0d121b] max-w-xs min-w-[150px]">
                       <span className="text-sm leading-snug">{issue.issue}</span>
                     </td>
-                    <td className="px-5 py-3">
+                    <td className="p-3">
                       <span className={`px-2.5 py-1 rounded-full text-xs font-bold whitespace-nowrap ${cfg.badge}`}>
                         {cfg.label}
                       </span>

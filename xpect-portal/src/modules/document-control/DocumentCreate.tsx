@@ -102,12 +102,12 @@ const DocumentCreate: React.FC<Props> = ({ onBack, onCreated }) => {
     <div className="min-h-full bg-[#f6f7fb]">
 
       {/* Header */}
-      <div className="bg-white border-b border-[#e7ebf3] px-8 py-5">
-        <button onClick={onBack} className="flex items-center gap-1.5 text-sm text-[#6b7a99] hover:text-[#0d121b] transition-colors mb-4">
+      <div className="bg-white border-b border-[#e7ebf3] sm:px-8 px-4 sm:py-5 py-3">
+        <button onClick={onBack} className="flex sm:items-center items-start gap-1.5 text-sm text-[#6b7a99] hover:text-[#0d121b] transition-colors mb-4">
           <span className="material-symbols-outlined text-[18px]">arrow_back</span>
           Back to Library
         </button>
-        <div className="flex items-center gap-3">
+        <div className="flex sm:items-center items-start gap-3">
           <div className="w-10 h-10 rounded-xl bg-[#2e4150] flex items-center justify-center shrink-0">
             <span className="material-symbols-outlined text-white text-[20px]">post_add</span>
           </div>
@@ -118,11 +118,11 @@ const DocumentCreate: React.FC<Props> = ({ onBack, onCreated }) => {
         </div>
       </div>
 
-      <div className="px-8 py-6 max-w-3xl">
+      <div className="sm:px-8 px-4 sm:py-6 py-3 max-w-3xl">
         <form onSubmit={handleSubmit} noValidate className="space-y-5">
 
           {/* Document Details card */}
-          <div className="bg-white rounded-xl border border-[#e7ebf3] shadow-sm p-6 space-y-5">
+          <div className="bg-white rounded-xl border border-[#e7ebf3] shadow-sm sm:p-6 p-3 space-y-5">
             <h2 className="text-base font-bold text-[#0d121b] flex items-center gap-2">
               <span className="material-symbols-outlined text-[18px] text-[#6b7a99]">info</span>
               Document Details
@@ -206,7 +206,7 @@ const DocumentCreate: React.FC<Props> = ({ onBack, onCreated }) => {
           </div>
 
           {/* Review & Dates card */}
-          <div className="bg-white rounded-xl border border-[#e7ebf3] shadow-sm p-6 space-y-5">
+          <div className="bg-white rounded-xl border border-[#e7ebf3] shadow-sm sm:p-6 p-3 space-y-5">
             <h2 className="text-base font-bold text-[#0d121b] flex items-center gap-2">
               <span className="material-symbols-outlined text-[18px] text-[#6b7a99]">event</span>
               Review Schedule
@@ -252,7 +252,7 @@ const DocumentCreate: React.FC<Props> = ({ onBack, onCreated }) => {
           </div>
 
           {/* File Upload card */}
-          <div className="bg-white rounded-xl border border-[#e7ebf3] shadow-sm p-6">
+          <div className="bg-white rounded-xl border border-[#e7ebf3] shadow-sm sm:p-6 p-3">
             <h2 className="text-base font-bold text-[#0d121b] flex items-center gap-2 mb-4">
               <span className="material-symbols-outlined text-[18px] text-[#6b7a99]">upload_file</span>
               Upload Document
@@ -303,14 +303,14 @@ const DocumentCreate: React.FC<Props> = ({ onBack, onCreated }) => {
             <button
               type="button"
               onClick={onBack}
-              className="px-5 py-2.5 rounded-xl border border-[#e7ebf3] text-sm font-semibold text-[#6b7a99] bg-white hover:bg-[#f6f7fb] transition-colors"
+              className="px-5 py-2.5 rounded-xl border border-[#e7ebf3] text-sm font-semibold text-[#6b7a99] bg-white hover:bg-[#f6f7fb] transition-colors w-full sm:w-auto"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={submitting}
-              className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-[#2e4150] text-white text-sm font-semibold hover:bg-[#3a5268] disabled:opacity-60 disabled:cursor-not-allowed transition-colors shadow-sm"
+              className="flex w-full text-center sm:text-left justify-center sm:justify-start sm:w-auto items-center gap-2 px-6 py-2.5 rounded-xl bg-[#2e4150] text-white text-sm font-semibold hover:bg-[#3a5268] disabled:opacity-60 disabled:cursor-not-allowed transition-colors shadow-sm"
             >
               {submitting ? (
                 <>
@@ -319,8 +319,8 @@ const DocumentCreate: React.FC<Props> = ({ onBack, onCreated }) => {
                 </>
               ) : (
                 <>
-                  <span className="material-symbols-outlined text-[18px]">save</span>
-                  Create Document
+                  
+                  Create
                 </>
               )}
             </button>

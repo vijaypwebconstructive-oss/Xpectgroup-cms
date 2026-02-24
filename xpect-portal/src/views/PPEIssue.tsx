@@ -97,17 +97,17 @@ const PPEIssue: React.FC<PPEIssueProps> = ({ onBack }) => {
 
       <div className="bg-white rounded-2xl border border-[#e7ebf3] shadow-sm overflow-hidden">
         {/* Header */}
-        <div className="px-6 py-5 border-b border-[#e7ebf3] flex items-center gap-3">
+        <div className="sm:px-6 px-3 sm:py-5 py-3 border-b border-[#e7ebf3] flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-[#2e4150]/10 flex items-center justify-center">
             <span className="material-symbols-outlined text-[#2e4150] text-[22px]">safety_check</span>
           </div>
           <div>
-            <h2 className="text-[#0d121b] text-base font-black">Issue PPE</h2>
-            <p className="text-[#4c669a] text-xs">Record personal protective equipment issued to a worker</p>
+            <h2 className="text-[#0d121b] text-base font-bold font-black">Issue PPE</h2>
+            <p className="text-[#4c669a] text-md">Record personal protective equipment issued to a worker</p>
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+        <form onSubmit={handleSubmit} className="sm:p-6 p-3 space-y-6">
           {/* Worker + PPE Type */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
@@ -230,7 +230,7 @@ const PPEIssue: React.FC<PPEIssueProps> = ({ onBack }) => {
           <div className="rounded-xl border border-[#e7ebf3] bg-[#f8fafc] p-4 space-y-4">
             <div className="flex items-center gap-2">
               <span className="material-symbols-outlined text-[#2e4150] text-[20px]">draw</span>
-              <h3 className="text-sm font-black text-[#0d121b]">Worker Acknowledgement</h3>
+              <h3 className="text-sm font-black text-[#0d121b] font-semibold">Worker Acknowledgement</h3>
             </div>
 
             {/* Signature placeholder */}
@@ -259,14 +259,14 @@ const PPEIssue: React.FC<PPEIssueProps> = ({ onBack }) => {
             <button
               type="button"
               onClick={onBack}
-              className="px-6 py-2.5 rounded-full border border-[#e7ebf3] text-[#0d121b] text-sm font-bold hover:bg-[#f2f6f9] transition-all cursor-pointer"
+              className="px-6 py-2.5 rounded-full border border-[#e7ebf3] text-[#0d121b] text-sm font-bold hover:bg-[#f2f6f9] transition-all cursor-pointer w-full"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="flex items-center gap-2 px-6 py-2.5 rounded-full bg-[#2e4150] text-white text-sm font-bold hover:bg-[#2e4150]/90 transition-all cursor-pointer disabled:opacity-60"
+              className="flex items-center w-full gap-2 px-6 py-2.5 rounded-full bg-[#2e4150] text-white text-sm font-bold hover:bg-[#2e4150]/90 transition-all cursor-pointer disabled:opacity-60"
             >
               {loading ? (
                 <>
@@ -275,7 +275,7 @@ const PPEIssue: React.FC<PPEIssueProps> = ({ onBack }) => {
                 </>
               ) : (
                 <>
-                  <span className="material-symbols-outlined text-[18px]">save</span>
+                  <span className="material-symbols-outlined text-[18px] font-bold">save</span>
                   Issue PPE
                 </>
               )}

@@ -34,13 +34,14 @@ const fmt = (d: string) => d ? new Date(d).toLocaleDateString('en-GB', { day: '2
 // ── Stat card ─────────────────────────────────────────────────────────────────
 
 const StatCard: React.FC<{ label: string; value: number; icon: string; bg: string }> = ({ label, value, icon, bg }) => (
-  <div className="bg-white rounded-xl border border-[#e7ebf3] shadow-sm p-5 flex items-center gap-4">
+  <div className="bg-white rounded-xl border border-[#e7ebf3] shadow-sm sm:p-5 p-2 flex flex-col items-start gap-4">
     <div className={`w-11 h-11 rounded-lg flex items-center justify-center shrink-0 ${bg}`}>
       <span className="material-symbols-outlined text-[22px]">{icon}</span>
     </div>
     <div>
-      <p className="text-2xl font-bold text-[#0d121b]">{value}</p>
-      <p className="text-xs text-[#6b7a99] mt-0.5">{label}</p>
+    <p className="text-xs font-bold text-[#4c669a] uppercase tracking-wide">{label}</p>
+      <p className="text-2xl sm:text-[30px] font-bold text-[#0d121b]">{value}</p>
+      
     </div>
   </div>
 );
@@ -85,16 +86,16 @@ const RiskAssessmentsList: React.FC<Props> = ({ onSelectRisk, onNavigateRAMS, on
   ];
 
   return (
-    <div className="min-h-full bg-[#f6f7fb]">
+    <div className="min-h-full bg-[#f6f7fb] w-screen sm:max-w-full">
 
       {/* Header */}
-      <div className="bg-white border-b border-[#e7ebf3] px-8 py-6">
-        <div className="flex items-start justify-between gap-4 flex-wrap">
+      <div className=" sm:px-8 px-4 sm:py-6 py-3">
+        <div className="flex items-start justify-between flex-col sm:flex-row gap-4 flex-wrap">
           <div>
             <h1 className="text-2xl font-bold text-[#0d121b]">Risk Assessment & COSHH</h1>
-            <p className="text-sm text-[#6b7a99] mt-1">ISO 45001 Safety Management System</p>
+            <p className="text-base text-[#4c669a] mt-1">ISO 45001 Safety Management System</p>
           </div>
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-left gap-2 flex-col sm:flex-row w-full">
             {quickNav.map(n => (
               <button key={n.label} onClick={n.action}
                 className="flex items-center gap-2 px-4 py-2 rounded-xl border border-[#e7ebf3] text-sm font-semibold text-[#2e4150] bg-white hover:bg-[#f6f7fb] transition-colors">
@@ -110,7 +111,7 @@ const RiskAssessmentsList: React.FC<Props> = ({ onSelectRisk, onNavigateRAMS, on
         </div>
       </div>
 
-      <div className="px-8 py-6 space-y-6">
+      <div className="sm:px-8 px-4 sm:py-6 py-3 space-y-6">
 
         {/* Stats */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -129,14 +130,14 @@ const RiskAssessmentsList: React.FC<Props> = ({ onSelectRisk, onNavigateRAMS, on
               className="w-full pl-9 pr-4 py-2 bg-[#f6f7fb] border border-[#e7ebf3] rounded-lg text-sm text-[#0d121b] placeholder:text-[#6b7a99] focus:outline-none focus:ring-2 focus:ring-[#2e4150]/20" />
           </div>
           <select value={riskFilter} onChange={e => setRisk(e.target.value as RiskLevel | '')}
-            className="px-3 py-2 bg-[#f6f7fb] border border-[#e7ebf3] rounded-lg text-sm text-[#0d121b] focus:outline-none focus:ring-2 focus:ring-[#2e4150]/20 min-w-[140px]">
+            className="px-3 py-2 bg-[#f6f7fb] border border-[#e7ebf3] rounded-lg text-sm text-[#0d121b] focus:outline-none focus:ring-2 focus:ring-[#2e4150]/20 sm:min-w-[140px] min-w-full">
             <option value="">All Risk Levels</option>
             <option value="Low">Low</option>
             <option value="Medium">Medium</option>
             <option value="High">High</option>
           </select>
           <select value={statusFilter} onChange={e => setStatus(e.target.value as ApprovalStatus | '')}
-            className="px-3 py-2 bg-[#f6f7fb] border border-[#e7ebf3] rounded-lg text-sm text-[#0d121b] focus:outline-none focus:ring-2 focus:ring-[#2e4150]/20 min-w-[150px]">
+            className="px-3 py-2 bg-[#f6f7fb] border border-[#e7ebf3] rounded-lg text-sm text-[#0d121b] focus:outline-none focus:ring-2 focus:ring-[#2e4150]/20 sm:min-w-[150px] min-w-full">
             <option value="">All Statuses</option>
             <option value="approved">Approved</option>
             <option value="pending">Pending</option>
@@ -182,8 +183,8 @@ const RiskAssessmentsList: React.FC<Props> = ({ onSelectRisk, onNavigateRAMS, on
                               <span className="font-semibold text-[#0d121b] max-w-[200px] truncate">{ra.title}</span>
                             </div>
                           </td>
-                          <td className="px-4 py-4">
-                            <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-[#f0f2f7] text-[#2e4150]">{ra.taskType}</span>
+                          <td className="px-4 py-4 min-w-[150px] ">
+                            <span className="px-2.5 py-1 rounded-full text-xs min-w-fit display-inline-block font-medium bg-[#f0f2f7] text-[#2e4150]">{ra.taskType}</span>
                           </td>
                           <td className="px-4 py-4">
                             <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold ${riskBadge(ra.riskLevel)}`}>

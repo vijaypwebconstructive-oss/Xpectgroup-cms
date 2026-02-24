@@ -128,7 +128,7 @@ const IncidentDetail: React.FC<Props> = ({ incidentId, onBack }) => {
     <div className="min-h-full bg-[#f6f7fb]">
 
       {/* Header */}
-      <div className="bg-white border-b border-[#e7ebf3] px-8 py-5">
+      <div className="bg-white border-b border-[#e7ebf3] sm:px-8 px-4 sm:py-5 py-3">
         <button onClick={onBack} className="flex items-center gap-1.5 text-sm text-[#6b7a99] hover:text-[#0d121b] transition-colors mb-4">
           <span className="material-symbols-outlined text-[18px]">arrow_back</span>
           Back to Incidents
@@ -204,9 +204,9 @@ const IncidentDetail: React.FC<Props> = ({ incidentId, onBack }) => {
         </div>
       )}
 
-      <div className="px-8 py-6">
+      <div className="sm:px-8 px-4 sm:py-6 py-3">
         {/* Tabs */}
-        <div className="flex gap-1 mb-6 bg-white rounded-xl border border-[#e7ebf3] shadow-sm p-1 w-fit">
+        <div className="flex gap-1 sm:flex-row flex-col mb-6 bg-white rounded-xl border border-[#e7ebf3] shadow-sm p-1 w-fit w-full">
           {TABS.map(t => (
             <button key={t.id} onClick={() => setActiveTab(t.id as typeof activeTab)}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
@@ -391,9 +391,9 @@ const IncidentDetail: React.FC<Props> = ({ incidentId, onBack }) => {
 
         {/* ── TAB: Actions ─────────────────────────────────────────────────────── */}
         {activeTab === 'actions' && (
-          <div className="space-y-5">
+          <div className="space-y-5 max-w-[350px] sm:max-w-full">
             <div className="bg-white rounded-xl border border-[#e7ebf3] shadow-sm overflow-hidden">
-              <div className="px-6 py-4 border-b border-[#e7ebf3] flex items-center justify-between gap-3">
+              <div className="sm:px-6 px-4 sm:py-4 py-3 border-b border-[#e7ebf3] flex items-center justify-between gap-3">
                 <h3 className="text-sm font-bold text-[#0d121b] flex items-center gap-2">
                   <span className="material-symbols-outlined text-[18px] text-[#6b7a99]">build_circle</span>
                   Corrective Actions

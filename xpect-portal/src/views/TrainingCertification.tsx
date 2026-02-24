@@ -216,13 +216,13 @@ const TrainingCertification: React.FC<TrainingCertificationProps> = ({ onNavigat
   ];
 
   return (
-    <div className="flex-1 flex flex-col w-full py-[15px] sm:py-8 px-4 sm:px-6 md:px-10 animate-in slide-in-from-bottom-4 duration-500 min-h-[calc(100vh-160px)]">
+    <div className="flex-1 flex flex-col w-full py-[15px] sm:py-8 px-4 sm:px-6 md:px-10 animate-in slide-in-from-bottom-4 duration-500 min-h-[calc(100vh-160px)] max-w-screen sm:w-full sm:max-w-full">
       <div className="w-full space-y-6">
 
         {/* Page header */}
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex flex-col gap-1">
-            <h1 className="text-[#0d121b] text-[1.6rem] sm:text-2xl font-black">
+            <h1 className="text-[#0d121b] text-[1.6rem] sm:text-2xl font-bold font-black">
               Training &amp; Certification Tracking
             </h1>
             <p className="text-[#4c669a] text-base">
@@ -246,11 +246,11 @@ const TrainingCertification: React.FC<TrainingCertificationProps> = ({ onNavigat
                 <p className="text-xs font-bold text-[#4c669a] uppercase tracking-wide">{card.label}</p>
                 <span className={`material-symbols-outlined text-[22px] ${card.iconColor}`}>{card.icon}</span>
               </div>
-              <p className={`text-4xl font-black ${card.valueColor}`}>{card.value}</p>
+              <p className={`text-[24px] sm:text-[30px] font-black font-bold text-[#000]`}>{card.value}</p>
               <p className="text-[11px] text-[#4c669a]">{card.sub}</p>
-              <div className="h-1.5 rounded-full bg-[#e7ebf3] overflow-hidden">
+              {/* <div className="h-1.5 rounded-full bg-[#e7ebf3] overflow-hidden">
                 <div className={`h-full rounded-full ${card.barColor} transition-all duration-500`} style={{ width: `${card.pct}%` }} />
-              </div>
+              </div> */}
             </div>
           ))}
         </div>
@@ -278,7 +278,7 @@ const TrainingCertification: React.FC<TrainingCertificationProps> = ({ onNavigat
           {/* Toolbar */}
           <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 border-b border-[#e7ebf3]">
             <div className="flex items-center gap-4 flex-wrap">
-              <h2 className="text-[#0d121b] text-base font-black">Staff in Training Period</h2>
+              <h2 className="text-[#0d121b] text-base font-semibold font-black">Staff in Training Period</h2>
               <span className="text-xs font-bold bg-[#e7ebf3] text-[#4c669a] px-2.5 py-1 rounded-full">
                 {filteredTrainees.length} records
               </span>
@@ -366,7 +366,7 @@ const TrainingCertification: React.FC<TrainingCertificationProps> = ({ onNavigat
                         {/* Progress */}
                         <td className="px-4 py-4">
                           <div className="flex items-center gap-3">
-                            <div className="flex-1 h-2 rounded-full bg-[#e7ebf3] overflow-hidden">
+                            <div className="flex-1 h-1 rounded-full bg-[#e7ebf3] overflow-hidden">
                               <div
                                 className={`h-full rounded-full transition-all duration-500 ${
                                   trainee.progress >= 100 ? 'bg-green-500' :
@@ -382,7 +382,7 @@ const TrainingCertification: React.FC<TrainingCertificationProps> = ({ onNavigat
 
                         {/* Status */}
                         <td className="px-4 py-4">
-                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-black uppercase tracking-wide ${status.badge}`}>
+                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold font-black uppercase tracking-wide ${status.badge}`}>
                             <span className={`w-1.5 h-1.5 rounded-full ${status.dot}`} />
                             {status.label}
                           </span>
@@ -397,7 +397,7 @@ const TrainingCertification: React.FC<TrainingCertificationProps> = ({ onNavigat
                         <td className="px-5 py-4 text-right">
                           <button
                             onClick={() => onNavigate('CLEANERS_LIST')}
-                            className="text-[#2e4150] text-xs font-black uppercase tracking-wide hover:text-[#4c669a] transition-colors cursor-pointer opacity-0 group-hover:opacity-100"
+                            className="text-[#000] text-xs font-semibold font-black capitalize tracking-wide transition-colors cursor-pointer  "
                           >
                             View Details
                           </button>

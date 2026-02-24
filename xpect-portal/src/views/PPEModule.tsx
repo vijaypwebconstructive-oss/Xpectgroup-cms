@@ -30,13 +30,13 @@ const PPEModule: React.FC<PPEModuleProps> = ({ onNavigate: _onNavigate }) => {
   };
 
   return (
-    <div className="flex-1 flex flex-col w-full py-[15px] sm:py-8 px-4 sm:px-6 md:px-10 animate-in slide-in-from-bottom-4 duration-500 min-h-[calc(100vh-160px)]">
+    <div className="flex-1 flex flex-col w-full py-[15px] sm:py-8 px-4 sm:px-6 md:px-10 animate-in slide-in-from-bottom-4 duration-500 min-h-[calc(100vh-160px)] w-screen sm:w-full sm:max-w-full">
       <div className="w-full space-y-6">
 
         {/* Page header */}
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex flex-col gap-1">
-            <h1 className="text-[#0d121b] text-[1.6rem] sm:text-2xl font-black">PPE Records</h1>
+            <h1 className="text-[#0d121b] text-[1.6rem] sm:text-2xl  font-bold font-black">PPE Records</h1>
             <p className="text-[#4c669a] text-base">
               Track personal protective equipment issuance, replacements, and worker acknowledgements.
             </p>

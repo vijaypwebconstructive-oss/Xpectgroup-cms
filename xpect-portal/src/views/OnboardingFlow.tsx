@@ -10,7 +10,7 @@ interface OnboardingFlowProps {
   onNavigate: (view: AppView) => void;
 }
 
-const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete, onCancel, onNavigate }) => {
+const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete: _onComplete, onCancel, onNavigate }) => {
   const { addCleaner } = useCleaners();
   
   // ALL HOOKS MUST BE DECLARED FIRST - before any conditional returns
@@ -85,7 +85,7 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete, onCancel, o
   }>({});
 
   // Track if this is initial load (to prevent autosave during progress restoration)
-  const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const [_isInitialLoad, setIsInitialLoad] = useState(true);
   
   // Track if form is currently being submitted
   const [isSubmitting, setIsSubmitting] = useState(false);
