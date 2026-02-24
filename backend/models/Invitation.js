@@ -52,8 +52,8 @@ const InvitationSchema = new mongoose.Schema({
 });
 
 // Indexes for better query performance
+// id and inviteToken indexes are already created by unique:true on the field definition
 InvitationSchema.index({ email: 1 });
-InvitationSchema.index({ inviteToken: 1 });
 InvitationSchema.index({ status: 1 });
 InvitationSchema.index({ createdAt: -1 });
 

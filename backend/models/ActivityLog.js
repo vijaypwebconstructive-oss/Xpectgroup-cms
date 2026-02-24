@@ -85,10 +85,8 @@ const ActivityLogSchema = new mongoose.Schema({
 });
 
 // Indexes for efficient querying
+// entityId, actorRole, actionType indexes are already created by index:true on the field definitions
 ActivityLogSchema.index({ createdAt: -1 }); // For recent activities (most important)
-ActivityLogSchema.index({ entityId: 1 }); // For activities related to a specific entity
-ActivityLogSchema.index({ actorRole: 1 }); // For filtering by actor role
-ActivityLogSchema.index({ actionType: 1 }); // For filtering by action type
 ActivityLogSchema.index({ entityType: 1, entityId: 1 }); // Compound index for entity queries
 
 const ActivityLog = mongoose.model('ActivityLog', ActivityLogSchema);

@@ -77,8 +77,7 @@ const CleanerSchema = new mongoose.Schema({
 });
 
 // Indexes for better query performance
-CleanerSchema.index({ email: 1 });
-CleanerSchema.index({ id: 1 });
+// email and id indexes are already created by unique:true on the field definition
 CleanerSchema.index({ verificationStatus: 1 });
 
 const Cleaner = mongoose.model('Cleaner', CleanerSchema);
