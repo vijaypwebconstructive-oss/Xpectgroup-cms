@@ -6,10 +6,9 @@ import {
   subscribeIncident,
   syncIncidentFromPathname,
 } from './incidentNavStore';
-import IncidentsList     from './IncidentsList';
-import IncidentCreate    from './IncidentCreate';
-import IncidentDetail    from './IncidentDetail';
-import CorrectiveActions from './CorrectiveActions';
+import IncidentsList  from './IncidentsList';
+import IncidentCreate from './IncidentCreate';
+import IncidentDetail from './IncidentDetail';
 
 const IncidentsModule: React.FC = () => {
   const [navState, setNavState] = useState<IncidentNavState>(() => {
@@ -27,10 +26,9 @@ const IncidentsModule: React.FC = () => {
     };
   }, []);
 
-  const goToList     = ()           => incidentNavigate('list');
-  const goToCreate   = ()           => incidentNavigate('create');
-  const goToDetail   = (id: string) => incidentNavigate('detail', id);
-  const goToActions  = ()           => incidentNavigate('actions');
+  const goToList   = ()           => incidentNavigate('list');
+  const goToCreate = ()           => incidentNavigate('create');
+  const goToDetail = (id: string) => incidentNavigate('detail', id);
 
   switch (navState.view) {
     case 'list':
@@ -38,7 +36,6 @@ const IncidentsModule: React.FC = () => {
         <IncidentsList
           onSelectIncident={goToDetail}
           onCreateIncident={goToCreate}
-          onNavigateActions={goToActions}
         />
       );
     case 'create':
@@ -55,19 +52,11 @@ const IncidentsModule: React.FC = () => {
           onBack={goToList}
         />
       );
-    case 'actions':
-      return (
-        <CorrectiveActions
-          onBack={goToList}
-          onSelectIncident={goToDetail}
-        />
-      );
     default:
       return (
         <IncidentsList
           onSelectIncident={goToDetail}
           onCreateIncident={goToCreate}
-          onNavigateActions={goToActions}
         />
       );
   }

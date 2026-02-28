@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { AppView, Cleaner } from './types';
-import Dashboard from './views/Dashboard';
+import ComplianceDashboardView from './modules/compliance-dashboard/ComplianceDashboard';
 import CleanersList from './views/CleanersList';
 import CleanerDetail from './views/CleanerDetail';
 import OnboardingFlow from './views/OnboardingFlow';
@@ -10,12 +10,14 @@ import ThankYouView from './views/ThankYouView';
 import StaffInvites from './views/StaffInvites';
 import EmployeeCompliance from './views/EmployeeCompliance';
 import TrainingCertification from './views/TrainingCertification';
+import AssignTraining from './views/AssignTraining';
+import TrainingDetail from './views/TrainingDetail';
 import PPEModule from './views/PPEModule';
 import ClientSitesModule from './modules/clients-sites/ClientSitesModule';
 import DocumentControlModule from './modules/document-control/DocumentControlModule';
 import RiskCoshhModule from './modules/risk-coshh/RiskCoshhModule';
 import IncidentsModule from './modules/incidents/IncidentsModule';
-import ComplianceDashboard from './modules/compliance-dashboard/ComplianceDashboard';
+import UserAccessModule from './modules/user-access/UserAccessModule';
 import AdminLayout from './components/AdminLayout';
 import EmployeeLayout from './components/EmployeeLayout';
 import EmployeeRouteGuard from './components/EmployeeRouteGuard';
@@ -145,6 +147,8 @@ const App: React.FC = () => {
     if (currentView === 'DOCUMENT_CONTROL') return;
     if (currentView === 'RISK_COSHH') return;
     if (currentView === 'INCIDENTS') return;
+    if (currentView === 'TRAINING_DETAIL') return;
+    if (currentView === 'USER_ACCESS') return;
 
     const url = getUrlForView(currentView, {
       inviteToken: onboardingInviteToken || undefined,
@@ -197,6 +201,8 @@ const App: React.FC = () => {
     if (view === 'DOCUMENT_CONTROL') return;
     if (view === 'RISK_COSHH') return;
     if (view === 'INCIDENTS') return;
+    if (view === 'TRAINING_DETAIL') return;
+    if (view === 'USER_ACCESS') return;
 
     // Update URL based on view and cleaner (if applicable)
     const url = getUrlForView(view, { 
@@ -225,7 +231,7 @@ const App: React.FC = () => {
       }
       return (
         <AdminLayout currentView={currentView} onNavigate={navigateTo}>
-          <Dashboard onNavigate={navigateTo} />
+          <ComplianceDashboardView onNavigate={navigateTo} />
         </AdminLayout>
       );
     }
@@ -311,11 +317,15 @@ const App: React.FC = () => {
         {(() => {
           switch (currentView) {
             case 'DASHBOARD':
-              return <Dashboard onNavigate={navigateTo} />;
+              return <ComplianceDashboardView onNavigate={navigateTo} />;
             case 'EMPLOYEE_COMPLIANCE':
               return <EmployeeCompliance onNavigate={navigateTo} />;
             case 'TRAINING_CERTIFICATION':
               return <TrainingCertification onNavigate={navigateTo} />;
+            case 'ASSIGN_TRAINING':
+              return <AssignTraining onNavigate={navigateTo} />;
+            case 'TRAINING_DETAIL':
+              return <TrainingDetail onNavigate={navigateTo} />;
             case 'PPE_LIST':
               return <PPEModule onNavigate={navigateTo} />;
             case 'CLEANERS_LIST':
@@ -360,10 +370,10 @@ const App: React.FC = () => {
               return <RiskCoshhModule />;
             case 'INCIDENTS':
               return <IncidentsModule />;
-            case 'COMPLIANCE_DASHBOARD':
-              return <ComplianceDashboard onNavigate={navigateTo} />;
+            case 'USER_ACCESS':
+              return <UserAccessModule />;
             default:
-              return <Dashboard onNavigate={navigateTo} />;
+              return <ComplianceDashboardView onNavigate={navigateTo} />;
           }
         })()}
       </AdminLayout>

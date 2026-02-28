@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { getClientById, getSitesByClient, getAssignmentsByClient, contractHealth, daysUntil } from './mockData';
+import { addedClients } from './ClientsList';
+import { addedSites } from './SitesList';
 
 interface ClientDetailProps {
   clientId: string;
@@ -30,19 +32,54 @@ const formatDate = (d: string) => {
   catch { return d; }
 };
 
+const formatFileSize = (bytes: number) => {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+};
+
+interface DocEntry {
+  key: string;
+  label: string;
+  icon: string;
+  desc: string;
+}
+
+interface UploadedFile {
+  name: string;
+  size: number;
+  type: string;
+  uploadedAt: string;
+  url: string;
+}
+
+const DOC_DEFINITIONS: DocEntry[] = [
+  { key: 'sla',         label: 'Service Level Agreement (SLA)', icon: 'description',      desc: 'Upload the signed SLA document.' },
+  { key: 'insurance',   label: 'Public Liability Insurance',    icon: 'shield',            desc: 'Current insurance certificate.' },
+  { key: 'risk',        label: 'Risk Assessment',               icon: 'health_and_safety', desc: 'Site risk assessment document.' },
+  { key: 'contract',    label: 'Contract Agreement',            icon: 'gavel',             desc: 'Signed contract PDF.' },
+  { key: 'healthSafety',label: 'Health & Safety Policy',        icon: 'local_hospital',    desc: 'Company health & safety policy.' },
+  { key: 'gdpr',        label: 'GDPR / Data Agreement',         icon: 'lock',              desc: 'Data protection agreement.' },
+];
+
+const clientDocStore: Record<string, Record<string, UploadedFile>> = {};
+
 type Tab = 'overview' | 'sites' | 'workers' | 'documents';
 
 const ClientDetail: React.FC<ClientDetailProps> = ({ clientId, onBack, onSelectSite }) => {
   const [activeTab, setActiveTab] = useState<Tab>('overview');
+  const [docs, setDocs] = useState<Record<string, UploadedFile>>(() => clientDocStore[clientId] || {});
+  const [previewDoc, setPreviewDoc] = useState<{ label: string; file: UploadedFile } | null>(null);
+  const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
-  const client = getClientById(clientId);
+  const client = getClientById(clientId) || addedClients.find(c => c.id === clientId);
   if (!client) return (
     <div className="flex-1 flex items-center justify-center p-10">
       <p className="text-[#6b7a99]">Client not found.</p>
     </div>
   );
 
-  const sites       = getSitesByClient(clientId);
+  const sites       = [...getSitesByClient(clientId), ...addedSites.filter(s => s.clientId === clientId)];
   const assignments = getAssignmentsByClient(clientId);
   const health      = contractHealth(client);
   const ss          = STATUS_STYLES[health];
@@ -58,14 +95,14 @@ const ClientDetail: React.FC<ClientDetailProps> = ({ clientId, onBack, onSelectS
     <div className="flex-1 flex flex-col bg-[#f6f7fb] min-h-screen">
 
       {/* Page header */}
-      <div className="bg-white border-b border-[#e7ebf3] px-8 py-5">
+      <div className="  px-0  py-0">
         <button onClick={onBack} className="flex items-center gap-1.5 text-[#6b7a99] text-sm font-semibold hover:text-[#0d121b] transition-colors cursor-pointer mb-3">
           <span className="material-symbols-outlined text-[18px]">arrow_back</span>
           Back to Clients
         </button>
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
-            <h1 className="text-[#0d121b] text-2xl font-black">{client.name}</h1>
+            <h1 className="text-[#0d121b] text-xl  sm:text-[30px] font-bold font-black">{client.name}</h1>
             <p className="text-[#6b7a99] text-sm mt-0.5">{client.industry} · {client.contactPerson}</p>
           </div>
           <span className={`inline-flex items-center px-3 py-1.5 rounded text-sm font-bold uppercase tracking-wide ${ss.badge}`}>
@@ -74,11 +111,11 @@ const ClientDetail: React.FC<ClientDetailProps> = ({ clientId, onBack, onSelectS
         </div>
       </div>
 
-      <div className="flex-1 px-8 py-6 space-y-5">
+      <div className="flex-1 px-0 py-6 space-y-5">
 
         {/* Meta strip */}
         <div className="bg-white rounded-xl border border-[#e7ebf3] shadow-sm p-5">
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-x-6 gap-y-4">
             {[
               { label: 'Email',            value: client.email },
               { label: 'Phone',            value: client.phone },
@@ -86,9 +123,9 @@ const ClientDetail: React.FC<ClientDetailProps> = ({ clientId, onBack, onSelectS
               { label: 'Contract End',     value: formatDate(client.contractEnd),     warn: daysUntil(client.contractEnd) < 30 },
               { label: 'Insurance Expiry', value: formatDate(client.insuranceExpiry), warn: daysUntil(client.insuranceExpiry) < 30 },
             ].map(item => (
-              <div key={item.label}>
-                <p className="text-xs font-semibold text-[#6b7a99] mb-0.5">{item.label}</p>
-                <p className={`text-sm font-bold ${item.warn ? 'text-amber-600' : 'text-[#0d121b]'}`}>{item.value}</p>
+              <div key={item.label} className="min-w-0">
+                <p className="text-xs font-semibold text-[#6b7a99] mb-1">{item.label}</p>
+                <p className={`text-sm font-bold truncate ${item.warn ? 'text-amber-600' : 'text-[#0d121b]'}`} title={item.value}>{item.value}</p>
               </div>
             ))}
           </div>
@@ -230,29 +267,178 @@ const ClientDetail: React.FC<ClientDetailProps> = ({ clientId, onBack, onSelectS
 
         {/* Tab: Documents */}
         {activeTab === 'documents' && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {[
-              { label: 'Service Level Agreement (SLA)', icon: 'description',      desc: 'Upload the signed SLA document.' },
-              { label: 'Public Liability Insurance',    icon: 'shield',            desc: 'Current insurance certificate.' },
-              { label: 'Risk Assessment',               icon: 'health_and_safety', desc: 'Site risk assessment document.' },
-              { label: 'Contract Agreement',            icon: 'gavel',             desc: 'Signed contract PDF.' },
-            ].map(doc => (
-              <div key={doc.label} className="bg-white rounded-xl border border-[#e7ebf3] shadow-sm p-5 flex items-start gap-4">
-                <div className="w-10 h-10 rounded-xl bg-[#f0f2f7] flex items-center justify-center shrink-0">
-                  <span className="material-symbols-outlined text-[#6b7a99] text-[20px]">{doc.icon}</span>
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {DOC_DEFINITIONS.map(doc => {
+                const uploaded = docs[doc.key];
+                return (
+                  <div key={doc.key} className={`bg-white rounded-xl border shadow-sm p-5 flex items-start gap-4 transition-all ${uploaded ? 'border-green-200' : 'border-[#e7ebf3]'}`}>
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${uploaded ? 'bg-green-50' : 'bg-[#f0f2f7]'}`}>
+                      <span className={`material-symbols-outlined text-[20px] ${uploaded ? 'text-green-600' : 'text-[#6b7a99]'}`}>{doc.icon}</span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold text-[#0d121b]">{doc.label}</p>
+
+                      {uploaded ? (
+                        <div className="mt-1.5 space-y-2">
+                          <div className="flex items-center gap-2 bg-[#f8fafc] rounded-lg px-3 py-2 border border-[#e7ebf3]">
+                            <span className="material-symbols-outlined text-[16px] text-green-600">attach_file</span>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-semibold text-[#0d121b] truncate">{uploaded.name}</p>
+                              <p className="text-[10px] text-[#6b7a99]">{formatFileSize(uploaded.size)} · Uploaded {uploaded.uploadedAt}</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => setPreviewDoc({ label: doc.label, file: uploaded })}
+                              className="flex items-center gap-1 text-xs font-bold text-blue-600 hover:text-blue-800 transition-colors cursor-pointer"
+                            >
+                              <span className="material-symbols-outlined text-[14px]">visibility</span>
+                              View
+                            </button>
+                            <span className="text-[#e7ebf3]">|</span>
+                            <label className="flex items-center gap-1 text-xs font-bold text-amber-600 hover:text-amber-800 transition-colors cursor-pointer">
+                              <span className="material-symbols-outlined text-[14px]">upload</span>
+                              Re-upload
+                              <input
+                                type="file"
+                                className="hidden"
+                                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                                ref={el => { fileInputRefs.current[doc.key + '-re'] = el; }}
+                                onChange={e => {
+                                  const file = e.target.files?.[0];
+                                  if (file) {
+                                    const entry: UploadedFile = {
+                                      name: file.name,
+                                      size: file.size,
+                                      type: file.type,
+                                      uploadedAt: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+                                      url: URL.createObjectURL(file),
+                                    };
+                                    setDocs(prev => {
+                                      const next = { ...prev, [doc.key]: entry };
+                                      clientDocStore[clientId] = next;
+                                      return next;
+                                    });
+                                  }
+                                  e.target.value = '';
+                                }}
+                              />
+                            </label>
+                            <span className="text-[#e7ebf3]">|</span>
+                            <button
+                              onClick={() => {
+                                setDocs(prev => {
+                                  const next = { ...prev };
+                                  delete next[doc.key];
+                                  clientDocStore[clientId] = next;
+                                  return next;
+                                });
+                              }}
+                              className="flex items-center gap-1 text-xs font-bold text-red-500 hover:text-red-700 transition-colors cursor-pointer"
+                            >
+                              <span className="material-symbols-outlined text-[14px]">delete</span>
+                              Remove
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <p className="text-xs text-[#6b7a99] mt-0.5">{doc.desc}</p>
+                          <label className="mt-3 flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:text-blue-800 transition-colors cursor-pointer w-fit">
+                            <span className="material-symbols-outlined text-[14px]">upload</span>
+                            Upload Document
+                            <input
+                              type="file"
+                              className="hidden"
+                              accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                              ref={el => { fileInputRefs.current[doc.key] = el; }}
+                              onChange={e => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  const entry: UploadedFile = {
+                                    name: file.name,
+                                    size: file.size,
+                                    type: file.type,
+                                    uploadedAt: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+                                    url: URL.createObjectURL(file),
+                                  };
+                                  setDocs(prev => {
+                                    const next = { ...prev, [doc.key]: entry };
+                                    clientDocStore[clientId] = next;
+                                    return next;
+                                  });
+                                }
+                                e.target.value = '';
+                              }}
+                            />
+                          </label>
+                        </>
+                      )}
+                    </div>
+                    <span className={`text-xs px-2 py-1 rounded font-medium shrink-0 ${uploaded ? 'text-green-700 bg-green-50 border border-green-200' : 'text-[#9aa5be] bg-[#f8fafc] border border-[#e7ebf3]'}`}>
+                      {uploaded ? 'Uploaded' : 'Not uploaded'}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Document preview modal */}
+            {previewDoc && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+                <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl mx-4 max-h-[90vh] flex flex-col animate-in zoom-in-95 duration-300">
+                  <div className="flex items-center justify-between px-6 py-4 border-b border-[#e7ebf3]">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <span className="material-symbols-outlined text-[22px] text-[#2e4150]">description</span>
+                      <div className="min-w-0">
+                        <h2 className="text-base font-bold text-[#0d121b] truncate">{previewDoc.label}</h2>
+                        <p className="text-xs text-[#6b7a99]">{previewDoc.file.name} · {formatFileSize(previewDoc.file.size)}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <a
+                        href={previewDoc.file.url}
+                        download={previewDoc.file.name}
+                        className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#2e4150] text-white text-xs font-bold hover:bg-[#2e4150]/90 transition-all cursor-pointer"
+                      >
+                        <span className="material-symbols-outlined text-[16px]">download</span>
+                        Download
+                      </a>
+                      <button
+                        onClick={() => setPreviewDoc(null)}
+                        className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-[#f2f6f9] transition-colors cursor-pointer"
+                      >
+                        <span className="material-symbols-outlined text-[20px] text-[#4c669a]">close</span>
+                      </button>
+                    </div>
+                  </div>
+                  <div className="flex-1 overflow-auto p-6">
+                    {previewDoc.file.type.startsWith('image/') ? (
+                      <img src={previewDoc.file.url} alt={previewDoc.file.name} className="max-w-full max-h-[60vh] mx-auto rounded-xl shadow-sm" />
+                    ) : previewDoc.file.type === 'application/pdf' ? (
+                      <iframe src={previewDoc.file.url} title={previewDoc.file.name} className="w-full h-[60vh] rounded-xl border border-[#e7ebf3]" />
+                    ) : (
+                      <div className="flex flex-col items-center justify-center py-16 text-center">
+                        <span className="material-symbols-outlined text-[60px] text-[#c7d2e0] mb-3">article</span>
+                        <p className="text-sm font-bold text-[#0d121b]">{previewDoc.file.name}</p>
+                        <p className="text-xs text-[#6b7a99] mt-1">{formatFileSize(previewDoc.file.size)} · Uploaded {previewDoc.file.uploadedAt}</p>
+                        <p className="text-xs text-[#6b7a99] mt-3">Preview not available for this file type.</p>
+                        <a
+                          href={previewDoc.file.url}
+                          download={previewDoc.file.name}
+                          className="mt-4 flex items-center gap-1.5 px-5 py-2.5 rounded-full bg-[#2e4150] text-white text-sm font-bold hover:bg-[#2e4150]/90 transition-all cursor-pointer"
+                        >
+                          <span className="material-symbols-outlined text-[18px]">download</span>
+                          Download File
+                        </a>
+                      </div>
+                    )}
+                  </div>
                 </div>
-                <div className="flex-1">
-                  <p className="text-sm font-bold text-[#0d121b]">{doc.label}</p>
-                  <p className="text-xs text-[#6b7a99] mt-0.5">{doc.desc}</p>
-                  <button className="mt-3 flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:text-blue-800 transition-colors cursor-pointer">
-                    <span className="material-symbols-outlined text-[14px]">upload</span>
-                    Upload Document
-                  </button>
-                </div>
-                <span className="text-xs text-[#9aa5be] bg-[#f8fafc] border border-[#e7ebf3] px-2 py-1 rounded font-medium">Not uploaded</span>
               </div>
-            ))}
-          </div>
+            )}
+          </>
         )}
 
         <p className="text-center text-xs text-[#9aa5be] pb-4">

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Client, Industry } from './types';
 import { MOCK_CLIENTS, MOCK_SITES, MOCK_ASSIGNMENTS, contractHealth, daysUntil } from './mockData';
 
 interface ClientsListProps {
@@ -14,14 +15,121 @@ const STATUS_BADGE = {
 };
 const STATUS_LABEL = { Valid: 'Active', Expiring: 'Expiring Soon', Expired: 'Expired' };
 
+const INDUSTRIES: Industry[] = ['Office', 'School', 'Healthcare', 'Construction', 'Retail', 'Hospitality'];
+
 const formatDate = (d: string) =>
   new Date(d).toLocaleDateString('en-GB', { year: 'numeric', month: '2-digit', day: '2-digit' });
 
-const ClientsList: React.FC<ClientsListProps> = ({ onSelectClient }) => {
-  const [search, setSearch]             = useState('');
-  const [industryFilter, setIndustryFilter] = useState('');
+const today = () => new Date().toISOString().split('T')[0];
 
-  const enriched = MOCK_CLIENTS.map(c => ({
+interface ClientForm {
+  name: string;
+  industry: string;
+  contactPerson: string;
+  email: string;
+  phone: string;
+  address: string;
+  contractStart: string;
+  contractEnd: string;
+  insuranceExpiry: string;
+  notes: string;
+  contractDoc: string;
+  insuranceCert: string;
+  riskAssessment: string;
+  slaDocument: string;
+  healthSafety: string;
+  gdprAgreement: string;
+}
+
+const emptyForm: ClientForm = {
+  name: '',
+  industry: '',
+  contactPerson: '',
+  email: '',
+  phone: '',
+  address: '',
+  contractStart: today(),
+  contractEnd: '',
+  insuranceExpiry: '',
+  notes: '',
+  contractDoc: '',
+  insuranceCert: '',
+  riskAssessment: '',
+  slaDocument: '',
+  healthSafety: '',
+  gdprAgreement: '',
+};
+
+export const addedClients: Client[] = [];
+
+const ClientsList: React.FC<ClientsListProps> = ({ onSelectClient }) => {
+  const [search, setSearch]                   = useState('');
+  const [industryFilter, setIndustryFilter]   = useState('');
+  const [clients, setClients]                 = useState<Client[]>([...MOCK_CLIENTS, ...addedClients]);
+  const [isModalOpen, setIsModalOpen]         = useState(false);
+  const [form, setForm]                       = useState<ClientForm>(emptyForm);
+  const [formErrors, setFormErrors]           = useState<Record<string, string>>({});
+  const [successMsg, setSuccessMsg]           = useState('');
+
+  const setField = (k: keyof ClientForm, v: string) => {
+    setForm(prev => ({ ...prev, [k]: v }));
+    if (formErrors[k]) setFormErrors(prev => { const n = { ...prev }; delete n[k]; return n; });
+  };
+
+  const flash = (msg: string) => {
+    setSuccessMsg(msg);
+    setTimeout(() => setSuccessMsg(''), 3000);
+  };
+
+  const validate = (): Record<string, string> => {
+    const e: Record<string, string> = {};
+    if (!form.name.trim()) e.name = 'Company name is required.';
+    if (!form.industry) e.industry = 'Industry is required.';
+    if (!form.contactPerson.trim()) e.contactPerson = 'Contact person is required.';
+    if (!form.email.trim()) e.email = 'Email is required.';
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = 'Enter a valid email address.';
+    if (!form.phone.trim()) e.phone = 'Phone is required.';
+    if (!form.address.trim()) e.address = 'Address is required.';
+    if (!form.contractStart) e.contractStart = 'Contract start date is required.';
+    if (!form.contractEnd) e.contractEnd = 'Contract end date is required.';
+    else if (form.contractStart && form.contractEnd < form.contractStart) e.contractEnd = 'Contract end must be after start date.';
+    if (!form.insuranceExpiry) e.insuranceExpiry = 'Insurance expiry is required.';
+    return e;
+  };
+
+  const handleSubmit = () => {
+    const errs = validate();
+    if (Object.keys(errs).length) { setFormErrors(errs); return; }
+    setFormErrors({});
+
+    const newClient: Client = {
+      id: `cli-${Date.now()}`,
+      name: form.name.trim(),
+      industry: form.industry as Industry,
+      contactPerson: form.contactPerson.trim(),
+      email: form.email.trim(),
+      phone: form.phone.trim(),
+      contractStart: form.contractStart,
+      contractEnd: form.contractEnd,
+      insuranceExpiry: form.insuranceExpiry,
+      address: form.address.trim(),
+      notes: form.notes.trim() || undefined,
+    };
+
+    addedClients.unshift(newClient);
+    setClients(prev => [newClient, ...prev]);
+    setForm(emptyForm);
+    setIsModalOpen(false);
+    flash(`Client "${newClient.name}" added successfully.`);
+  };
+
+  const openModal = () => {
+    setForm(emptyForm);
+    setFormErrors({});
+    setIsModalOpen(true);
+  };
+
+  const enriched = clients.map(c => ({
     ...c,
     health:      contractHealth(c),
     siteCount:   MOCK_SITES.filter(s => s.clientId === c.id).length,
@@ -37,13 +145,56 @@ const ClientsList: React.FC<ClientsListProps> = ({ onSelectClient }) => {
     );
   });
 
-  const totalClients  = MOCK_CLIENTS.length;
+  const totalClients  = clients.length;
   const totalSites    = MOCK_SITES.length;
   const expiringSoon  = enriched.filter(c => c.health === 'Expiring').length;
   const nonCompliant  = MOCK_ASSIGNMENTS.filter(a => a.complianceStatus === 'Non-Compliant').length;
 
+  const docField = (label: string, key: keyof ClientForm, icon: string) => (
+    <div className="flex items-center gap-3 p-3 rounded-xl border border-dashed border-[#c7d2e0] bg-[#fafbfd] hover:border-[#2e4150]/40 transition-colors">
+      <span className="material-symbols-outlined text-[22px] text-[#4c669a]">{icon}</span>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-semibold text-[#0d121b]">{label}</p>
+        {form[key] ? (
+          <p className="text-xs text-green-600 font-semibold truncate">{form[key]}</p>
+        ) : (
+          <p className="text-xs text-[#4c669a]">No file selected</p>
+        )}
+      </div>
+      <label className="px-3 py-1.5 rounded-lg bg-[#f2f6f9] text-[#4c669a] text-xs font-bold hover:bg-[#e7ebf3] transition-colors cursor-pointer">
+        Browse
+        <input
+          type="file"
+          className="hidden"
+          accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+          onChange={e => {
+            const file = e.target.files?.[0];
+            if (file) setField(key, file.name);
+          }}
+        />
+      </label>
+      {form[key] && (
+        <button
+          type="button"
+          onClick={() => setField(key, '')}
+          className="text-red-400 hover:text-red-600 transition-colors cursor-pointer"
+        >
+          <span className="material-symbols-outlined text-[18px]">close</span>
+        </button>
+      )}
+    </div>
+  );
+
   return (
     <div className="space-y-6 max-w-screen sm:w-full sm:max-w-full">
+
+      {/* Success toast */}
+      {successMsg && (
+        <div className="flex items-center gap-3 bg-green-50 border border-green-200 rounded-xl px-4 py-3 animate-in fade-in duration-300">
+          <span className="material-symbols-outlined text-green-500 text-[20px]">check_circle</span>
+          <p className="text-green-800 text-sm font-bold">{successMsg}</p>
+        </div>
+      )}
 
       {/* Stat cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -57,11 +208,6 @@ const ClientsList: React.FC<ClientsListProps> = ({ onSelectClient }) => {
                           <span className={`material-symbols-outlined text-[22px] sm:text-[30px] p-2 w-fit rounded-[12px] sm:p-3 bg-[#f2f6f9] ${s.iconColor}`}>{s.icon}</span>
                           <p className="text-xs font-bold text-[#4c669a] uppercase tracking-wide">{s.label}</p>
                           <p className=" font-bold text-[#000] sm:text-[30px] text-xl">{s.value}</p>
-            
-
-            {/* <div className="flex flex-col gap-1 sm:gap-2 justify-between items-left">
-           
-            </div> */}
           </div>
         ))}
       </div>
@@ -87,12 +233,15 @@ const ClientsList: React.FC<ClientsListProps> = ({ onSelectClient }) => {
               className="h-9 bg-[#f6f6f8] border border-transparent rounded-lg px-3 text-sm text-[#0d121b] outline-none cursor-pointer font-semibold"
             >
               <option value="">All Industries</option>
-              {['Office','School','Healthcare','Construction','Retail','Hospitality'].map(i => (
+              {INDUSTRIES.map(i => (
                 <option key={i} value={i}>{i}</option>
               ))}
             </select>
           </div>
-          <button className="flex items-center gap-2 rounded-full bg-[#2e4150] text-white text-xs font-bold hover:bg-[#2e4150]/90 transition-all px-4 h-9 cursor-pointer shrink-0">
+          <button
+            onClick={openModal}
+            className="flex items-center gap-2 rounded-full bg-[#2e4150] text-white text-xs font-bold hover:bg-[#2e4150]/90 transition-all px-4 h-9 cursor-pointer shrink-0"
+          >
             <span className="material-symbols-outlined text-[16px]">add</span>
             Add Client
           </button>
@@ -161,10 +310,221 @@ const ClientsList: React.FC<ClientsListProps> = ({ onSelectClient }) => {
         {/* Footer */}
         <div className="px-5 py-3 border-t border-[#e7ebf3] bg-[#f8fafc] flex items-center justify-between">
           <p className="text-xs text-[#4c669a]">
-            Showing <span className="font-bold text-[#0d121b]">{filtered.length}</span> of <span className="font-bold text-[#0d121b]">{MOCK_CLIENTS.length}</span> clients
+            Showing <span className="font-bold text-[#0d121b]">{filtered.length}</span> of <span className="font-bold text-[#0d121b]">{clients.length}</span> clients
           </p>
         </div>
       </div>
+
+      {/* Add Client Modal */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-300">
+
+            {/* Modal header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-[#e7ebf3] sticky top-0 bg-white z-10 rounded-t-2xl">
+              <div className="flex items-center gap-3">
+                <span className="material-symbols-outlined text-[24px] text-[#2e4150]">domain_add</span>
+                <h2 className="text-lg font-bold text-[#0d121b]">Add New Client</h2>
+              </div>
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-[#f2f6f9] transition-colors cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-[20px] text-[#4c669a]">close</span>
+              </button>
+            </div>
+
+            {/* Form body */}
+            <div className="px-6 py-5 space-y-5">
+
+              {/* Section: Company Details */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <span className="material-symbols-outlined text-[18px] text-[#2e4150]">business</span>
+                  <h3 className="text-sm font-bold text-[#0d121b] uppercase tracking-wide">Company Details</h3>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-[#0d121b] mb-1">Company Name <span className="text-red-500">*</span></label>
+                  <input
+                    type="text"
+                    placeholder="Enter company name"
+                    value={form.name}
+                    onChange={e => setField('name', e.target.value)}
+                    className={`w-full h-10 rounded-xl border px-3 text-sm text-[#0d121b] bg-white outline-none ${formErrors.name ? 'border-red-400' : 'border-[#c7d2e0]'}`}
+                  />
+                  {formErrors.name && <p className="text-red-500 text-xs mt-1">{formErrors.name}</p>}
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-[#0d121b] mb-1">Industry Type <span className="text-red-500">*</span></label>
+                    <select
+                      value={form.industry}
+                      onChange={e => setField('industry', e.target.value)}
+                      className={`w-full h-10 rounded-xl border px-3 text-sm text-[#0d121b] bg-white outline-none cursor-pointer ${formErrors.industry ? 'border-red-400' : 'border-[#c7d2e0]'}`}
+                    >
+                      <option value="">Select industry…</option>
+                      {INDUSTRIES.map(i => <option key={i} value={i}>{i}</option>)}
+                    </select>
+                    {formErrors.industry && <p className="text-red-500 text-xs mt-1">{formErrors.industry}</p>}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-[#0d121b] mb-1">Phone <span className="text-red-500">*</span></label>
+                    <input
+                      type="tel"
+                      placeholder="+44 xxx xxx xxxx"
+                      value={form.phone}
+                      onChange={e => setField('phone', e.target.value)}
+                      className={`w-full h-10 rounded-xl border px-3 text-sm text-[#0d121b] bg-white outline-none ${formErrors.phone ? 'border-red-400' : 'border-[#c7d2e0]'}`}
+                    />
+                    {formErrors.phone && <p className="text-red-500 text-xs mt-1">{formErrors.phone}</p>}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-[#0d121b] mb-1">Address <span className="text-red-500">*</span></label>
+                  <textarea
+                    rows={2}
+                    placeholder="Full company address"
+                    value={form.address}
+                    onChange={e => setField('address', e.target.value)}
+                    className={`w-full rounded-xl border px-3 py-2 text-sm text-[#0d121b] bg-white outline-none resize-none ${formErrors.address ? 'border-red-400' : 'border-[#c7d2e0]'}`}
+                  />
+                  {formErrors.address && <p className="text-red-500 text-xs mt-1">{formErrors.address}</p>}
+                </div>
+              </div>
+
+              <hr className="border-[#e7ebf3]" />
+
+              {/* Section: Contact Person */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <span className="material-symbols-outlined text-[18px] text-[#2e4150]">person</span>
+                  <h3 className="text-sm font-bold text-[#0d121b] uppercase tracking-wide">Contact Person</h3>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-[#0d121b] mb-1">Contact Name <span className="text-red-500">*</span></label>
+                    <input
+                      type="text"
+                      placeholder="Full name"
+                      value={form.contactPerson}
+                      onChange={e => setField('contactPerson', e.target.value)}
+                      className={`w-full h-10 rounded-xl border px-3 text-sm text-[#0d121b] bg-white outline-none ${formErrors.contactPerson ? 'border-red-400' : 'border-[#c7d2e0]'}`}
+                    />
+                    {formErrors.contactPerson && <p className="text-red-500 text-xs mt-1">{formErrors.contactPerson}</p>}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-[#0d121b] mb-1">Email <span className="text-red-500">*</span></label>
+                    <input
+                      type="email"
+                      placeholder="email@company.co.uk"
+                      value={form.email}
+                      onChange={e => setField('email', e.target.value)}
+                      className={`w-full h-10 rounded-xl border px-3 text-sm text-[#0d121b] bg-white outline-none ${formErrors.email ? 'border-red-400' : 'border-[#c7d2e0]'}`}
+                    />
+                    {formErrors.email && <p className="text-red-500 text-xs mt-1">{formErrors.email}</p>}
+                  </div>
+                </div>
+              </div>
+
+              <hr className="border-[#e7ebf3]" />
+
+              {/* Section: Contract & Insurance */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <span className="material-symbols-outlined text-[18px] text-[#2e4150]">description</span>
+                  <h3 className="text-sm font-bold text-[#0d121b] uppercase tracking-wide">Contract & Insurance</h3>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-[#0d121b] mb-1">Contract Start <span className="text-red-500">*</span></label>
+                    <input
+                      type="date"
+                      value={form.contractStart}
+                      onChange={e => setField('contractStart', e.target.value)}
+                      className={`w-full h-10 rounded-xl border px-3 text-sm text-[#0d121b] bg-white outline-none cursor-pointer ${formErrors.contractStart ? 'border-red-400' : 'border-[#c7d2e0]'}`}
+                    />
+                    {formErrors.contractStart && <p className="text-red-500 text-xs mt-1">{formErrors.contractStart}</p>}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-[#0d121b] mb-1">Contract End <span className="text-red-500">*</span></label>
+                    <input
+                      type="date"
+                      value={form.contractEnd}
+                      onChange={e => setField('contractEnd', e.target.value)}
+                      className={`w-full h-10 rounded-xl border px-3 text-sm text-[#0d121b] bg-white outline-none cursor-pointer ${formErrors.contractEnd ? 'border-red-400' : 'border-[#c7d2e0]'}`}
+                    />
+                    {formErrors.contractEnd && <p className="text-red-500 text-xs mt-1">{formErrors.contractEnd}</p>}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-[#0d121b] mb-1">Insurance Expiry <span className="text-red-500">*</span></label>
+                    <input
+                      type="date"
+                      value={form.insuranceExpiry}
+                      onChange={e => setField('insuranceExpiry', e.target.value)}
+                      className={`w-full h-10 rounded-xl border px-3 text-sm text-[#0d121b] bg-white outline-none cursor-pointer ${formErrors.insuranceExpiry ? 'border-red-400' : 'border-[#c7d2e0]'}`}
+                    />
+                    {formErrors.insuranceExpiry && <p className="text-red-500 text-xs mt-1">{formErrors.insuranceExpiry}</p>}
+                  </div>
+                </div>
+              </div>
+
+              <hr className="border-[#e7ebf3]" />
+
+              {/* Section: Documents */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <span className="material-symbols-outlined text-[18px] text-[#2e4150]">folder_open</span>
+                  <h3 className="text-sm font-bold text-[#0d121b] uppercase tracking-wide">Client Documents</h3>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {docField('Contract Document', 'contractDoc', 'article')}
+                  {docField('Insurance Certificate', 'insuranceCert', 'verified_user')}
+                  {docField('Risk Assessment', 'riskAssessment', 'assignment_late')}
+                  {docField('SLA Document', 'slaDocument', 'handshake')}
+                  {docField('Health & Safety Policy', 'healthSafety', 'health_and_safety')}
+                  {docField('GDPR / Data Agreement', 'gdprAgreement', 'shield')}
+                </div>
+              </div>
+
+              <hr className="border-[#e7ebf3]" />
+
+              {/* Notes */}
+              <div>
+                <label className="block text-sm font-semibold text-[#0d121b] mb-1">Notes</label>
+                <textarea
+                  rows={3}
+                  placeholder="Any additional notes or instructions…"
+                  value={form.notes}
+                  onChange={e => setField('notes', e.target.value)}
+                  className="w-full rounded-xl border border-[#c7d2e0] px-3 py-2 text-sm text-[#0d121b] bg-white outline-none resize-none"
+                />
+              </div>
+            </div>
+
+            {/* Modal footer */}
+            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-[#e7ebf3] sticky bottom-0 bg-white rounded-b-2xl">
+              <button
+                type="button"
+                onClick={() => setIsModalOpen(false)}
+                className="px-6 py-2.5 rounded-full border border-[#c7d2e0] text-[#4c669a] text-sm font-bold hover:bg-[#f2f6f9] transition-all cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSubmit}
+                className="flex items-center gap-2 px-6 py-2.5 rounded-full bg-[#2e4150] text-white text-sm font-bold hover:bg-[#2e4150]/90 transition-all cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-[18px]">add_circle</span>
+                Add Client
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

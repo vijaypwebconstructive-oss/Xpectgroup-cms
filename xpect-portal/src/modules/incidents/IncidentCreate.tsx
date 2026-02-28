@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { MOCK_INCIDENTS } from './mockData';
-import { Incident, IncidentType, Severity } from './types';
+import { Incident, IncidentType } from './types';
 
 interface Props {
   onBack: () => void;
@@ -22,11 +22,12 @@ const WORKERS = [
   'Richard Hammond', 'Kwame Asante',
 ];
 
+const INCIDENT_TYPES: IncidentType[] = ['Accident', 'Near Miss', 'Property Damage', 'Client Complaint', 'Environmental Incident'];
+
 const STEPS = [
   { number: 1, label: 'Basic Info',        icon: 'info' },
   { number: 2, label: 'Injury & Damage',   icon: 'medical_services' },
-  { number: 3, label: 'Immediate Action',  icon: 'bolt' },
-  { number: 4, label: 'Evidence',          icon: 'photo_camera' },
+  { number: 3, label: 'Actions & Evidence', icon: 'bolt' },
 ];
 
 interface FormData {
@@ -35,17 +36,13 @@ interface FormData {
   time: string;
   site: string;
   worker: string;
-  severity: Severity | '';
   description: string;
-  // Section B
   injuryOccurred: boolean;
   injuryDescription: string;
   medicalTreatmentRequired: boolean;
   propertyDamage: string;
-  // Section C
   immediateActionTaken: string;
   supervisorNotified: boolean;
-  // Section D
   witnessNotes: string;
   hasPhotos: boolean;
 }
@@ -59,7 +56,7 @@ const IncidentCreate: React.FC<Props> = ({ onBack, onCreated }) => {
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const [form, setForm] = useState<FormData>({
-    type: '', date: today(), time: nowTime(), site: '', worker: '', severity: '',
+    type: '', date: today(), time: nowTime(), site: '', worker: '',
     description: '',
     injuryOccurred: false, injuryDescription: '', medicalTreatmentRequired: false, propertyDamage: '',
     immediateActionTaken: '', supervisorNotified: false,
@@ -74,18 +71,14 @@ const IncidentCreate: React.FC<Props> = ({ onBack, onCreated }) => {
   const validateStep = (s: number): Record<string, string> => {
     const e: Record<string, string> = {};
     if (s === 1) {
-      if (!form.type)        e.type        = 'Incident type is required.';
-      if (!form.date)        e.date        = 'Date is required.';
-      if (!form.site)        e.site        = 'Site is required.';
-      if (!form.worker)      e.worker      = 'Worker is required.';
-      if (!form.severity)    e.severity    = 'Severity is required.';
+      if (!form.type)               e.type        = 'Incident type is required.';
+      if (!form.date)               e.date        = 'Date is required.';
+      if (!form.site)               e.site        = 'Site is required.';
+      if (!form.worker)             e.worker      = 'Reporter name is required.';
       if (!form.description.trim()) e.description = 'Description is required.';
     }
     if (s === 2 && form.injuryOccurred && !form.injuryDescription.trim()) {
       e.injuryDescription = 'Please describe the injury.';
-    }
-    if (s === 3 && !form.immediateActionTaken.trim()) {
-      e.immediateActionTaken = 'Please describe the immediate action taken.';
     }
     return e;
   };
@@ -93,7 +86,7 @@ const IncidentCreate: React.FC<Props> = ({ onBack, onCreated }) => {
   const nextStep = () => {
     const errs = validateStep(step);
     if (Object.keys(errs).length) { setErrors(errs); return; }
-    setStep(s => Math.min(s + 1, 4));
+    setStep(s => Math.min(s + 1, 3));
   };
 
   const prevStep = () => setStep(s => Math.max(s - 1, 1));
@@ -115,7 +108,7 @@ const IncidentCreate: React.FC<Props> = ({ onBack, onCreated }) => {
         site: form.site,
         worker: form.worker,
         type: form.type as IncidentType,
-        severity: form.severity as Severity,
+        severity: 'Medium',
         status: 'Open',
         description: form.description.trim(),
         injuryOccurred: form.injuryOccurred,
@@ -190,37 +183,14 @@ const IncidentCreate: React.FC<Props> = ({ onBack, onCreated }) => {
       <div className="sm:px-8 px-4 sm:py-6 py-3 max-w-3xl">
         <form onSubmit={handleSubmit} noValidate>
 
-          {/* ── Step 1: Basic Info ─────────────────────────────────────────────── */}
+          {/* Step 1: Basic Info */}
           {step === 1 && (
             <div className="bg-white rounded-xl border border-[#e7ebf3] shadow-sm sm:p-6 p-4 space-y-5">
               <h2 className="text-base font-bold text-[#0d121b] flex items-center gap-2">
                 <span className="material-symbols-outlined text-[18px] text-[#6b7a99]">info</span>
-                Section A — Basic Information
+                Step 1 — Basic Information
               </h2>
 
-              {/* Type + Severity */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-[#6b7a99] uppercase tracking-wide mb-1.5">Incident Type <span className="text-red-500">*</span></label>
-                  <select value={form.type} onChange={e => set('type', e.target.value)} className={fieldCls('type')}>
-                    <option value="">Select type…</option>
-                    {(['Accident','Near Miss','Property Damage','Client Complaint','Environmental Incident'] as IncidentType[]).map(t => (
-                      <option key={t} value={t}>{t}</option>
-                    ))}
-                  </select>
-                  {errors.type && <p className="text-xs text-red-500 mt-1">{errors.type}</p>}
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-[#6b7a99] uppercase tracking-wide mb-1.5">Severity <span className="text-red-500">*</span></label>
-                  <select value={form.severity} onChange={e => set('severity', e.target.value)} className={fieldCls('severity')}>
-                    <option value="">Select severity…</option>
-                    {(['Low','Medium','High','Critical'] as Severity[]).map(s => <option key={s} value={s}>{s}</option>)}
-                  </select>
-                  {errors.severity && <p className="text-xs text-red-500 mt-1">{errors.severity}</p>}
-                </div>
-              </div>
-
-              {/* Date + Time */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-[#6b7a99] uppercase tracking-wide mb-1.5">Date <span className="text-red-500">*</span></label>
@@ -228,12 +198,11 @@ const IncidentCreate: React.FC<Props> = ({ onBack, onCreated }) => {
                   {errors.date && <p className="text-xs text-red-500 mt-1">{errors.date}</p>}
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-[#6b7a99] uppercase tracking-wide mb-1.5">Time of Incident</label>
+                  <label className="block text-xs font-semibold text-[#6b7a99] uppercase tracking-wide mb-1.5">Time</label>
                   <input type="time" value={form.time} onChange={e => set('time', e.target.value)} className={fieldCls('time')} />
                 </div>
               </div>
 
-              {/* Site + Worker */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-[#6b7a99] uppercase tracking-wide mb-1.5">Site <span className="text-red-500">*</span></label>
@@ -244,46 +213,42 @@ const IncidentCreate: React.FC<Props> = ({ onBack, onCreated }) => {
                   {errors.site && <p className="text-xs text-red-500 mt-1">{errors.site}</p>}
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-[#6b7a99] uppercase tracking-wide mb-1.5">Worker Involved <span className="text-red-500">*</span></label>
+                  <label className="block text-xs font-semibold text-[#6b7a99] uppercase tracking-wide mb-1.5">Reporter Name <span className="text-red-500">*</span></label>
                   <select value={form.worker} onChange={e => set('worker', e.target.value)} className={fieldCls('worker')}>
-                    <option value="">Select worker…</option>
+                    <option value="">Select reporter…</option>
                     {WORKERS.map(w => <option key={w} value={w}>{w}</option>)}
                   </select>
                   {errors.worker && <p className="text-xs text-red-500 mt-1">{errors.worker}</p>}
                 </div>
               </div>
 
-              {/* Description */}
               <div>
-                <label className="block text-xs font-semibold text-[#6b7a99] uppercase tracking-wide mb-1.5">Incident Description <span className="text-red-500">*</span></label>
+                <label className="block text-xs font-semibold text-[#6b7a99] uppercase tracking-wide mb-1.5">Incident Type <span className="text-red-500">*</span></label>
+                <select value={form.type} onChange={e => set('type', e.target.value)} className={fieldCls('type')}>
+                  <option value="">Select type…</option>
+                  {INCIDENT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                </select>
+                {errors.type && <p className="text-xs text-red-500 mt-1">{errors.type}</p>}
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-[#6b7a99] uppercase tracking-wide mb-1.5">Description <span className="text-red-500">*</span></label>
                 <textarea rows={4} placeholder="Describe what happened, where, and the immediate circumstances…"
                   value={form.description} onChange={e => set('description', e.target.value)}
                   className={`${fieldCls('description')} resize-none`} />
                 {errors.description && <p className="text-xs text-red-500 mt-1">{errors.description}</p>}
               </div>
-
-              {/* Critical warning */}
-              {form.severity === 'Critical' && (
-                <div className="flex items-start gap-3 bg-red-50 border border-red-200 rounded-xl p-4">
-                  <span className="material-symbols-outlined text-red-500 text-[20px] shrink-0 mt-0.5">warning</span>
-                  <div>
-                    <p className="text-sm font-bold text-red-700">Critical Severity — RIDDOR may apply</p>
-                    <p className="text-xs text-red-600 mt-0.5">Certain injuries must be reported to the HSE under RIDDOR within 15 days. Ensure your safety manager is notified immediately.</p>
-                  </div>
-                </div>
-              )}
             </div>
           )}
 
-          {/* ── Step 2: Injury/Damage ──────────────────────────────────────────── */}
+          {/* Step 2: Injury & Damage */}
           {step === 2 && (
             <div className="bg-white rounded-xl border border-[#e7ebf3] shadow-sm sm:p-6 p-4 space-y-5">
               <h2 className="text-base font-bold text-[#0d121b] flex items-center gap-2">
                 <span className="material-symbols-outlined text-[18px] text-[#6b7a99]">medical_services</span>
-                Section B — Injury & Property Damage
+                Step 2 — Injury & Property Damage
               </h2>
 
-              {/* Injury occurred */}
               <div>
                 <label className="block text-xs font-semibold text-[#6b7a99] uppercase tracking-wide mb-3">Did an injury occur?</label>
                 <div className="flex gap-3">
@@ -293,7 +258,7 @@ const IncidentCreate: React.FC<Props> = ({ onBack, onCreated }) => {
                         form.injuryOccurred === val
                           ? val ? 'bg-red-600 text-white border-red-600' : 'bg-[#2e4150] text-white border-[#2e4150]'
                           : 'bg-[#f6f7fb] text-[#6b7a99] border-[#e7ebf3] hover:border-[#2e4150]/30'
-                      }`}>{val ? 'Yes ' : 'No'}</button>
+                      }`}>{val ? 'Yes' : 'No'}</button>
                   ))}
                 </div>
               </div>
@@ -311,12 +276,11 @@ const IncidentCreate: React.FC<Props> = ({ onBack, onCreated }) => {
                     <input type="checkbox" checked={form.medicalTreatmentRequired}
                       onChange={e => set('medicalTreatmentRequired', e.target.checked)}
                       className="w-4 h-4 rounded accent-red-600" />
-                    <span className="text-sm font-medium text-[#0d121b]">Medical treatment was required (A&E, GP, paramedic)</span>
+                    <span className="text-sm font-medium text-[#0d121b]">Medical treatment was required</span>
                   </label>
                 </div>
               )}
 
-              {/* Property damage */}
               <div>
                 <label className="block text-xs font-semibold text-[#6b7a99] uppercase tracking-wide mb-1.5">Property / Equipment Damage</label>
                 <textarea rows={2} placeholder="Describe any property or equipment damage, and estimated cost if known…"
@@ -326,20 +290,19 @@ const IncidentCreate: React.FC<Props> = ({ onBack, onCreated }) => {
             </div>
           )}
 
-          {/* ── Step 3: Immediate Action ───────────────────────────────────────── */}
+          {/* Step 3: Actions & Evidence */}
           {step === 3 && (
             <div className="bg-white rounded-xl border border-[#e7ebf3] shadow-sm sm:p-6 p-4 space-y-5">
               <h2 className="text-base font-bold text-[#0d121b] flex items-center gap-2">
                 <span className="material-symbols-outlined text-[18px] text-[#6b7a99]">bolt</span>
-                Section C — Immediate Actions Taken
+                Step 3 — Immediate Actions & Evidence
               </h2>
 
               <div>
-                <label className="block text-xs font-semibold text-[#6b7a99] uppercase tracking-wide mb-1.5">Immediate Actions Taken <span className="text-red-500">*</span></label>
-                <textarea rows={4} placeholder="Describe what was done immediately after the incident to prevent further harm…"
+                <label className="block text-xs font-semibold text-[#6b7a99] uppercase tracking-wide mb-1.5">Immediate Actions Taken</label>
+                <textarea rows={3} placeholder="Describe what was done immediately after the incident…"
                   value={form.immediateActionTaken} onChange={e => set('immediateActionTaken', e.target.value)}
                   className={`${fieldCls('immediateActionTaken')} resize-none`} />
-                {errors.immediateActionTaken && <p className="text-xs text-red-500 mt-1">{errors.immediateActionTaken}</p>}
               </div>
 
               <label className="flex items-start gap-3 cursor-pointer p-4 bg-[#f6f7fb] rounded-xl border border-[#e7ebf3]">
@@ -355,23 +318,20 @@ const IncidentCreate: React.FC<Props> = ({ onBack, onCreated }) => {
               {!form.supervisorNotified && (
                 <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
                   <span className="material-symbols-outlined text-amber-500 text-[18px] shrink-0 mt-0.5">warning</span>
-                  <p className="text-xs text-amber-700 font-medium">Supervisors must be notified of all incidents as soon as practicable. Please ensure your supervisor is informed before or immediately after submitting this report.</p>
+                  <p className="text-xs text-amber-700 font-medium">Supervisors must be notified of all incidents as soon as practicable.</p>
                 </div>
               )}
-            </div>
-          )}
 
-          {/* ── Step 4: Evidence ──────────────────────────────────────────────── */}
-          {step === 4 && (
-            <div className="bg-white rounded-xl border border-[#e7ebf3] shadow-sm p-6 space-y-5">
-              <h2 className="text-base font-bold text-[#0d121b] flex items-center gap-2">
-                <span className="material-symbols-outlined text-[18px] text-[#6b7a99]">photo_camera</span>
-                Section D — Evidence & Witness Statements
-              </h2>
+              <div>
+                <label className="block text-xs font-semibold text-[#6b7a99] uppercase tracking-wide mb-1.5">Witness Statements / Notes</label>
+                <textarea rows={3} placeholder="Include witness name and what they observed…"
+                  value={form.witnessNotes} onChange={e => set('witnessNotes', e.target.value)}
+                  className={`${fieldCls('witnessNotes')} resize-none`} />
+              </div>
 
               {/* Photo upload */}
               <div>
-                <label className="block text-xs font-semibold text-[#6b7a99] uppercase tracking-wide mb-2">Photo Evidence</label>
+                <label className="block text-xs font-semibold text-[#6b7a99] uppercase tracking-wide mb-2">Upload Evidence (optional)</label>
                 {form.hasPhotos ? (
                   <div className="flex items-center gap-3 p-4 bg-green-50 border border-green-200 rounded-xl">
                     <span className="material-symbols-outlined text-green-500 text-[22px]">check_circle</span>
@@ -383,7 +343,7 @@ const IncidentCreate: React.FC<Props> = ({ onBack, onCreated }) => {
                   </div>
                 ) : (
                   <label className="cursor-pointer block">
-                    <div className="p-8 border-2 border-dashed border-[#e7ebf3] rounded-xl text-center hover:border-[#2e4150]/40 hover:bg-[#f6f7fb] transition-all">
+                    <div className="p-6 border-2 border-dashed border-[#e7ebf3] rounded-xl text-center hover:border-[#2e4150]/40 hover:bg-[#f6f7fb] transition-all">
                       <span className="material-symbols-outlined text-[36px] text-[#e7ebf3] block mb-2">photo_camera</span>
                       <p className="text-sm font-semibold text-[#0d121b]">Click to attach photos</p>
                       <p className="text-xs text-[#6b7a99] mt-1">JPEG, PNG — scene photos, injuries (if consented)</p>
@@ -394,23 +354,14 @@ const IncidentCreate: React.FC<Props> = ({ onBack, onCreated }) => {
                 )}
               </div>
 
-              {/* Witness notes */}
-              <div>
-                <label className="block text-xs font-semibold text-[#6b7a99] uppercase tracking-wide mb-1.5">Witness Statements / Notes</label>
-                <textarea rows={4} placeholder="Include witness name and what they observed…"
-                  value={form.witnessNotes} onChange={e => set('witnessNotes', e.target.value)}
-                  className={`${fieldCls('witnessNotes')} resize-none`} />
-              </div>
-
               {/* Summary before submit */}
               <div className="p-4 bg-[#f6f7fb] border border-[#e7ebf3] rounded-xl space-y-2">
                 <p className="text-xs font-bold text-[#6b7a99] uppercase tracking-wide mb-2">Report Summary</p>
                 {[
                   ['Type', form.type || '—'],
-                  ['Severity', form.severity || '—'],
                   ['Date', form.date ? `${form.date} ${form.time}` : '—'],
                   ['Site', form.site || '—'],
-                  ['Worker', form.worker || '—'],
+                  ['Reporter', form.worker || '—'],
                   ['Injury', form.injuryOccurred ? 'Yes' : 'No'],
                   ['Supervisor Notified', form.supervisorNotified ? 'Yes' : 'No'],
                 ].map(([k, v]) => (
@@ -431,7 +382,7 @@ const IncidentCreate: React.FC<Props> = ({ onBack, onCreated }) => {
               {step === 1 ? 'Cancel' : 'Previous'}
             </button>
 
-            {step < 4 ? (
+            {step < 3 ? (
               <button type="button" onClick={nextStep}
                 className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-[#2e4150] text-white text-sm font-semibold hover:bg-[#3a5268] transition-colors shadow-sm">
                 Next

@@ -74,4 +74,10 @@ export interface SDS {
   fileName?: string;
   fileSize?: string;
   revision: string;
+  hazardClassification?: string;
+  ghsSignalWord?: string;
+  casNumber?: string;
+  emergencyContact?: string;
+  storageRequirements?: string;
+  language?: string;
 }

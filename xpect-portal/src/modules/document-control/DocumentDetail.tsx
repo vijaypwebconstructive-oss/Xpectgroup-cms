@@ -1,6 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { getDocById, daysUntilDate, updateDocStatus, MOCK_DOCUMENTS } from './mockData';
 import { PolicyDocument } from './types';
+import { addedDocuments } from './DocumentsLibrary';
 
 interface Props {
   docId: string;
@@ -54,7 +55,7 @@ const DocumentDetail: React.FC<Props> = ({ docId, onBack }) => {
   const [approvalNote, setApprovalNote] = useState('');
   const [confirmAction, setConfirmAction] = useState<'approve' | 'reject' | 'changes' | null>(null);
 
-  const doc = getDocById(docId);
+  const doc = getDocById(docId) || addedDocuments.find(d => d.id === docId);
 
   const handleApprovalAction = useCallback((action: 'approve' | 'reject' | 'changes') => {
     if (!doc) return;

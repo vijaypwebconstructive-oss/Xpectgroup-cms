@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { PPEInventoryRecord, PPEStockStatus } from '../types';
-import { MOCK_PPE_INVENTORY, PPE_ITEM_ICONS, PPE_ITEM_COLORS } from './ppeData';
+import { PPEInventoryRecord, PPEStockStatus, PPEItemType } from '../types';
+import { MOCK_PPE_INVENTORY, PPE_ITEM_ICONS, PPE_ITEM_COLORS, ALL_PPE_TYPES } from './ppeData';
 
 interface PPEInventoryProps {
   onBack: () => void;
@@ -12,9 +12,45 @@ const STOCK_STYLES: Record<PPEStockStatus, { badge: string; dot: string; bar: st
   'Out of Stock': { badge: 'bg-red-100 text-red-700',      dot: 'bg-red-500',    bar: 'bg-red-500' },
 };
 
+const UNITS = ['pairs', 'units', 'boxes', 'sets', 'rolls', 'packs'];
+
+const CONDITION_OPTIONS = ['New', 'Good', 'Used'];
+
+const today = () => new Date().toISOString().split('T')[0];
+
 const formatDate = (d: string) => {
   try { return new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }); }
   catch { return d; }
+};
+
+interface AddPPEForm {
+  mode: 'new' | 'restock';
+  existingId: string;
+  ppeType: string;
+  quantity: string;
+  unit: string;
+  supplier: string;
+  purchaseDate: string;
+  expiryDate: string;
+  condition: string;
+  storageLocation: string;
+  minimumStock: string;
+  notes: string;
+}
+
+const emptyForm: AddPPEForm = {
+  mode: 'new',
+  existingId: '',
+  ppeType: '',
+  quantity: '',
+  unit: 'units',
+  supplier: '',
+  purchaseDate: today(),
+  expiryDate: '',
+  condition: 'New',
+  storageLocation: '',
+  minimumStock: '10',
+  notes: '',
 };
 
 const PPEInventory: React.FC<PPEInventoryProps> = ({ onBack }) => {
@@ -25,6 +61,11 @@ const PPEInventory: React.FC<PPEInventoryProps> = ({ onBack }) => {
   const [addStockId, setAddStockId]       = useState<string | null>(null);
   const [addStockQty, setAddStockQty]     = useState('');
   const [successMsg, setSuccessMsg]       = useState('');
+
+  // Add PPE modal state
+  const [isModalOpen, setIsModalOpen]     = useState(false);
+  const [form, setForm]                   = useState<AddPPEForm>(emptyForm);
+  const [formErrors, setFormErrors]       = useState<Record<string, string>>({});
 
   const outOfStock = inventory.filter(i => i.stockStatus === 'Out of Stock').length;
   const lowStock   = inventory.filter(i => i.stockStatus === 'Low Stock').length;
@@ -67,13 +108,98 @@ const PPEInventory: React.FC<PPEInventoryProps> = ({ onBack }) => {
     flash('Quantity adjusted.');
   };
 
+  const setField = (k: keyof AddPPEForm, v: string) => {
+    setForm(prev => ({ ...prev, [k]: v }));
+    if (formErrors[k]) setFormErrors(prev => { const n = { ...prev }; delete n[k]; return n; });
+  };
+
+  const handleSelectExisting = (id: string) => {
+    if (id === '') {
+      setForm(prev => ({ ...prev, mode: 'new', existingId: '', ppeType: '' }));
+    } else {
+      const item = inventory.find(i => i.id === id);
+      if (item) {
+        setForm(prev => ({
+          ...prev,
+          mode: 'restock',
+          existingId: id,
+          ppeType: item.ppeType,
+          unit: item.unit,
+        }));
+      }
+    }
+  };
+
+  const validateForm = (): Record<string, string> => {
+    const e: Record<string, string> = {};
+    if (form.mode === 'new' && !form.ppeType) e.ppeType = 'PPE type is required.';
+    if (!form.quantity || isNaN(Number(form.quantity)) || Number(form.quantity) <= 0) e.quantity = 'Quantity must be a positive number.';
+    if (!form.purchaseDate) e.purchaseDate = 'Purchase date is required.';
+    if (form.expiryDate && form.purchaseDate && form.expiryDate < form.purchaseDate) e.expiryDate = 'Expiry date cannot be earlier than purchase date.';
+    if (form.mode === 'new' && !form.unit) e.unit = 'Unit is required.';
+    if (form.mode === 'restock' && !form.existingId) e.existingId = 'Please select an item to restock.';
+    return e;
+  };
+
+  const handleModalSubmit = () => {
+    const errs = validateForm();
+    if (Object.keys(errs).length) { setFormErrors(errs); return; }
+    setFormErrors({});
+
+    const qty = parseInt(form.quantity, 10);
+
+    if (form.mode === 'restock' && form.existingId) {
+      setInventory(prev => prev.map(item => {
+        if (item.id !== form.existingId) return item;
+        const newQty = item.availableQuantity + qty;
+        return {
+          ...item,
+          availableQuantity: newQty,
+          lastRestocked: form.purchaseDate,
+          stockStatus: getStockStatus(newQty, item.minimumStockLevel),
+        };
+      }));
+      flash(`Restocked ${form.ppeType} — added ${qty} ${form.unit}.`);
+    } else {
+      const newItem: PPEInventoryRecord = {
+        id: `inv-${Date.now()}`,
+        ppeType: form.ppeType as PPEItemType,
+        availableQuantity: qty,
+        minimumStockLevel: parseInt(form.minimumStock, 10) || 10,
+        lastRestocked: form.purchaseDate,
+        stockStatus: getStockStatus(qty, parseInt(form.minimumStock, 10) || 10),
+        unit: form.unit,
+      };
+      setInventory(prev => [...prev, newItem]);
+      flash(`Added new PPE item — ${form.ppeType}.`);
+    }
+
+    setForm(emptyForm);
+    setIsModalOpen(false);
+  };
+
+  const openModal = () => {
+    setForm(emptyForm);
+    setFormErrors({});
+    setIsModalOpen(true);
+  };
+
   return (
     <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-500">
-      {/* Back */}
-      <button onClick={onBack} className="flex items-center gap-1 text-[#4c669a] text-sm font-bold hover:text-[#0d121b] transition-colors cursor-pointer">
-        <span className="material-symbols-outlined text-[18px]">arrow_back</span>
-        Back to Records
-      </button>
+      {/* Back + Add PPE button */}
+      <div className="flex items-center justify-between">
+        <button onClick={onBack} className="flex items-center gap-1 text-[#4c669a] text-sm font-bold hover:text-[#0d121b] transition-colors cursor-pointer">
+          <span className="material-symbols-outlined text-[18px]">arrow_back</span>
+          Back to Records
+        </button>
+        <button
+          onClick={openModal}
+          className="flex items-center justify-center gap-2 rounded-full bg-[#2e4150] text-white text-sm font-bold hover:bg-[#2e4150]/90 transition-all px-[30px] py-[15px] h-10 cursor-pointer"
+        >
+          <span className="material-symbols-outlined text-[20px]">add_circle</span>
+          <span>Add PPE</span>
+        </button>
+      </div>
 
       {/* Success toast */}
       {successMsg && (
@@ -291,6 +417,224 @@ const PPEInventory: React.FC<PPEInventoryProps> = ({ onBack }) => {
           </p>
         </div>
       </div>
+
+      {/* Add PPE Modal */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-300">
+            {/* Modal header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-[#e7ebf3]">
+              <div className="flex items-center gap-3">
+                <span className="material-symbols-outlined text-[24px] text-[#2e4150]">inventory_2</span>
+                <h2 className="text-lg font-bold text-[#0d121b]">
+                  {form.mode === 'restock' ? 'Restock PPE Item' : 'Add New PPE Item'}
+                </h2>
+              </div>
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-[#f2f6f9] transition-colors cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-[20px] text-[#4c669a]">close</span>
+              </button>
+            </div>
+
+            {/* Mode tabs */}
+            <div className="px-6 pt-4 pb-2">
+              <div className="flex gap-2 p-1 bg-[#f2f6f9] rounded-xl">
+                <button
+                  type="button"
+                  onClick={() => setForm(prev => ({ ...prev, mode: 'new', existingId: '', ppeType: '' }))}
+                  className={`flex-1 flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg text-sm font-bold transition-all cursor-pointer ${
+                    form.mode === 'new' ? 'bg-white text-[#0d121b] shadow-sm' : 'text-[#4c669a] hover:text-[#0d121b]'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-[18px]">add_circle</span>
+                  Add New Item
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setForm(prev => ({ ...prev, mode: 'restock', ppeType: '' }))}
+                  className={`flex-1 flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg text-sm font-bold transition-all cursor-pointer ${
+                    form.mode === 'restock' ? 'bg-white text-[#0d121b] shadow-sm' : 'text-[#4c669a] hover:text-[#0d121b]'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-[18px]">inventory</span>
+                  Restock Existing
+                </button>
+              </div>
+            </div>
+
+            {/* Form body */}
+            <div className="px-6 py-4 space-y-4">
+
+              {form.mode === 'restock' && (
+                <div>
+                  <label className="block text-sm font-semibold text-[#0d121b] mb-1">Select Existing Item <span className="text-red-500">*</span></label>
+                  <select
+                    value={form.existingId}
+                    onChange={e => handleSelectExisting(e.target.value)}
+                    className={`w-full h-10 rounded-xl border px-3 text-sm text-[#0d121b] bg-white outline-none cursor-pointer ${formErrors.existingId ? 'border-red-400' : 'border-[#c7d2e0]'}`}
+                  >
+                    <option value="">Choose item to restock…</option>
+                    {inventory.map(i => (
+                      <option key={i.id} value={i.id}>{i.ppeType} — {i.availableQuantity} {i.unit} in stock</option>
+                    ))}
+                  </select>
+                  {formErrors.existingId && <p className="text-red-500 text-xs mt-1">{formErrors.existingId}</p>}
+                </div>
+              )}
+
+              {form.mode === 'new' && (
+                <div>
+                  <label className="block text-sm font-semibold text-[#0d121b] mb-1">PPE Item Name <span className="text-red-500">*</span></label>
+                  <input
+                    type="text"
+                    placeholder="Enter PPE item name"
+                    value={form.ppeType}
+                    onChange={e => setField('ppeType', e.target.value)}
+                    className={`w-full h-10 rounded-xl border px-3 text-sm text-[#0d121b] bg-white outline-none ${formErrors.ppeType ? 'border-red-400' : 'border-[#c7d2e0]'}`}
+                  />
+                  {formErrors.ppeType && <p className="text-red-500 text-xs mt-1">{formErrors.ppeType}</p>}
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-[#0d121b] mb-1">Quantity <span className="text-red-500">*</span></label>
+                  <input
+                    type="number"
+                    min={1}
+                    placeholder="Enter quantity"
+                    value={form.quantity}
+                    onChange={e => setField('quantity', e.target.value)}
+                    className={`w-full h-10 rounded-xl border px-3 text-sm text-[#0d121b] bg-white outline-none ${formErrors.quantity ? 'border-red-400' : 'border-[#c7d2e0]'}`}
+                  />
+                  {formErrors.quantity && <p className="text-red-500 text-xs mt-1">{formErrors.quantity}</p>}
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-[#0d121b] mb-1">Unit <span className="text-red-500">*</span></label>
+                  <select
+                    value={form.unit}
+                    onChange={e => setField('unit', e.target.value)}
+                    disabled={form.mode === 'restock'}
+                    className={`w-full h-10 rounded-xl border px-3 text-sm text-[#0d121b] bg-white outline-none cursor-pointer ${formErrors.unit ? 'border-red-400' : 'border-[#c7d2e0]'} ${form.mode === 'restock' ? 'opacity-60' : ''}`}
+                  >
+                    {UNITS.map(u => (
+                      <option key={u} value={u}>{u.charAt(0).toUpperCase() + u.slice(1)}</option>
+                    ))}
+                  </select>
+                  {formErrors.unit && <p className="text-red-500 text-xs mt-1">{formErrors.unit}</p>}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-[#0d121b] mb-1">Supplier / Vendor</label>
+                <input
+                  type="text"
+                  placeholder="Enter supplier name"
+                  value={form.supplier}
+                  onChange={e => setField('supplier', e.target.value)}
+                  className="w-full h-10 rounded-xl border border-[#c7d2e0] px-3 text-sm text-[#0d121b] bg-white outline-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-[#0d121b] mb-1">Purchase Date <span className="text-red-500">*</span></label>
+                  <input
+                    type="date"
+                    value={form.purchaseDate}
+                    onChange={e => setField('purchaseDate', e.target.value)}
+                    className={`w-full h-10 rounded-xl border px-3 text-sm text-[#0d121b] bg-white outline-none cursor-pointer ${formErrors.purchaseDate ? 'border-red-400' : 'border-[#c7d2e0]'}`}
+                  />
+                  {formErrors.purchaseDate && <p className="text-red-500 text-xs mt-1">{formErrors.purchaseDate}</p>}
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-[#0d121b] mb-1">Expiry Date</label>
+                  <input
+                    type="date"
+                    value={form.expiryDate}
+                    onChange={e => setField('expiryDate', e.target.value)}
+                    className={`w-full h-10 rounded-xl border px-3 text-sm text-[#0d121b] bg-white outline-none cursor-pointer ${formErrors.expiryDate ? 'border-red-400' : 'border-[#c7d2e0]'}`}
+                  />
+                  {formErrors.expiryDate && <p className="text-red-500 text-xs mt-1">{formErrors.expiryDate}</p>}
+                </div>
+              </div>
+
+              {form.mode === 'new' && (
+                <>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-semibold text-[#0d121b] mb-1">Condition / Status</label>
+                      <select
+                        value={form.condition}
+                        onChange={e => setField('condition', e.target.value)}
+                        className="w-full h-10 rounded-xl border border-[#c7d2e0] px-3 text-sm text-[#0d121b] bg-white outline-none cursor-pointer"
+                      >
+                        {CONDITION_OPTIONS.map(c => <option key={c} value={c}>{c}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-[#0d121b] mb-1">Min. Stock Level</label>
+                      <input
+                        type="number"
+                        min={0}
+                        placeholder="e.g. 10"
+                        value={form.minimumStock}
+                        onChange={e => setField('minimumStock', e.target.value)}
+                        className="w-full h-10 rounded-xl border border-[#c7d2e0] px-3 text-sm text-[#0d121b] bg-white outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-[#0d121b] mb-1">Storage Location</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Warehouse A — Shelf 3"
+                      value={form.storageLocation}
+                      onChange={e => setField('storageLocation', e.target.value)}
+                      className="w-full h-10 rounded-xl border border-[#c7d2e0] px-3 text-sm text-[#0d121b] bg-white outline-none"
+                    />
+                  </div>
+                </>
+              )}
+
+              <div>
+                <label className="block text-sm font-semibold text-[#0d121b] mb-1">Remarks / Notes</label>
+                <textarea
+                  rows={3}
+                  placeholder="Any additional notes…"
+                  value={form.notes}
+                  onChange={e => setField('notes', e.target.value)}
+                  className="w-full rounded-xl border border-[#c7d2e0] px-3 py-2 text-sm text-[#0d121b] bg-white outline-none resize-none"
+                />
+              </div>
+            </div>
+
+            {/* Modal footer */}
+            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-[#e7ebf3]">
+              <button
+                type="button"
+                onClick={() => setIsModalOpen(false)}
+                className="px-6 py-2.5 rounded-full border border-[#c7d2e0] text-[#4c669a] text-sm font-bold hover:bg-[#f2f6f9] transition-all cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleModalSubmit}
+                className="flex items-center gap-2 px-6 py-2.5 rounded-full bg-[#2e4150] text-white text-sm font-bold hover:bg-[#2e4150]/90 transition-all cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-[18px]">
+                  {form.mode === 'restock' ? 'inventory' : 'add_circle'}
+                </span>
+                {form.mode === 'restock' ? 'Restock Item' : 'Add Item'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

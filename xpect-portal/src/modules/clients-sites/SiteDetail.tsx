@@ -1,5 +1,7 @@
 import React from 'react';
 import { getSiteById, getClientById, getAssignmentsBySite } from './mockData';
+import { addedSites } from './SitesList';
+import { addedClients } from './ClientsList';
 
 interface SiteDetailProps {
   siteId: string;
@@ -19,8 +21,8 @@ const COMPLIANCE_STYLES = {
 };
 
 const SiteDetail: React.FC<SiteDetailProps> = ({ siteId, onBack }) => {
-  const site        = getSiteById(siteId);
-  const client      = site ? getClientById(site.clientId) : undefined;
+  const site        = getSiteById(siteId) || addedSites.find(s => s.id === siteId);
+  const client      = site ? (getClientById(site.clientId) || addedClients.find(c => c.id === site.clientId)) : undefined;
   const assignments = site ? getAssignmentsBySite(siteId) : [];
 
   if (!site) return (
@@ -36,14 +38,14 @@ const SiteDetail: React.FC<SiteDetailProps> = ({ siteId, onBack }) => {
     <div className="flex-1 flex flex-col bg-[#f6f7fb] min-h-screen">
 
       {/* Page header */}
-      <div className="bg-white border-b border-[#e7ebf3] px-8 py-5">
+      <div className=" p-0">
         <button onClick={onBack} className="flex items-center gap-1.5 text-[#6b7a99] text-sm font-semibold hover:text-[#0d121b] transition-colors cursor-pointer mb-3">
           <span className="material-symbols-outlined text-[18px]">arrow_back</span>
           Back to Sites
         </button>
         <div className="flex items-center justify-between gap-4">
           <div>
-            <h1 className="text-[#0d121b] text-2xl font-black">{site.name}</h1>
+            <h1 className="text-[#0d121b] text-xl  sm:text-[30px] font-bold   font-black">{site.name}</h1>
             <p className="text-[#6b7a99] text-sm mt-0.5">{client?.name ?? '—'} · {site.postcode}</p>
           </div>
           <span className={`inline-flex items-center px-3 py-1.5 rounded text-sm font-bold uppercase tracking-wide ${rs.badge}`}>
@@ -52,7 +54,7 @@ const SiteDetail: React.FC<SiteDetailProps> = ({ siteId, onBack }) => {
         </div>
       </div>
 
-      <div className="flex-1 px-8 py-6 space-y-5">
+      <div className="flex-1 px-0 py-5 space-y-5">
 
         {/* Non-compliant alert */}
         {nonCompliant.length > 0 && (
@@ -90,9 +92,9 @@ const SiteDetail: React.FC<SiteDetailProps> = ({ siteId, onBack }) => {
               </div>
             </div>
 
-            {/* Compliance Folder */}
+            {/* Compliance Documents */}
             <div className="bg-white rounded-xl border border-[#e7ebf3] shadow-sm p-5">
-              <h3 className="text-[#0d121b] font-black text-sm uppercase tracking-wide mb-4">Compliance Folder</h3>
+              <h3 className="text-[#0d121b] font-black text-sm uppercase tracking-wide mb-4">Compliance Documents</h3>
               <div className="space-y-2">
                 {[
                   { label: 'RAMS Document',        icon: 'health_and_safety' },

@@ -6,6 +6,7 @@ import { csNavigate, CSView, getState as getCSState, subscribe as subscribeCS } 
 import { docNavigate, DocView, getDocState, subscribeDoc } from '../modules/document-control/docNavStore';
 import { riskNavigate, RiskView, getRiskState, subscribeRisk } from '../modules/risk-coshh/riskNavStore';
 import { incidentNavigate, IncidentView, getIncidentState, subscribeIncident } from '../modules/incidents/incidentNavStore';
+import { userNavigate } from '../modules/user-access/userNavStore';
 
 interface AdminLayoutProps {
   children: React.ReactNode;
@@ -181,19 +182,6 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, currentView, onNavi
           Dashboard
         </button>
 
-        {/* Audit & Compliance Dashboard */}
-        <button
-          onClick={() => handleNav('COMPLIANCE_DASHBOARD')}
-          className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all cursor-pointer ${
-            currentView === 'COMPLIANCE_DASHBOARD'
-              ? 'bg-white/20 text-white'
-              : 'text-white/70 hover:bg-white/10 hover:text-white'
-          }`}
-        >
-          <span className="material-symbols-outlined text-[20px]">shield_with_heart</span>
-          Compliance Dashboard
-        </button>
-
         {/* Employee Compliance — click to expand/collapse sub-modules */}
         <div>
           {/* Main module button */}
@@ -325,7 +313,6 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, currentView, onNavi
                 [
                   { incView: 'list'    as IncidentView, icon: 'format_list_bulleted', label: 'All Incidents' },
                   { incView: 'create'  as IncidentView, icon: 'add_circle',           label: 'Report Incident' },
-                  { incView: 'actions' as IncidentView, icon: 'build_circle',         label: 'Corrective Actions' },
                 ] as { incView: IncidentView; icon: string; label: string }[]
               ).map(({ incView, icon, label }) => (
                 <button
@@ -370,7 +357,6 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, currentView, onNavi
             <div className="mt-0.5 ml-3 pl-3 border-l border-white/20 space-y-0.5">
               {(
                 [
-                  { riskView: 'risk-list'      as RiskView, icon: 'assignment',      label: 'Risk Assessments' },
                   { riskView: 'rams-list'       as RiskView, icon: 'assignment_add',  label: 'RAMS' },
                   { riskView: 'coshh-register'  as RiskView, icon: 'science',         label: 'COSHH Register' },
                   { riskView: 'sds-library'     as RiskView, icon: 'menu_book',       label: 'SDS Library' },
@@ -421,7 +407,6 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, currentView, onNavi
                   { docView: 'library'   as DocView, icon: 'library_books',  label: 'Documents Library' },
                   { docView: 'approvals' as DocView, icon: 'task_alt',       label: 'Approvals' },
                   { docView: 'reviews'   as DocView, icon: 'event',          label: 'Review Calendar' },
-                  { docView: 'create'    as DocView, icon: 'post_add',       label: 'New Document' },
                 ] as { docView: DocView; icon: string; label: string }[]
               ).map(({ docView, icon, label }) => (
                 <button
@@ -445,18 +430,22 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, currentView, onNavi
         </div>
       </nav>
 
-      {/* Add User — fixed bottom */}
+      {/* User Access — fixed bottom */}
       <div className="px-3 py-3 border-t border-white/10 shrink-0">
         <button
-          onClick={() => handleNav('STAFF_INVITES')}
+          onClick={() => {
+            userNavigate('list');
+            onNavigate('USER_ACCESS');
+            setIsSidebarOpen(false);
+          }}
           className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all cursor-pointer ${
-            currentView === 'STAFF_INVITES'
+            currentView === 'USER_ACCESS'
               ? 'bg-white/20 text-white'
               : 'text-white/70 hover:bg-white/10 hover:text-white'
           }`}
         >
-          <span className="material-symbols-outlined text-[20px]">person_add</span>
-          Add User
+          <span className="material-symbols-outlined text-[20px]">manage_accounts</span>
+          User Access
         </button>
       </div>
 

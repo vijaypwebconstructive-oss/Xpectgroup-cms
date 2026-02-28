@@ -77,7 +77,7 @@ const AlertsPanel: React.FC<AlertsPanelProps> = ({ alerts }) => {
       </div>
 
       {/* Alert grid — horizontal wrap */}
-      <div className="p-4">
+      <div className="p-4 max-h-[400px] overflow-y-scroll">
         {sorted.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-8 text-center">
             <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center mb-3">

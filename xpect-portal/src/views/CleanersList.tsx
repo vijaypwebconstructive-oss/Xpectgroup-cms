@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { Cleaner, AppView, VerificationStatus, EmploymentType, DBSStatus } from '../types';
 import { useCleaners } from '../context/CleanersContext';
 import { api } from '../services/api';
@@ -180,6 +180,36 @@ const CleanersList: React.FC<CleanersListProps> = ({ cleaners, onNavigate }) => 
   });
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [invitations, setInvitations] = useState<any[]>([]);
+
+  const pendingCount = allCleaners.filter(c => c.verificationStatus === VerificationStatus.PENDING).length;
+  const verifiedCount = allCleaners.filter(c => c.verificationStatus === VerificationStatus.VERIFIED).length;
+
+  useEffect(() => {
+    const fetchInvitations = async () => {
+      try {
+        const data = await api.invitations.getAll();
+        setInvitations(Array.isArray(data) ? data : []);
+      } catch (err) {
+        console.warn('Failed to fetch invitations:', err);
+        setInvitations([]);
+      }
+    };
+    fetchInvitations();
+    const interval = setInterval(() => {
+      fetchInvitations();
+    }, 10000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const invitationsCount = invitations.length;
+
+  const stats = [
+    { label: 'Total Staff', value: allCleaners.length.toLocaleString(), trend: 'Real-time', icon: 'group', color: 'blue', bgColor:"#eff6ff" , borderColor:"#2563eb" },
+    { label: 'Pending Verification', value: pendingCount.toString(), trend: 'Actionable', icon: 'pending_actions', color: 'amber', bgColor:"#fffbeb", borderColor:"#f59e0b" },
+    { label: 'Verified Employees', value: verifiedCount.toString(), trend: 'Compliant', icon: 'verified_user', color: 'green', bgColor:"#f0fdf4", borderColor:"#22c55e" },
+    { label: 'Invitations Sent', value: invitationsCount.toString(), trend: 'Active', icon: 'mail', color: 'purple', bgColor:"#f3e8ff", borderColor:"#9333ea" },
+  ];
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -501,6 +531,37 @@ const CleanersList: React.FC<CleanersListProps> = ({ cleaners, onNavigate }) => 
               <span>Add Staff</span>
             </button>
           </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {stats.map((stat) => (
+            <div key={stat.label} className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm hover:shadow-md transition-shadow"   style={{
+              
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.borderBottomColor = stat.borderColor;
+              e.currentTarget.style.borderBottomWidth = "5px";
+              e.currentTarget.style.borderBottomStyle = "solid";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderBottomColor = 'transparent';
+            }}>
+              <div className="flex justify-between items-start mb-4">
+                <div className={`p-2.5 sm:p-4 text-${stat.color}-600 rounded-lg `}  style={{
+    backgroundColor: stat.bgColor,
+    color: stat.borderColor,
+  }
+  }>
+                  <span className="material-symbols-outlined">{stat.icon}</span>
+                </div>
+                <span className="text-gray-400 text-[10px] font-bold uppercase tracking-wider bg-gray-50 px-2 py-0.5 rounded-full">
+                  {stat.trend}
+                </span>
+              </div>
+              <p className="text-base font-medium text-slate-500 dark:text-slate-400">{stat.label}</p>
+              <p className="text-3xl font-black text-gray-900 font-bold mt-1">{stat.value}</p>
+            </div>
+          ))}
         </div>
 
         {feedback && (

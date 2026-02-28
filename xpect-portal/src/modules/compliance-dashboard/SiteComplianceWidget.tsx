@@ -39,7 +39,7 @@ const SiteComplianceWidget: React.FC<SiteComplianceWidgetProps> = ({ issues }) =
           <p className="text-xs text-[#6b7a99] mt-1">No site compliance issues detected</p>
         </div>
       ) : (
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto max-h-[400px] overflow-y-scroll">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-[#e7ebf3]">

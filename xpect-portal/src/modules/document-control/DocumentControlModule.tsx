@@ -8,7 +8,6 @@ import {
 } from './docNavStore';
 import DocumentsLibrary   from './DocumentsLibrary';
 import DocumentDetail     from './DocumentDetail';
-import DocumentCreate     from './DocumentCreate';
 import DocumentApprovals  from './DocumentApprovals';
 import ReviewCalendar     from './ReviewCalendar';
 
@@ -37,7 +36,6 @@ const DocumentControlModule: React.FC = () => {
   // ── Navigation helpers ─────────────────────────────────────────────────────
   const goToLibrary   = ()           => docNavigate('library');
   const goToDetail    = (id: string) => docNavigate('detail', id);
-  const goToCreate    = ()           => docNavigate('create');
   const goToApprovals = ()           => docNavigate('approvals');
   const goToReviews   = ()           => docNavigate('reviews');
 
@@ -47,7 +45,7 @@ const DocumentControlModule: React.FC = () => {
       return (
         <DocumentsLibrary
           onSelectDoc={goToDetail}
-          onCreateDoc={goToCreate}
+          onCreateDoc={() => {}}
           onNavigateApprovals={goToApprovals}
           onNavigateReviews={goToReviews}
         />
@@ -58,14 +56,6 @@ const DocumentControlModule: React.FC = () => {
         <DocumentDetail
           docId={navState.id ?? ''}
           onBack={goToLibrary}
-        />
-      );
-
-    case 'create':
-      return (
-        <DocumentCreate
-          onBack={goToLibrary}
-          onCreated={(id) => goToDetail(id)}
         />
       );
 
@@ -89,7 +79,7 @@ const DocumentControlModule: React.FC = () => {
       return (
         <DocumentsLibrary
           onSelectDoc={goToDetail}
-          onCreateDoc={goToCreate}
+          onCreateDoc={() => {}}
           onNavigateApprovals={goToApprovals}
           onNavigateReviews={goToReviews}
         />

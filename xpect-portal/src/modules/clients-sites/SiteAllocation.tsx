@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { MOCK_SITES, MOCK_CLIENTS, getAssignmentsBySite } from './mockData';
 import { Site, WorkerAssignment } from './types';
+import { addedSites } from './SitesList';
+import { addedClients } from './ClientsList';
 
 interface SiteAllocationProps {
   onBack: () => void;
@@ -44,13 +46,15 @@ const COMPLIANCE_ICON_COLOR: Record<ComplianceLevel, string> = {
 };
 
 const SiteAllocation: React.FC<SiteAllocationProps> = ({ onBack }) => {
-  const [selectedSiteId, setSelectedSiteId] = useState(MOCK_SITES[0]?.id ?? '');
+  const allSites   = [...addedSites, ...MOCK_SITES];
+  const allClients = [...MOCK_CLIENTS, ...addedClients];
+
+  const [selectedSiteId, setSelectedSiteId] = useState(allSites[0]?.id ?? '');
   const [workerSearch, setWorkerSearch]     = useState('');
   const [assigned, setAssigned]             = useState<Set<string>>(new Set());
   const [confirmWorker, setConfirmWorker]   = useState<typeof PERSONNEL[0] | null>(null);
 
-  const selectedSite = MOCK_SITES.find(s => s.id === selectedSiteId);
-  const _siteClient  = selectedSite ? MOCK_CLIENTS.find(c => c.id === selectedSite.clientId) : undefined; void _siteClient;
+  const selectedSite = allSites.find(s => s.id === selectedSiteId);
   const existingWorkers = selectedSite ? getAssignmentsBySite(selectedSiteId) : [];
 
   const filteredPersonnel = PERSONNEL.filter(p =>
@@ -87,8 +91,8 @@ const SiteAllocation: React.FC<SiteAllocationProps> = ({ onBack }) => {
           {/* <p className="text-xs font-bold text-[#6b7a99] uppercase tracking-wider px-1">Select Work Site</p> */}
 
           <div className="rounded-xl border border-[#e7ebf3] overflow-y-scroll h-[560px] bg-white shadow-sm divide-y divide-[#f0f2f7]">
-            {MOCK_SITES.slice(0, 6).map(site => {
-              const cl = MOCK_CLIENTS.find(c => c.id === site.clientId);
+            {allSites.map(site => {
+              const cl = allClients.find(c => c.id === site.clientId);
               const isSelected = site.id === selectedSiteId;
               const RISK_DOT: Record<string, string> = { Low: 'bg-green-500', Medium: 'bg-amber-400', High: 'bg-red-500' };
 

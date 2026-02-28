@@ -71,7 +71,6 @@ const RiskCoshhModule: React.FC = () => {
         <RAMSDetail
           ramsId={navState.id ?? ''}
           onBack={goToRAMSList}
-          onSelectRisk={goToRisk}
         />
       );
 

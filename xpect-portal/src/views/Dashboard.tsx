@@ -1,6 +1,6 @@
 
 import React, { useMemo, useState, useEffect } from 'react';
-import { AppView, VerificationStatus, Cleaner, ActivityLog } from '../types';
+import { AppView, Cleaner, ActivityLog } from '../types';
 import { useCleaners } from '../context/CleanersContext';
 import api from '../services/api';
 
@@ -23,9 +23,6 @@ interface ActivityItem {
 
 const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
   const { cleaners } = useCleaners();
-  const pendingCount = cleaners.filter(c => c.verificationStatus === VerificationStatus.PENDING).length;
-  const verifiedCount = cleaners.filter(c => c.verificationStatus === VerificationStatus.VERIFIED).length;
-  const [invitations, setInvitations] = useState<any[]>([]);
   const [adminProfile, setAdminProfile] = useState<any>(null);
   const [activities, setActivities] = useState<ActivityLog[]>([]);
   const [activitiesLoading, setActivitiesLoading] = useState(true);
@@ -43,26 +40,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
     fetchAdminProfile();
   }, []);
 
-  // Fetch invitations to track admin actions and active tasks
-  useEffect(() => {
-    const fetchInvitations = async () => {
-      try {
-        const data = await api.invitations.getAll();
-        setInvitations(Array.isArray(data) ? data : []);
-      } catch (err) {
-        console.warn('Failed to fetch invitations for activity:', err);
-        setInvitations([]);
-      }
-    };
-    fetchInvitations();
-    
-    // Auto-refresh invitations every 10 seconds to keep active tasks count updated
-    const interval = setInterval(() => {
-      fetchInvitations();
-    }, 10000); // Refresh every 10 seconds
-
-    return () => clearInterval(interval);
-  }, []);
 
   // Fetch activities from API
   useEffect(() => {
@@ -152,17 +129,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
     return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
   }
 
-  
-  // Calculate invitations sent count
-  const invitationsCount = invitations.length;
-
-  const stats = [
-    { label: 'Total Staff', value: cleaners.length.toLocaleString(), trend: 'Real-time', icon: 'group', color: 'blue', bgColor:"#eff6ff" , borderColor:"#2563eb" },
-    { label: 'Pending Verification', value: pendingCount.toString(), trend: 'Actionable', icon: 'pending_actions', color: 'amber', bgColor:"#fffbeb", borderColor:"#f59e0b" },
-    { label: 'Verified Employees', value: verifiedCount.toString(), trend: 'Compliant', icon: 'verified_user', color: 'green', bgColor:"#f0fdf4", borderColor:"#22c55e" },
-    { label: 'Invitations Sent', value: invitationsCount.toString(), trend: 'Active', icon: 'mail', color: 'purple', bgColor:"#f3e8ff", borderColor:"#9333ea" },
-  ];
-
   return (
     <div className="px-[24px] sm:px-[32px] py-[15px] sm:py-[32px] max-w-[1400px] mx-auto space-y-4 sm:space-y-8 animate-in fade-in duration-500">
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
@@ -177,37 +143,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
           <span className="material-symbols-outlined text-lg font-bold">person_add</span>
           Add New Staff
         </button> */}
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {stats.map((stat) => (
-          <div key={stat.label} className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm hover:shadow-md transition-shadow"   style={{
-            
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.borderBottomColor = stat.borderColor;
-            e.currentTarget.style.borderBottomWidth = "5px";
-            e.currentTarget.style.borderBottomStyle = "solid";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.borderBottomColor = 'transparent';
-          }}>
-            <div className="flex justify-between items-start mb-4">
-              <div className={`p-2.5 sm:p-4 text-${stat.color}-600 rounded-lg `}  style={{
-    backgroundColor: stat.bgColor,
-    color: stat.borderColor,
-  }
-  }>
-                <span className="material-symbols-outlined">{stat.icon}</span>
-              </div>
-              <span className="text-gray-400 text-[10px] font-bold uppercase tracking-wider bg-gray-50 px-2 py-0.5 rounded-full">
-                {stat.trend}
-              </span>
-            </div>
-            <p className="text-base font-medium text-slate-500 dark:text-slate-400">{stat.label}</p>
-            <p className="text-3xl font-black text-gray-900 font-bold mt-1">{stat.value}</p>
-          </div>
-        ))}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

@@ -10,6 +10,7 @@ const URL_TO_VIEW: Record<string, AppView> = {
   '/dashboard': 'DASHBOARD',
   '/compliance': 'EMPLOYEE_COMPLIANCE',
   '/training': 'TRAINING_CERTIFICATION',
+  '/training/assign': 'ASSIGN_TRAINING',
   '/ppe': 'PPE_LIST',
   '/ppe/issue': 'PPE_LIST',
   '/ppe/inventory': 'PPE_LIST',
@@ -20,7 +21,7 @@ const URL_TO_VIEW: Record<string, AppView> = {
   '/invitations': 'STAFF_INVITES',
   '/onboarding': 'ONBOARDING',
   '/thank-you': 'THANK_YOU',
-  '/audit': 'COMPLIANCE_DASHBOARD',
+  '/audit': 'DASHBOARD',
 };
 
 // View to URL mapping
@@ -28,12 +29,14 @@ const VIEW_TO_URL: Record<AppView, string> = {
   'DASHBOARD': '/dashboard',
   'EMPLOYEE_COMPLIANCE': '/compliance',
   'TRAINING_CERTIFICATION': '/training',
+  'ASSIGN_TRAINING': '/training/assign',
+  'TRAINING_DETAIL': '/training/record',
   'PPE_LIST': '/ppe',
   'CLIENTS_SITES': '/clients',
   'DOCUMENT_CONTROL': '/documents',
   'RISK_COSHH': '/risk',
   'INCIDENTS': '/incidents',
-  'COMPLIANCE_DASHBOARD': '/audit',
+  'USER_ACCESS': '/users',
   'CLEANERS_LIST': '/staff',
   'CLEANER_DETAIL': '/staff', // Will be appended with firstName
   'REPORT': '/staff', // Will be appended with firstName/report
@@ -54,7 +57,19 @@ export const createNameSlug = (name: string): string => {
 };
 
 // Parse URL to determine view and extract parameters
-export const getViewFromUrl = (pathname: string): { view: AppView; params?: { token?: string; firstName?: string } } => {
+export const getViewFromUrl = (pathname: string): { view: AppView; params?: { token?: string; firstName?: string; traineeId?: string } } => {
+  // Training sub-routes (most specific first)
+  if (pathname.startsWith('/training/record/')) {
+    const id = pathname.split('/')[3];
+    return { view: 'TRAINING_DETAIL', params: { traineeId: id } };
+  }
+  if (pathname.startsWith('/training/assign')) {
+    return { view: 'ASSIGN_TRAINING' };
+  }
+  if (pathname.startsWith('/training')) {
+    return { view: 'TRAINING_CERTIFICATION' };
+  }
+
   // PPE sub-routes all resolve to PPE_LIST (internal routing handled by PPEModule)
   if (pathname.startsWith('/ppe')) {
     return { view: 'PPE_LIST' };
@@ -68,6 +83,12 @@ export const getViewFromUrl = (pathname: string): { view: AppView; params?: { to
     pathname === '/site-allocation'
   ) {
     return { view: 'CLIENTS_SITES' };
+  }
+
+  // User Access sub-routes all resolve to USER_ACCESS
+  // (internal routing handled by UserAccessModule + userNavStore)
+  if (pathname.startsWith('/users')) {
+    return { view: 'USER_ACCESS' };
   }
 
   // Document Control sub-routes all resolve to DOCUMENT_CONTROL
@@ -88,9 +109,9 @@ export const getViewFromUrl = (pathname: string): { view: AppView; params?: { to
     return { view: 'INCIDENTS' };
   }
 
-  // Audit & Compliance Dashboard
+  // Dashboard (also supports legacy /audit)
   if (pathname.startsWith('/audit')) {
-    return { view: 'COMPLIANCE_DASHBOARD' };
+    return { view: 'DASHBOARD' };
   }
 
   // Check for onboarding auth route: /onboarding/auth/:token

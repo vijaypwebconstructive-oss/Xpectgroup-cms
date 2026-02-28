@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { MOCK_DOCUMENTS, updateDocStatus } from './mockData';
 import { PolicyDocument } from './types';
+import { addedDocuments } from './DocumentsLibrary';
 
 interface Props {
   onSelectDoc: (id: string) => void;
@@ -16,7 +17,7 @@ const DocumentApprovals: React.FC<Props> = ({ onSelectDoc, onBack }) => {
   const [, forceUpdate] = useState(0);
   const [processing, setProcessing] = useState<string | null>(null);
 
-  const pending = MOCK_DOCUMENTS.filter(d => d.status === 'pending');
+  const pending = [...addedDocuments, ...MOCK_DOCUMENTS].filter(d => d.status === 'pending');
 
   const handle = (doc: PolicyDocument, action: 'approved' | 'rejected') => {
     setProcessing(doc.id);

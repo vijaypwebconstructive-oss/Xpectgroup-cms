@@ -1,17 +1,13 @@
 /**
- * Incident & Corrective Action Navigation Store
- *
- * Reactive module-level store that lives OUTSIDE React so it survives
- * component remounts caused by the top-level History API router.
+ * Incident Register Navigation Store
  *
  * URL ↔ View mapping:
  *   /incidents          → "list"
  *   /incidents/new      → "create"
- *   /incidents/actions  → "actions"
  *   /incidents/:id      → "detail"   (catch-all — must be last)
  */
 
-export type IncidentView = 'list' | 'create' | 'detail' | 'actions';
+export type IncidentView = 'list' | 'create' | 'detail';
 
 export interface IncidentNavState {
   view: IncidentView;
@@ -20,11 +16,8 @@ export interface IncidentNavState {
 
 type Listener = (state: IncidentNavState) => void;
 
-// ── URL → State ───────────────────────────────────────────────────────────────
-
 export const parseIncidentPathname = (pathname: string): IncidentNavState => {
-  if (pathname === '/incidents/new')     return { view: 'create',  id: null };
-  if (pathname === '/incidents/actions') return { view: 'actions', id: null };
+  if (pathname === '/incidents/new') return { view: 'create', id: null };
 
   const detail = pathname.match(/^\/incidents\/([^/]+)$/);
   if (detail) return { view: 'detail', id: detail[1] };
@@ -32,19 +25,14 @@ export const parseIncidentPathname = (pathname: string): IncidentNavState => {
   return { view: 'list', id: null };
 };
 
-// ── State → URL ───────────────────────────────────────────────────────────────
-
 export const buildIncidentPathname = (state: IncidentNavState): string => {
   switch (state.view) {
-    case 'create':  return '/incidents/new';
-    case 'actions': return '/incidents/actions';
-    case 'detail':  return state.id ? `/incidents/${state.id}` : '/incidents';
+    case 'create': return '/incidents/new';
+    case 'detail': return state.id ? `/incidents/${state.id}` : '/incidents';
     case 'list':
-    default:        return '/incidents';
+    default:       return '/incidents';
   }
 };
-
-// ── Store ─────────────────────────────────────────────────────────────────────
 
 let _state: IncidentNavState = parseIncidentPathname(
   typeof window !== 'undefined' ? window.location.pathname : '/incidents'

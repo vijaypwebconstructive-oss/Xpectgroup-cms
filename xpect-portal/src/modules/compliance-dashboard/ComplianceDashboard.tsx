@@ -1,17 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { AppView } from '../../types';
 import AlertsPanel from './AlertsPanel';
 import TrainingExpiryWidget from './TrainingExpiryWidget';
 import DocumentStatusWidget from './DocumentStatusWidget';
 import SiteComplianceWidget from './SiteComplianceWidget';
-import IncidentSummaryWidget from './IncidentSummaryWidget';
 import {
-  MOCK_COMPLIANCE_ALERTS,
+  buildComplianceAlerts,
+  buildSiteIssues,
+  buildDocumentSummary,
+  buildStaffSummary,
   MOCK_TRAINING_EXPIRY,
-  MOCK_SITE_ISSUES,
-  MOCK_INCIDENT_SUMMARY,
-  MOCK_DOCUMENT_SUMMARY,
-  MOCK_STAFF_SUMMARY,
 } from './mockData';
 
 interface ComplianceDashboardProps {
@@ -65,7 +63,12 @@ const ComplianceDashboard: React.FC<ComplianceDashboardProps> = ({ onNavigate })
     return () => clearTimeout(timer);
   }, []);
 
-  const criticalAlerts = MOCK_COMPLIANCE_ALERTS.filter(a => a.severity === 'critical').length;
+  const alerts            = useMemo(() => buildComplianceAlerts(), []);
+  const siteIssues        = useMemo(() => buildSiteIssues(), []);
+  const documentSummary   = useMemo(() => buildDocumentSummary(), []);
+  const staffSummary      = useMemo(() => buildStaffSummary(), []);
+
+  const criticalAlerts = alerts.filter(a => a.severity === 'critical').length;
   const lastUpdated = new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
 
   return (
@@ -79,7 +82,7 @@ const ComplianceDashboard: React.FC<ComplianceDashboardProps> = ({ onNavigate })
                 <span className="material-symbols-outlined text-[20px] text-white">verified_user</span>
               </div> */}
               <div>
-                <h1 className="sm:text-2xl text-xl font-bold text-[#0d121b]">Audit & Compliance Dashboard</h1>
+                <h1 className="sm:text-2xl text-xl font-bold text-[#0d121b]">Dashboard</h1>
                 <p className="text-base text-[#6b7a99]">Company-wide compliance monitoring — ISO 45001 / ISO 9001</p>
               </div>
             </div>
@@ -109,37 +112,37 @@ const ComplianceDashboard: React.FC<ComplianceDashboardProps> = ({ onNavigate })
             <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
               <KPICard
                 label="Total Staff"
-                value={MOCK_STAFF_SUMMARY.total}
+                value={staffSummary.total}
                 icon="group"
                 iconBg="bg-[#2e4150]/10"
                 iconColor="text-[#2e4150]"
-                sub="Active employees"
+                sub="Site assignments"
               />
               <KPICard
                 label="Compliant Staff"
-                value={MOCK_STAFF_SUMMARY.compliant}
+                value={staffSummary.compliant}
                 icon="how_to_reg"
                 iconBg="bg-green-100"
                 iconColor="text-green-600"
-                sub={`${Math.round((MOCK_STAFF_SUMMARY.compliant / MOCK_STAFF_SUMMARY.total) * 100)}% compliance rate`}
+                sub={`${Math.round((staffSummary.compliant / staffSummary.total) * 100)}% compliance rate`}
               />
               <KPICard
                 label="Non-Compliant"
-                value={MOCK_STAFF_SUMMARY.nonCompliant}
+                value={staffSummary.nonCompliant}
                 icon="person_off"
                 iconBg="bg-red-100"
                 iconColor="text-red-600"
                 sub="Cannot be allocated"
-                alert={MOCK_STAFF_SUMMARY.nonCompliant > 0}
+                alert={staffSummary.nonCompliant > 0}
               />
               <KPICard
-                label="Open Incidents"
-                value={MOCK_INCIDENT_SUMMARY.open}
-                icon="report_problem"
+                label="Expiring Training"
+                value={MOCK_TRAINING_EXPIRY.filter(t => t.daysRemaining <= 7).length}
+                icon="school"
                 iconBg="bg-amber-100"
                 iconColor="text-amber-600"
-                sub={`${MOCK_INCIDENT_SUMMARY.overdueActions} overdue actions`}
-                alert={MOCK_INCIDENT_SUMMARY.overdueActions > 0}
+                sub={`${MOCK_TRAINING_EXPIRY.length} expiring within 30 days`}
+                alert={MOCK_TRAINING_EXPIRY.filter(t => t.daysRemaining <= 7).length > 0}
               />
             </div>
 
@@ -147,19 +150,16 @@ const ComplianceDashboard: React.FC<ComplianceDashboardProps> = ({ onNavigate })
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
               <TrainingExpiryWidget records={MOCK_TRAINING_EXPIRY} />
               <DocumentStatusWidget
-                summary={MOCK_DOCUMENT_SUMMARY}
+                summary={documentSummary}
                 onNavigateToDocControl={() => onNavigate('DOCUMENT_CONTROL' as AppView)}
               />
             </div>
 
             {/* Row 3: Alerts Panel — full width */}
-            <AlertsPanel alerts={MOCK_COMPLIANCE_ALERTS} />
+            <AlertsPanel alerts={alerts} />
 
-            {/* Row 4: Sites + Incidents */}
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
-              <SiteComplianceWidget issues={MOCK_SITE_ISSUES} />
-              <IncidentSummaryWidget summary={MOCK_INCIDENT_SUMMARY} />
-            </div>
+            {/* Row 4: Site Compliance */}
+            <SiteComplianceWidget issues={siteIssues} />
 
             {/* Compliance score footer */}
             <div className="bg-white rounded-xl border border-[#e7ebf3] p-5">
@@ -170,12 +170,11 @@ const ComplianceDashboard: React.FC<ComplianceDashboardProps> = ({ onNavigate })
                 </div>
                 <span className="text-xs text-[#6b7a99] bg-[#f5f7fa] px-3 py-1 rounded-full">ISO 45001 / ISO 9001</span>
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <div className="grid grid-cols-3 gap-4">
                 {[
-                  { label: 'Staff Compliance', pct: Math.round((MOCK_STAFF_SUMMARY.compliant / MOCK_STAFF_SUMMARY.total) * 100), stroke: '#22c55e' },
-                  { label: 'Document Control', pct: Math.round((MOCK_DOCUMENT_SUMMARY.approved / MOCK_DOCUMENT_SUMMARY.total) * 100), stroke: '#3b82f6' },
-                  { label: 'Training Coverage', pct: 72, stroke: '#f59e0b' },
-                  { label: 'Site Safety', pct: 60, stroke: '#ef4444' },
+                  { label: 'Staff Compliance', pct: staffSummary.total > 0 ? Math.round((staffSummary.compliant / staffSummary.total) * 100) : 0, stroke: '#22c55e' },
+                  { label: 'Document Control', pct: documentSummary.total > 0 ? Math.round((documentSummary.approved / documentSummary.total) * 100) : 0, stroke: '#3b82f6' },
+                  { label: 'Training Coverage', pct: MOCK_TRAINING_EXPIRY.length > 0 ? Math.round(((MOCK_TRAINING_EXPIRY.length - MOCK_TRAINING_EXPIRY.filter(t => t.daysRemaining <= 7).length) / MOCK_TRAINING_EXPIRY.length) * 100) : 100, stroke: '#f59e0b' },
                 ].map(item => (
                   <div key={item.label} className="text-center">
                     <div className="relative w-16 h-16 mx-auto mb-2">

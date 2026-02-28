@@ -1,11 +1,11 @@
 import React from 'react';
-import { getRAMSById, getRiskById } from './mockData';
+import { getRAMSById } from './mockData';
 import { RAMSStatus } from './types';
+import { addedRAMS } from './RAMSList';
 
 interface Props {
   ramsId: string;
   onBack: () => void;
-  onSelectRisk: (id: string) => void;
 }
 
 const fmt = (d: string) => d ? new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
@@ -16,8 +16,8 @@ const statusBadge = (status: RAMSStatus) => ({
   review_required: { cls: 'bg-amber-100 text-amber-700 border border-amber-200',  label: 'Review Required', icon: 'warning' },
 }[status]);
 
-const RAMSDetail: React.FC<Props> = ({ ramsId, onBack, onSelectRisk }) => {
-  const rams = getRAMSById(ramsId);
+const RAMSDetail: React.FC<Props> = ({ ramsId, onBack }) => {
+  const rams = getRAMSById(ramsId) || addedRAMS.find(r => r.id === ramsId);
 
   if (!rams) {
     return (
@@ -109,44 +109,48 @@ const RAMSDetail: React.FC<Props> = ({ ramsId, onBack, onSelectRisk }) => {
           </div>
 
           {/* Step-by-step method */}
-          <div className="bg-white rounded-xl border border-[#e7ebf3] shadow-sm p-6">
-            <h2 className="text-base font-bold text-[#0d121b] mb-5 flex items-center gap-2">
-              <span className="material-symbols-outlined text-[18px] text-[#6b7a99]">format_list_numbered</span>
-              Step-by-Step Work Method
-            </h2>
-            <div className="space-y-3">
-              {rams.workMethod.map((step, i) => (
-                <div key={i} className="flex gap-4">
-                  <div className="w-7 h-7 rounded-full bg-[#2e4150] text-white text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">
-                    {i + 1}
+          {rams.workMethod.length > 0 && (
+            <div className="bg-white rounded-xl border border-[#e7ebf3] shadow-sm p-6">
+              <h2 className="text-base font-bold text-[#0d121b] mb-5 flex items-center gap-2">
+                <span className="material-symbols-outlined text-[18px] text-[#6b7a99]">format_list_numbered</span>
+                Step-by-Step Work Method
+              </h2>
+              <div className="space-y-3">
+                {rams.workMethod.map((step, i) => (
+                  <div key={i} className="flex gap-4">
+                    <div className="w-7 h-7 rounded-full bg-[#2e4150] text-white text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">
+                      {i + 1}
+                    </div>
+                    <p className="text-sm text-[#0d121b] leading-relaxed pt-1">{step}</p>
                   </div>
-                  <p className="text-sm text-[#0d121b] leading-relaxed pt-1">{step}</p>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Emergency procedures */}
-          <div className="bg-white rounded-xl border border-red-100 shadow-sm p-6">
-            <h2 className="text-base font-bold text-[#0d121b] mb-4 flex items-center gap-2">
-              <span className="material-symbols-outlined text-[18px] text-red-500">emergency</span>
-              Emergency Procedures
-            </h2>
-            <div className="space-y-3">
-              {rams.emergencyProcedures.map((proc, i) => {
-                const [heading, ...rest] = proc.split(':');
-                return (
-                  <div key={i} className="flex gap-3 p-3 bg-red-50 rounded-xl border border-red-100">
-                    <span className="material-symbols-outlined text-red-500 text-[18px] shrink-0 mt-0.5">priority_high</span>
-                    <div>
-                      <span className="text-sm font-bold text-red-700">{heading}:</span>
-                      <span className="text-sm text-[#0d121b]"> {rest.join(':')}</span>
+          {rams.emergencyProcedures.length > 0 && (
+            <div className="bg-white rounded-xl border border-red-100 shadow-sm p-6">
+              <h2 className="text-base font-bold text-[#0d121b] mb-4 flex items-center gap-2">
+                <span className="material-symbols-outlined text-[18px] text-red-500">emergency</span>
+                Emergency Procedures
+              </h2>
+              <div className="space-y-3">
+                {rams.emergencyProcedures.map((proc, i) => {
+                  const [heading, ...rest] = proc.split(':');
+                  return (
+                    <div key={i} className="flex gap-3 p-3 bg-red-50 rounded-xl border border-red-100">
+                      <span className="material-symbols-outlined text-red-500 text-[18px] shrink-0 mt-0.5">priority_high</span>
+                      <div>
+                        <span className="text-sm font-bold text-red-700">{heading}:</span>
+                        <span className="text-sm text-[#0d121b]"> {rest.join(':')}</span>
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         {/* Right */}
@@ -175,30 +179,6 @@ const RAMSDetail: React.FC<Props> = ({ ramsId, onBack, onSelectRisk }) => {
               </div>
             )}
           </div>
-
-          {/* Linked Risk Assessments */}
-          {rams.linkedRiskAssessmentIds.length > 0 && (
-            <div className="bg-white rounded-xl border border-[#e7ebf3] shadow-sm p-6">
-              <h2 className="text-base font-bold text-[#0d121b] mb-4 flex items-center gap-2">
-                <span className="material-symbols-outlined text-[18px] text-[#6b7a99]">link</span>
-                Linked Risk Assessments
-              </h2>
-              <div className="space-y-2">
-                {rams.linkedRiskAssessmentIds.map(raId => {
-                  const ra = getRiskById(raId);
-                  if (!ra) return null;
-                  return (
-                    <button key={raId} onClick={() => onSelectRisk(raId)}
-                      className="w-full flex items-center gap-3 p-3 bg-[#f6f7fb] rounded-xl border border-[#e7ebf3] hover:border-[#2e4150]/30 transition-colors text-left group">
-                      <span className="material-symbols-outlined text-[16px] text-[#6b7a99]">assignment</span>
-                      <span className="flex-1 text-sm font-semibold text-[#0d121b] group-hover:text-[#2e4150] truncate">{ra.title}</span>
-                      <span className="material-symbols-outlined text-[16px] text-[#6b7a99]">chevron_right</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
         </div>
       </div>
     </div>

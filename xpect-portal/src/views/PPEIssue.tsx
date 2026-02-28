@@ -23,7 +23,6 @@ const PPEIssue: React.FC<PPEIssueProps> = ({ onBack }) => {
     condition: 'New' as PPECondition,
     replacementMonths: '6' as '3' | '6' | '12',
     notes: '',
-    workerAcknowledged: false,
   });
 
   const [submitted, setSubmitted] = useState(false);
@@ -61,9 +60,6 @@ const PPEIssue: React.FC<PPEIssueProps> = ({ onBack }) => {
           <p className="text-[#4c669a] text-sm">
             <strong>{form.ppeType}</strong> has been issued to <strong>{form.worker}</strong>.
           </p>
-          {form.workerAcknowledged && (
-            <p className="text-green-600 text-sm font-semibold mt-1">Worker acknowledgement recorded.</p>
-          )}
         </div>
         <div className="flex gap-3">
           <button
@@ -224,34 +220,6 @@ const PPEIssue: React.FC<PPEIssueProps> = ({ onBack }) => {
               value={form.notes}
               onChange={e => set('notes', e.target.value)}
             />
-          </div>
-
-          {/* Acknowledgement section */}
-          <div className="rounded-xl border border-[#e7ebf3] bg-[#f8fafc] p-4 space-y-4">
-            <div className="flex items-center gap-2">
-              <span className="material-symbols-outlined text-[#2e4150] text-[20px]">draw</span>
-              <h3 className="text-sm font-black text-[#0d121b] font-semibold">Worker Acknowledgement</h3>
-            </div>
-
-            {/* Signature placeholder */}
-            <div className="h-24 rounded-xl border-2 border-dashed border-[#c7d2e0] bg-white flex flex-col items-center justify-center gap-1 text-[#4c669a]">
-              <span className="material-symbols-outlined text-[28px]">gesture</span>
-              <p className="text-xs font-semibold">Digital signature area</p>
-              <p className="text-[10px]">Worker signs here to confirm receipt</p>
-            </div>
-
-            {/* Checkbox */}
-            <label className="flex items-start gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                className="mt-0.5 w-4 h-4 rounded border-[#c7d2e0] accent-[#2e4150] cursor-pointer"
-                checked={form.workerAcknowledged}
-                onChange={e => set('workerAcknowledged', e.target.checked)}
-              />
-              <span className="text-sm text-[#0d121b] font-semibold leading-snug">
-                Worker confirms receipt and acknowledges responsibility for the above PPE
-              </span>
-            </label>
           </div>
 
           {/* Submit */}
