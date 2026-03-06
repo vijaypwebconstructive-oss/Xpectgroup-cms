@@ -1,7 +1,6 @@
-import React from 'react';
-import { getRAMSById } from './mockData';
-import { RAMSStatus } from './types';
-import { addedRAMS } from './RAMSList';
+import React, { useState } from 'react';
+import { useRiskCoshh } from '../../context/RiskCoshhContext';
+import api from '../../services/api';
 
 interface Props {
   ramsId: string;
@@ -10,14 +9,36 @@ interface Props {
 
 const fmt = (d: string) => d ? new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
 
-const statusBadge = (status: RAMSStatus) => ({
-  approved:        { cls: 'bg-green-100 text-green-700 border border-green-200',  label: 'Approved',        icon: 'verified' },
-  draft:           { cls: 'bg-gray-100 text-gray-600 border border-gray-200',     label: 'Draft',           icon: 'draft' },
-  review_required: { cls: 'bg-amber-100 text-amber-700 border border-amber-200',  label: 'Review Required', icon: 'warning' },
-}[status]);
-
 const RAMSDetail: React.FC<Props> = ({ ramsId, onBack }) => {
-  const rams = getRAMSById(ramsId) || addedRAMS.find(r => r.id === ramsId);
+  const { getRAMSById, deleteRAMS } = useRiskCoshh();
+  const rams = getRAMSById(ramsId);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showDocViewer, setShowDocViewer] = useState(false);
+  const [docData, setDocData] = useState<string | null>(null);
+
+  const handleDelete = async () => {
+    try {
+      await deleteRAMS(ramsId);
+      setShowDeleteConfirm(false);
+      onBack();
+    } catch {
+      // Could show error toast
+    }
+  };
+
+  const handleViewDoc = async () => {
+    if (rams?.documentAvailable) {
+      try {
+        const full = await api.riskCoshh.rams.getById(ramsId) as { documentData?: string };
+        setDocData(full.documentData ?? null);
+      } catch {
+        setDocData(null);
+      }
+    } else {
+      setDocData(null);
+    }
+    setShowDocViewer(true);
+  };
 
   if (!rams) {
     return (
@@ -31,8 +52,6 @@ const RAMSDetail: React.FC<Props> = ({ ramsId, onBack }) => {
     );
   }
 
-  const sb = statusBadge(rams.status);
-
   return (
     <div className="min-h-full bg-[#f6f7fb]">
 
@@ -42,18 +61,16 @@ const RAMSDetail: React.FC<Props> = ({ ramsId, onBack }) => {
           <span className="material-symbols-outlined text-[18px]">arrow_back</span>
           Back to RAMS
         </button>
-        <div className="flex items-start gap-4 flex-wrap">
-          <div className="w-12 h-12 rounded-xl bg-[#2e4150] flex items-center justify-center shrink-0">
-            <span className="material-symbols-outlined text-white text-[22px]">assignment</span>
-          </div>
-          <div className="flex-1 min-w-0">
-            <h1 className="text-xl font-bold text-[#0d121b]">{rams.siteName}</h1>
-            <div className="flex items-center gap-3 mt-1.5 flex-wrap">
-              <span className="text-sm text-[#6b7a99]">{rams.clientName}</span>
-              <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${sb.cls}`}>
-                <span className="material-symbols-outlined text-[14px]">{sb.icon}</span>
-                {sb.label}
-              </span>
+        <div className="flex items-start gap-4 flex-wrap justify-between">
+          <div className="flex items-start gap-4 flex-wrap">
+            <div className="w-12 h-12 rounded-xl bg-[#2e4150] flex items-center justify-center shrink-0">
+              <span className="material-symbols-outlined text-white text-[22px]">assignment</span>
+            </div>
+            <div className="flex-1 min-w-0">
+              <h1 className="text-xl font-bold text-[#0d121b]">{rams.siteName}</h1>
+              <div className="flex items-center gap-3 mt-1.5 flex-wrap">
+                <span className="text-sm text-[#6b7a99]">{rams.clientName}</span>
+              </div>
             </div>
           </div>
           <div className="flex gap-2">
@@ -65,15 +82,27 @@ const RAMSDetail: React.FC<Props> = ({ ramsId, onBack }) => {
               <span className="material-symbols-outlined text-[18px]">download</span>
               Download PDF
             </button>
+            <button
+              onClick={() => setShowDeleteConfirm(true)}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl border border-red-200 text-red-600 bg-red-50 hover:bg-red-100 text-sm font-semibold transition-colors"
+            >
+              <span className="material-symbols-outlined text-[18px]">delete</span>
+              Delete
+            </button>
           </div>
         </div>
       </div>
 
-      {/* Review required warning */}
-      {rams.status === 'review_required' && (
-        <div className="mx-8 mt-5 flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-xl px-5 py-3">
-          <span className="material-symbols-outlined text-amber-500 text-[20px]">warning</span>
-          <p className="text-sm font-semibold text-amber-700">This RAMS document requires review before it can be used. Please update and re-approve.</p>
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setShowDeleteConfirm(false)}>
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full mx-4 p-6" onClick={e => e.stopPropagation()}>
+            <h3 className="text-lg font-bold text-[#0d121b] mb-2">Delete RAMS</h3>
+            <p className="text-sm text-[#6b7a99] mb-6">Are you sure you want to delete &quot;{rams.siteName}&quot;? This action cannot be undone.</p>
+            <div className="flex gap-3">
+              <button onClick={handleDelete} className="flex-1 px-4 py-2.5 rounded-xl bg-red-600 text-white text-sm font-semibold hover:bg-red-700">Delete</button>
+              <button onClick={() => setShowDeleteConfirm(false)} className="flex-1 px-4 py-2.5 rounded-xl border border-[#e7ebf3] text-[#2e4150] text-sm font-semibold hover:bg-[#f6f7fb]">Cancel</button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -156,19 +185,40 @@ const RAMSDetail: React.FC<Props> = ({ ramsId, onBack }) => {
         {/* Right */}
         <div className="space-y-5">
 
-          {/* Upload placeholder */}
+          {/* Signed RAMS Document */}
           <div className="bg-white rounded-xl border border-[#e7ebf3] shadow-sm p-6">
             <h2 className="text-base font-bold text-[#0d121b] mb-4 flex items-center gap-2">
               <span className="material-symbols-outlined text-[18px] text-[#6b7a99]">upload_file</span>
               Signed RAMS Document
             </h2>
             {rams.signedCopyAvailable ? (
-              <div className="flex items-center gap-3 p-3 bg-green-50 border border-green-200 rounded-xl">
-                <span className="material-symbols-outlined text-green-500 text-[22px]">check_circle</span>
-                <div>
-                  <p className="text-sm font-semibold text-[#0d121b]">Signed copy available</p>
-                  <p className="text-xs text-[#6b7a99]">RAMS-{rams.id}.pdf</p>
+              <div className="flex flex-col gap-3">
+                <div className="flex items-center gap-3 p-3 bg-green-50 border border-green-200 rounded-xl">
+                  <span className="material-symbols-outlined text-green-500 text-[22px]">check_circle</span>
+                  <div>
+                    <p className="text-sm font-semibold text-[#0d121b]">Signed copy available</p>
+                    <p className="text-xs text-[#6b7a99]">{rams.signedDocumentFileName || `RAMS-${rams.id}.pdf`}</p>
+                  </div>
                 </div>
+                {rams.documentAvailable !== false ? (
+                  <button
+                    type="button"
+                    onClick={handleViewDoc}
+                    className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#2e4150] text-white text-sm font-semibold hover:bg-[#3a5268] transition-colors w-full"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">visibility</span>
+                    View
+                  </button>
+                ) : (
+                  <button
+                    disabled
+                    title="Document not available"
+                    className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#e7ebf3] text-[#6b7a99] text-sm font-semibold cursor-not-allowed w-full"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">visibility</span>
+                    View
+                  </button>
+                )}
               </div>
             ) : (
               <div className="p-6 border-2 border-dashed border-[#e7ebf3] rounded-xl text-center">
@@ -181,6 +231,71 @@ const RAMSDetail: React.FC<Props> = ({ ramsId, onBack }) => {
           </div>
         </div>
       </div>
+
+      {/* Document viewer modal - shows on screen, no redirect */}
+      {showDocViewer && rams && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setShowDocViewer(false)}>
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-6 py-4 border-b border-[#e7ebf3] shrink-0">
+              <h3 className="text-lg font-bold text-[#0d121b]">Signed RAMS Document — {rams.siteName}</h3>
+              <button onClick={() => setShowDocViewer(false)} className="p-1.5 rounded-lg hover:bg-[#f6f7fb] transition-colors">
+                <span className="material-symbols-outlined text-[24px] text-[#6b7a99]">close</span>
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-6">
+              {docData ? (
+                <iframe
+                  src={docData}
+                  title="RAMS Document"
+                  className="w-full h-[70vh] border border-[#e7ebf3] rounded-lg"
+                />
+              ) : rams.documentAvailable ? (
+                <div className="text-center py-12 text-[#6b7a99]">
+                  <span className="material-symbols-outlined text-[48px] block mb-3">description</span>
+                  <p>Document preview not available.</p>
+                </div>
+              ) : (
+                <div className="prose prose-sm max-w-none text-[#0d121b] space-y-6">
+                  <div>
+                    <p className="text-xs font-semibold text-[#6b7a99] uppercase tracking-wide mb-1">Site</p>
+                    <p className="font-semibold">{rams.siteName}</p>
+                    <p className="text-sm text-[#6b7a99]">{rams.clientName}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-[#6b7a99] uppercase tracking-wide mb-1">Work Description</p>
+                    <p>{rams.description}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold text-[#6b7a99] uppercase tracking-wide mb-1">Working Hours</p>
+                    <p>{rams.workingHours}</p>
+                  </div>
+                  {rams.workMethod.length > 0 && (
+                    <div>
+                      <p className="text-xs font-semibold text-[#6b7a99] uppercase tracking-wide mb-2">Step-by-Step Method</p>
+                      <ol className="list-decimal list-inside space-y-2">
+                        {rams.workMethod.map((step, i) => (
+                          <li key={i}>{step}</li>
+                        ))}
+                      </ol>
+                    </div>
+                  )}
+                  {rams.emergencyProcedures.length > 0 && (
+                    <div>
+                      <p className="text-xs font-semibold text-red-600 uppercase tracking-wide mb-2">Emergency Procedures</p>
+                      <ul className="space-y-1.5">
+                        {rams.emergencyProcedures.map((proc, i) => (
+                          <li key={i} className="text-sm">{proc}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  <p className="text-xs text-[#6b7a99] pt-4">Last updated: {fmt(rams.lastUpdated)}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

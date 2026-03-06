@@ -9,8 +9,7 @@ const OnboardingProgressSchema = new mongoose.Schema({
   inviteToken: {
     type: String,
     required: true,
-    unique: true,
-    index: true
+    unique: true
   },
   // Last completed step number (1-10)
   lastCompletedStep: {
@@ -48,12 +47,6 @@ const OnboardingProgressSchema = new mongoose.Schema({
 }, {
   timestamps: true // Adds createdAt and updatedAt
 });
-
-// Index for efficient querying by inviteToken
-OnboardingProgressSchema.index({ inviteToken: 1 });
-
-// Index for TTL expiration (MongoDB will automatically delete documents after expiresAt)
-OnboardingProgressSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 
 const OnboardingProgress = mongoose.model('OnboardingProgress', OnboardingProgressSchema);
 

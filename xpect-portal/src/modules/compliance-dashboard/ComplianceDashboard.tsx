@@ -1,5 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { AppView } from '../../types';
+import { useRiskCoshh } from '../../context/RiskCoshhContext';
+import { useClientsSites } from '../../context/ClientsSitesContext';
+import { usePolicyDocuments } from '../../context/PolicyDocumentsContext';
+import { usePPERecords } from '../../context/PPERecordsContext';
+import { useTraining } from '../../context/TrainingContext';
 import AlertsPanel from './AlertsPanel';
 import TrainingExpiryWidget from './TrainingExpiryWidget';
 import DocumentStatusWidget from './DocumentStatusWidget';
@@ -9,7 +14,8 @@ import {
   buildSiteIssues,
   buildDocumentSummary,
   buildStaffSummary,
-  MOCK_TRAINING_EXPIRY,
+  buildTrainingExpiry,
+  daysUntilDate,
 } from './mockData';
 
 interface ComplianceDashboardProps {
@@ -56,6 +62,11 @@ const LoadingSkeleton: React.FC = () => (
 );
 
 const ComplianceDashboard: React.FC<ComplianceDashboardProps> = ({ onNavigate }) => {
+  const { riskAssessments, ramsList } = useRiskCoshh();
+  const { clients, assignments } = useClientsSites();
+  const { documents } = usePolicyDocuments();
+  const { records: ppeRecords, inventory: ppeInventory } = usePPERecords();
+  const { trainingRecords } = useTraining();
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -63,10 +74,16 @@ const ComplianceDashboard: React.FC<ComplianceDashboardProps> = ({ onNavigate })
     return () => clearTimeout(timer);
   }, []);
 
-  const alerts            = useMemo(() => buildComplianceAlerts(), []);
-  const siteIssues        = useMemo(() => buildSiteIssues(), []);
-  const documentSummary   = useMemo(() => buildDocumentSummary(), []);
-  const staffSummary      = useMemo(() => buildStaffSummary(), []);
+  const riskCoshhData = useMemo(() => ({ riskAssessments, ramsList }), [riskAssessments, ramsList]);
+  const clientsSitesData = useMemo(() => ({ clients, assignments }), [clients, assignments]);
+  const policyDocsData = useMemo(() => ({ documents }), [documents]);
+  const ppeData = useMemo(() => ({ records: ppeRecords, inventory: ppeInventory }), [ppeRecords, ppeInventory]);
+  const trainingData = useMemo(() => ({ trainingRecords }), [trainingRecords]);
+  const alerts = useMemo(() => buildComplianceAlerts(riskCoshhData, clientsSitesData, policyDocsData, ppeData, trainingData), [riskCoshhData, clientsSitesData, policyDocsData, ppeData, trainingData]);
+  const siteIssues = useMemo(() => buildSiteIssues(riskCoshhData, clientsSitesData), [riskCoshhData, clientsSitesData]);
+  const documentSummary = useMemo(() => buildDocumentSummary(documents), [documents]);
+  const staffSummary = useMemo(() => buildStaffSummary(assignments), [assignments]);
+  const trainingExpiry = useMemo(() => buildTrainingExpiry(trainingRecords), [trainingRecords]);
 
   const criticalAlerts = alerts.filter(a => a.severity === 'critical').length;
   const lastUpdated = new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
@@ -137,18 +154,18 @@ const ComplianceDashboard: React.FC<ComplianceDashboardProps> = ({ onNavigate })
               />
               <KPICard
                 label="Expiring Training"
-                value={MOCK_TRAINING_EXPIRY.filter(t => t.daysRemaining <= 7).length}
+                value={trainingExpiry.length}
                 icon="school"
                 iconBg="bg-amber-100"
                 iconColor="text-amber-600"
-                sub={`${MOCK_TRAINING_EXPIRY.length} expiring within 30 days`}
-                alert={MOCK_TRAINING_EXPIRY.filter(t => t.daysRemaining <= 7).length > 0}
+                sub={`${trainingExpiry.length} expiring within 90 days`}
+                alert={trainingExpiry.length > 0}
               />
             </div>
 
             {/* Row 2: Training + Documents */}
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
-              <TrainingExpiryWidget records={MOCK_TRAINING_EXPIRY} />
+              <TrainingExpiryWidget records={trainingExpiry} />
               <DocumentStatusWidget
                 summary={documentSummary}
                 onNavigateToDocControl={() => onNavigate('DOCUMENT_CONTROL' as AppView)}
@@ -174,7 +191,7 @@ const ComplianceDashboard: React.FC<ComplianceDashboardProps> = ({ onNavigate })
                 {[
                   { label: 'Staff Compliance', pct: staffSummary.total > 0 ? Math.round((staffSummary.compliant / staffSummary.total) * 100) : 0, stroke: '#22c55e' },
                   { label: 'Document Control', pct: documentSummary.total > 0 ? Math.round((documentSummary.approved / documentSummary.total) * 100) : 0, stroke: '#3b82f6' },
-                  { label: 'Training Coverage', pct: MOCK_TRAINING_EXPIRY.length > 0 ? Math.round(((MOCK_TRAINING_EXPIRY.length - MOCK_TRAINING_EXPIRY.filter(t => t.daysRemaining <= 7).length) / MOCK_TRAINING_EXPIRY.length) * 100) : 100, stroke: '#f59e0b' },
+                  { label: 'Training Coverage', pct: trainingRecords.length > 0 ? Math.round((trainingRecords.filter(t => t.expiryDate && daysUntilDate(t.expiryDate) > 30).length / trainingRecords.length) * 100) : 100, stroke: '#f59e0b' },
                 ].map(item => (
                   <div key={item.label} className="text-center">
                     <div className="relative w-16 h-16 mx-auto mb-2">

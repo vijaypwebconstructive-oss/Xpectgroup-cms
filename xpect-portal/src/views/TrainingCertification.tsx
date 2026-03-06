@@ -1,249 +1,155 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { AppView, Cleaner, VerificationStatus } from '../types';
 import { useCleaners } from '../context/CleanersContext';
+import { useTraining } from '../context/TrainingContext';
 import { navigateToUrl } from '../utils/routing';
+import api from '../services/api';
+import {
+  TrainingRecord,
+  TRAINING_TYPES,
+  AVATAR_COLORS,
+  getInitials,
+  formatDate,
+} from './trainingMockData';
 
 interface TrainingCertificationProps {
   onNavigate: (view: AppView, cleaner?: Cleaner) => void;
 }
 
-type StatusFilter = 'ALL' | 'IN_PROGRESS' | 'COMPLETED' | 'NOT_STARTED';
-
-interface TraineeRecord {
-  id: string;
-  name: string;
-  location: string;
-  initials: string;
-  avatarColor: string;
-  avatar?: string;
-  course: string;
-  courseIcon: string;
-  progress: number;
-  dueDate: string;
-  certName: string;
-}
-
-const TRAINING_TYPES: { label: string; icon: string; cert: string }[] = [
-  { label: 'Level 2 Chemical Handling',    icon: 'science',               cert: 'Chemical Handling Certificate' },
-  { label: 'Standard Operating Procedures', icon: 'menu_book',            cert: 'SOP Compliance Certificate' },
-  { label: 'Fire Safety Awareness',         icon: 'local_fire_department', cert: 'Fire Safety Certificate' },
-  { label: 'COSHH Awareness',               icon: 'health_and_safety',     cert: 'COSHH Awareness Certificate' },
-  { label: 'Manual Handling Training',      icon: 'engineering',           cert: 'Manual Handling Certificate' },
-  { label: 'Health & Safety Induction',     icon: 'verified_user',         cert: 'H&S Induction Certificate' },
-  { label: 'First Aid at Work',             icon: 'medical_services',      cert: 'First Aid Certificate' },
-  { label: 'Working at Height',             icon: 'altitude',              cert: 'Working at Height Certificate' },
-  { label: 'Asbestos Awareness',            icon: 'warning',               cert: 'Asbestos Awareness Certificate' },
-  { label: 'Legionella Awareness',          icon: 'water_drop',            cert: 'Legionella Awareness Certificate' },
-];
-
-const AVATAR_COLORS = [
-  'bg-blue-500', 'bg-pink-500', 'bg-emerald-500', 'bg-violet-500',
-  'bg-orange-500', 'bg-rose-500', 'bg-sky-500', 'bg-teal-500',
-  'bg-indigo-500', 'bg-amber-500', 'bg-cyan-500', 'bg-lime-500',
-];
-
-const getInitials = (name: string) => {
-  const parts = name.trim().split(/\s+/);
-  if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-  return name.slice(0, 2).toUpperCase();
-};
-
-const DUMMY_TRAINEES: TraineeRecord[] = [
-  {
-    id: '1',
-    name: 'James Thornton',
-    location: 'Manchester North',
-    initials: 'JT',
-    avatarColor: 'bg-blue-500',
-    course: 'Level 2 Chemical Handling',
-    courseIcon: 'science',
-    progress: 92,
-    dueDate: '2026-03-10',
-    certName: 'Chemical Handling Certificate',
-  },
-  {
-    id: '2',
-    name: 'Sarah Mitchell',
-    location: 'Birmingham Central',
-    initials: 'SM',
-    avatarColor: 'bg-pink-500',
-    course: 'Standard Operating Procedures',
-    courseIcon: 'menu_book',
-    progress: 100,
-    dueDate: '2026-01-15',
-    certName: 'SOP Compliance Certificate',
-  },
-  {
-    id: '3',
-    name: 'David Okafor',
-    location: 'London South',
-    initials: 'DO',
-    avatarColor: 'bg-emerald-500',
-    course: 'Fire Safety Awareness',
-    courseIcon: 'local_fire_department',
-    progress: 45,
-    dueDate: '2026-04-20',
-    certName: 'Fire Safety Certificate',
-  },
-  {
-    id: '4',
-    name: 'Emma Clarke',
-    location: 'Leeds West',
-    initials: 'EC',
-    avatarColor: 'bg-violet-500',
-    course: 'COSHH Awareness',
-    courseIcon: 'health_and_safety',
-    progress: 88,
-    dueDate: '2026-03-25',
-    certName: 'COSHH Awareness Certificate',
-  },
-  {
-    id: '5',
-    name: 'Ryan Patel',
-    location: 'Bristol East',
-    initials: 'RP',
-    avatarColor: 'bg-orange-500',
-    course: 'Manual Handling Training',
-    courseIcon: 'engineering',
-    progress: 0,
-    dueDate: '2026-05-01',
-    certName: 'Manual Handling Certificate',
-  },
-  {
-    id: '6',
-    name: 'Priya Singh',
-    location: 'Manchester South',
-    initials: 'PS',
-    avatarColor: 'bg-rose-500',
-    course: 'Health & Safety Induction',
-    courseIcon: 'verified_user',
-    progress: 100,
-    dueDate: '2026-02-28',
-    certName: 'H&S Induction Certificate',
-  },
-  {
-    id: '7',
-    name: 'Luke Henderson',
-    location: 'Sheffield North',
-    initials: 'LH',
-    avatarColor: 'bg-sky-500',
-    course: 'Level 2 Chemical Handling',
-    courseIcon: 'science',
-    progress: 67,
-    dueDate: '2026-04-05',
-    certName: 'Chemical Handling Certificate',
-  },
-  {
-    id: '8',
-    name: 'Amara Osei',
-    location: 'London East',
-    initials: 'AO',
-    avatarColor: 'bg-teal-500',
-    course: 'Standard Operating Procedures',
-    courseIcon: 'menu_book',
-    progress: 25,
-    dueDate: '2026-05-15',
-    certName: 'SOP Compliance Certificate',
-  },
-  {
-    id: '9',
-    name: 'Chris Evans',
-    location: 'Nottingham Central',
-    initials: 'CE',
-    avatarColor: 'bg-indigo-500',
-    course: 'Fire Safety Awareness',
-    courseIcon: 'local_fire_department',
-    progress: 95,
-    dueDate: '2026-03-08',
-    certName: 'Fire Safety Certificate',
-  },
-  {
-    id: '10',
-    name: 'Fatima Hassan',
-    location: 'Liverpool West',
-    initials: 'FH',
-    avatarColor: 'bg-amber-500',
-    course: 'COSHH Awareness',
-    courseIcon: 'health_and_safety',
-    progress: 78,
-    dueDate: '2026-04-12',
-    certName: 'COSHH Awareness Certificate',
-  },
-];
+type StatusFilter = 'ALL' | 'TRAINED' | 'NOT_TRAINED';
 
 const FILTER_TABS: { key: StatusFilter; label: string }[] = [
-  { key: 'ALL',         label: 'All' },
-  { key: 'IN_PROGRESS', label: 'In Progress' },
-  { key: 'COMPLETED',   label: 'Completed' },
-  { key: 'NOT_STARTED', label: 'Not Started' },
+  { key: 'ALL', label: 'All' },
+  { key: 'TRAINED', label: 'Trained' },
+  { key: 'NOT_TRAINED', label: 'Not Trained' },
 ];
 
-const getStatus = (progress: number) => {
-  if (progress >= 100) return { label: 'Completed',   badge: 'bg-green-100 text-green-700',  dot: 'bg-green-500' };
-  if (progress > 0)    return { label: 'In Progress', badge: 'bg-amber-100 text-amber-700',  dot: 'bg-amber-400' };
-  return                      { label: 'Not Started', badge: 'bg-gray-100 text-gray-500',   dot: 'bg-gray-400' };
+const statusBadge = (status: 'Trained' | 'Not Trained') => {
+  if (status === 'Trained') return { badge: 'bg-green-100 text-green-700', dot: 'bg-green-500' };
+  return { badge: 'bg-gray-100 text-gray-500', dot: 'bg-gray-400' };
 };
 
-const formatDate = (d: string) => {
-  try { return new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }); }
-  catch { return d; }
+const addOneYear = (dateStr: string): string => {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  d.setFullYear(d.getFullYear() + 1);
+  return d.toISOString().split('T')[0];
 };
 
-let assignedTrainees: TraineeRecord[] = [];
+const isExpiringWithinDays = (expiryDateStr: string, days: number = 30): boolean => {
+  if (!expiryDateStr) return false;
+  const expiry = new Date(expiryDateStr);
+  if (isNaN(expiry.getTime())) return false;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  expiry.setHours(0, 0, 0, 0);
+  const diffMs = expiry.getTime() - today.getTime();
+  const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+  return diffDays >= 0 && diffDays <= days;
+};
 
 const TrainingCertification: React.FC<TrainingCertificationProps> = ({ onNavigate }) => {
   const { cleaners } = useCleaners();
+  const { trainingRecords, addTrainingRecord } = useTraining();
   const [activeFilter, setActiveFilter] = useState<StatusFilter>('ALL');
-  const [searchTerm, setSearchTerm]     = useState('');
-  const [trainees, setTrainees]         = useState<TraineeRecord[]>(() => [...assignedTrainees, ...DUMMY_TRAINEES]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const hasRunAutoReminder = useRef(false);
 
   // Modal state
-  const [isModalOpen, setIsModalOpen]   = useState(false);
-  const [modalEmpId, setModalEmpId]     = useState('');
-  const [modalCourse, setModalCourse]   = useState('');
-  const [modalDate, setModalDate]       = useState('');
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalEmpId, setModalEmpId] = useState('');
+  const [modalCourse, setModalCourse] = useState('');
+  const [modalStartDate, setModalStartDate] = useState('');
+  const [modalEndDate, setModalEndDate] = useState('');
+  const [modalExpiryDate, setModalExpiryDate] = useState('');
+  const [modalStatus, setModalStatus] = useState<'Trained' | 'Not Trained'>('Not Trained');
+  const [modalCertFile, setModalCertFile] = useState('');
+  const [modalCertData, setModalCertData] = useState('');
 
-  const verifiedEmployees = useMemo(
-    () => cleaners.filter(c => c.verificationStatus === VerificationStatus.VERIFIED),
-    [cleaners]
-  );
+  // Verified employees who are not in the training list (no training record)
+  const assignableEmployees = useMemo(() => {
+    const verified = cleaners.filter(c => c.verificationStatus === VerificationStatus.VERIFIED);
+    const namesInTraining = new Set(trainingRecords.map(r => r.name.trim().toLowerCase()));
+    return verified.filter(c => !namesInTraining.has(c.name.trim().toLowerCase()));
+  }, [cleaners, trainingRecords]);
 
-  const handleAssign = () => {
-    if (!modalEmpId || !modalCourse || !modalDate) return;
-    const emp = verifiedEmployees.find(c => c.id === modalEmpId);
+  useEffect(() => {
+    if (hasRunAutoReminder.current || cleaners.length === 0) return;
+    hasRunAutoReminder.current = true;
+    const run = async () => {
+      const expiring = trainingRecords.filter(r => isExpiringWithinDays(r.expiryDate || '', 30));
+      if (expiring.length === 0) return;
+      const recordsWithEmail: Array<{ id: string; name: string; course: string; expiryDate: string; email: string }> = [];
+      for (const rec of expiring) {
+        const cleaner = cleaners.find(c => c.name.trim().toLowerCase() === rec.name.trim().toLowerCase());
+        const email = cleaner?.email?.trim();
+        if (email) {
+          recordsWithEmail.push({
+            id: rec.id,
+            name: rec.name,
+            course: rec.course,
+            expiryDate: rec.expiryDate || '',
+            email,
+          });
+        }
+      }
+      if (recordsWithEmail.length > 0) {
+        try {
+          await api.training.checkAndSendExpiryReminders(recordsWithEmail);
+        } catch {
+          // Silent fail - no UI feedback for auto-send
+        }
+      }
+    };
+    run();
+  }, [trainingRecords, cleaners]);
+
+  const handleAssign = async () => {
+    if (!modalEmpId || !modalCourse || !modalStartDate) return;
+    const emp = assignableEmployees.find(c => c.id === modalEmpId);
     if (!emp) return;
     const courseInfo = TRAINING_TYPES.find(t => t.label === modalCourse);
-    const newRecord: TraineeRecord = {
-      id: `assigned-${Date.now()}`,
-      name: emp.name,
-      location: emp.location || 'Unassigned',
-      initials: getInitials(emp.name),
-      avatarColor: AVATAR_COLORS[assignedTrainees.length % AVATAR_COLORS.length],
-      avatar: emp.avatar,
-      course: modalCourse,
-      courseIcon: courseInfo?.icon || 'school',
-      progress: 0,
-      dueDate: modalDate,
-      certName: courseInfo?.cert || `${modalCourse} Certificate`,
-    };
-    assignedTrainees = [newRecord, ...assignedTrainees];
-    setTrainees([...assignedTrainees, ...DUMMY_TRAINEES]);
+    const endDate = modalEndDate || modalStartDate;
+    const expiryDate = modalExpiryDate || (endDate ? addOneYear(endDate) : addOneYear(modalStartDate));
+    try {
+      await addTrainingRecord({
+        name: emp.name,
+        location: emp.location || 'Unassigned',
+        initials: getInitials(emp.name),
+        avatarColor: AVATAR_COLORS[trainingRecords.length % AVATAR_COLORS.length],
+        avatar: emp.avatar,
+        course: modalCourse,
+        courseIcon: courseInfo?.icon || 'school',
+        certName: courseInfo?.cert || `${modalCourse} Certificate`,
+        trainingStartDate: modalStartDate,
+        trainingEndDate: endDate,
+        expiryDate,
+        status: modalStatus,
+        certDocument: modalCertFile || undefined,
+        certDocumentData: modalCertData || undefined,
+      });
+    } catch {
+      return;
+    }
     setModalEmpId('');
     setModalCourse('');
-    setModalDate('');
+    setModalStartDate('');
+    setModalEndDate('');
+    setModalExpiryDate('');
+    setModalStatus('Not Trained');
+    setModalCertFile('');
     setIsModalOpen(false);
   };
 
-  const activeTrainees   = trainees.filter(t => t.progress > 0 && t.progress < 100).length;
-  const avgProgress      = Math.round(trainees.reduce((s, t) => s + t.progress, 0) / (trainees.length || 1));
-  const certsDue         = trainees.filter(t => t.progress >= 80 && t.progress < 100).length;
+  const totalCount = trainingRecords.length;
+  const trainedCount = trainingRecords.filter(t => t.status === 'Trained').length;
+  const notTrainedCount = trainingRecords.filter(t => t.status === 'Not Trained').length;
 
-  const filteredTrainees = trainees.filter(t => {
+  const filteredRecords = trainingRecords.filter(t => {
     const matchesFilter =
-      activeFilter === 'ALL'         ? true :
-      activeFilter === 'IN_PROGRESS' ? t.progress > 0 && t.progress < 100 :
-      activeFilter === 'COMPLETED'   ? t.progress >= 100 :
-                                       t.progress === 0;
+      activeFilter === 'ALL' ? true :
+      activeFilter === 'TRAINED' ? t.status === 'Trained' :
+      t.status === 'Not Trained';
     const matchesSearch = searchTerm === '' ||
       t.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       t.course.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -251,38 +157,7 @@ const TrainingCertification: React.FC<TrainingCertificationProps> = ({ onNavigat
     return matchesFilter && matchesSearch;
   });
 
-  const statCards = [
-    {
-      label: 'Active Trainees',
-      value: activeTrainees.toString(),
-      sub: `of ${trainees.length} total staff`,
-      valueColor: 'text-[#0d121b]',
-      barColor: 'bg-[#2e4150]',
-      pct: Math.round((activeTrainees / (trainees.length || 1)) * 100),
-      icon: 'person_play',
-      iconColor: 'text-[#2e4150]',
-    },
-    {
-      label: 'Avg. Progress',
-      value: `${avgProgress}%`,
-      sub: 'across all programmes',
-      valueColor: 'text-amber-500',
-      barColor: 'bg-amber-400',
-      pct: avgProgress,
-      icon: 'trending_up',
-      iconColor: 'text-amber-500',
-    },
-    {
-      label: 'Certifications Due',
-      value: certsDue.toString(),
-      sub: 'ready for assessment',
-      valueColor: 'text-green-600',
-      barColor: 'bg-green-500',
-      pct: Math.round((certsDue / (trainees.length || 1)) * 100),
-      icon: 'workspace_premium',
-      iconColor: 'text-green-600',
-    },
-  ];
+  const isValidAssign = modalEmpId && modalCourse && modalStartDate;
 
   return (
     <div className="flex-1 flex flex-col w-full py-[15px] sm:py-8 px-4 sm:px-6 md:px-10 animate-in slide-in-from-bottom-4 duration-500 min-h-[calc(100vh-160px)] max-w-screen sm:w-full sm:max-w-full">
@@ -292,10 +167,10 @@ const TrainingCertification: React.FC<TrainingCertificationProps> = ({ onNavigat
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex flex-col gap-1">
             <h1 className="text-[#0d121b] text-[1.6rem] sm:text-2xl font-bold font-black">
-              Training &amp; Certification Tracking
+              Training &amp; Certification
             </h1>
             <p className="text-[#4c669a] text-base">
-              Monitor staff currently undergoing professional training and certification programs.
+              Staff training status — trained or not trained.
             </p>
           </div>
           <button
@@ -307,53 +182,32 @@ const TrainingCertification: React.FC<TrainingCertificationProps> = ({ onNavigat
           </button>
         </div>
 
-        {/* Stat cards */}
+        {/* Simple stats */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          {statCards.map(card => (
-            <div key={card.label} className="bg-white rounded-2xl border border-[#e7ebf3] shadow-sm p-5 flex flex-col gap-3">
-              <div className="flex items-center justify-between">
-                <p className="text-xs font-bold text-[#4c669a] uppercase tracking-wide">{card.label}</p>
-                <span className={`material-symbols-outlined text-[22px] ${card.iconColor}`}>{card.icon}</span>
-              </div>
-              <p className={`text-[24px] sm:text-[30px] font-black font-bold text-[#000]`}>{card.value}</p>
-              <p className="text-[11px] text-[#4c669a]">{card.sub}</p>
-              {/* <div className="h-1.5 rounded-full bg-[#e7ebf3] overflow-hidden">
-                <div className={`h-full rounded-full ${card.barColor} transition-all duration-500`} style={{ width: `${card.pct}%` }} />
-              </div> */}
-            </div>
-          ))}
+          <div className="bg-white rounded-2xl border border-[#e7ebf3] shadow-sm p-5 flex flex-col gap-1">
+            <p className="text-xs font-bold text-[#4c669a] uppercase tracking-wide">Total</p>
+            <p className="text-[24px] sm:text-[30px] font-black font-bold text-[#0d121b]">{totalCount}</p>
+          </div>
+          <div className="bg-white rounded-2xl border border-[#e7ebf3] shadow-sm p-5 flex flex-col gap-1">
+            <p className="text-xs font-bold text-[#4c669a] uppercase tracking-wide">Trained</p>
+            <p className="text-[24px] sm:text-[30px] font-black font-bold text-green-600">{trainedCount}</p>
+          </div>
+          <div className="bg-white rounded-2xl border border-[#e7ebf3] shadow-sm p-5 flex flex-col gap-1">
+            <p className="text-xs font-bold text-[#4c669a] uppercase tracking-wide">Not Trained</p>
+            <p className="text-[24px] sm:text-[30px] font-black font-bold text-gray-500">{notTrainedCount}</p>
+          </div>
         </div>
 
-        {/* Course summary pills */}
-        <div className="flex flex-wrap gap-3">
-          {[
-            { label: 'Level 2 Chemical Handling',    icon: 'science',               count: 2, color: 'bg-blue-50 border-blue-200 text-blue-700' },
-            { label: 'Standard Operating Procedures', icon: 'menu_book',             count: 2, color: 'bg-violet-50 border-violet-200 text-violet-700' },
-            { label: 'Fire Safety Awareness',         icon: 'local_fire_department', count: 2, color: 'bg-red-50 border-red-200 text-red-700' },
-            { label: 'COSHH Awareness',               icon: 'health_and_safety',     count: 2, color: 'bg-emerald-50 border-emerald-200 text-emerald-700' },
-            { label: 'Manual Handling Training',      icon: 'engineering',           count: 1, color: 'bg-orange-50 border-orange-200 text-orange-700' },
-            { label: 'H&S Induction',                 icon: 'verified_user',         count: 1, color: 'bg-teal-50 border-teal-200 text-teal-700' },
-          ].map(pill => (
-            <div key={pill.label} className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-bold ${pill.color}`}>
-              <span className="material-symbols-outlined text-[14px]">{pill.icon}</span>
-              {pill.label}
-              <span className="bg-white/60 rounded-full px-1.5 py-0.5 text-[10px] font-black">{pill.count}</span>
-            </div>
-          ))}
-        </div>
-
-        {/* Staff in Training Period table */}
+        {/* Training list table */}
         <div className="bg-white rounded-2xl border border-[#e7ebf3] shadow-sm overflow-hidden">
-          {/* Toolbar */}
           <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 border-b border-[#e7ebf3]">
             <div className="flex items-center gap-4 flex-wrap">
-              <h2 className="text-[#0d121b] text-base font-semibold font-black">Staff in Training Period</h2>
+              <h2 className="text-[#0d121b] text-base font-semibold font-black">Training List</h2>
               <span className="text-xs font-bold bg-[#e7ebf3] text-[#4c669a] px-2.5 py-1 rounded-full">
-                {filteredTrainees.length} records
+                {filteredRecords.length} records
               </span>
             </div>
             <div className="flex flex-wrap items-center gap-3">
-              {/* Search */}
               <label className="flex items-center h-9 bg-[#f6f6f8] rounded-lg px-3 border border-transparent focus-within:border-[#2e4150]/30 transition-all">
                 <span className="material-symbols-outlined text-[#4c669a] text-[18px] mr-2">search</span>
                 <input
@@ -363,16 +217,13 @@ const TrainingCertification: React.FC<TrainingCertificationProps> = ({ onNavigat
                   onChange={e => setSearchTerm(e.target.value)}
                 />
               </label>
-              {/* Filter tabs */}
               <div className="flex gap-1">
                 {FILTER_TABS.map(tab => (
                   <button
                     key={tab.key}
                     onClick={() => setActiveFilter(tab.key)}
                     className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
-                      activeFilter === tab.key
-                        ? 'bg-[#2e4150] text-white'
-                        : 'text-[#4c669a] hover:bg-[#e7ebf3]'
+                      activeFilter === tab.key ? 'bg-[#2e4150] text-white' : 'text-[#4c669a] hover:bg-[#e7ebf3]'
                     }`}
                   >
                     {tab.label}
@@ -382,98 +233,69 @@ const TrainingCertification: React.FC<TrainingCertificationProps> = ({ onNavigat
             </div>
           </div>
 
-          {/* Table */}
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[700px]">
+            <table className="w-full min-w-[600px]">
               <thead>
                 <tr className="border-b border-[#e7ebf3] bg-[#f8fafc]">
                   <th className="text-left px-5 py-3 text-xs font-bold text-[#4c669a] uppercase tracking-wide">Staff Member</th>
-                  <th className="text-left px-4 py-3 text-xs font-bold text-[#4c669a] uppercase tracking-wide">Current Course</th>
-                  <th className="text-left px-4 py-3 text-xs font-bold text-[#4c669a] uppercase tracking-wide w-44">Progress</th>
+                  <th className="text-left px-4 py-3 text-xs font-bold text-[#4c669a] uppercase tracking-wide">Training Course</th>
                   <th className="text-left px-4 py-3 text-xs font-bold text-[#4c669a] uppercase tracking-wide">Status</th>
-                  <th className="text-left px-4 py-3 text-xs font-bold text-[#4c669a] uppercase tracking-wide">Due Date</th>
+                  <th className="text-left px-4 py-3 text-xs font-bold text-[#4c669a] uppercase tracking-wide">Expiry Date</th>
                   <th className="text-right px-5 py-3 text-xs font-bold text-[#4c669a] uppercase tracking-wide">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#e7ebf3]">
-                {filteredTrainees.length === 0 ? (
+                {filteredRecords.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-5 py-14 text-center">
+                    <td colSpan={5} className="px-5 py-14 text-center">
                       <span className="material-symbols-outlined text-[#c7c7c7] text-5xl block mb-2">search_off</span>
                       <p className="text-[#4c669a] text-sm font-semibold">No results found</p>
                     </td>
                   </tr>
                 ) : (
-                  filteredTrainees.map(trainee => {
-                    const status = getStatus(trainee.progress);
+                  filteredRecords.map((record: TrainingRecord) => {
+                    const { badge, dot } = statusBadge(record.status);
+                    const matchedCleaner = cleaners.find(c => c.name.trim().toLowerCase() === record.name.trim().toLowerCase());
+                    const profileAvatar = record.avatar || matchedCleaner?.avatar;
                     return (
-                      <tr key={trainee.id} className="hover:bg-[#f8fafc] transition-colors group">
-                        {/* Staff Member */}
+                      <tr key={record.id} className="hover:bg-[#f8fafc] transition-colors group">
                         <td className="px-5 py-4">
                           <div className="flex items-center gap-3">
-                            {trainee.avatar ? (
-                              <img src={trainee.avatar} alt={trainee.name} className="w-9 h-9 rounded-full object-cover shrink-0 border border-gray-200" />
+                            {profileAvatar ? (
+                              <img src={profileAvatar} alt={record.name} className="w-9 h-9 rounded-full object-cover shrink-0 border border-gray-200" />
                             ) : (
-                              <div className={`w-9 h-9 rounded-full ${trainee.avatarColor} shrink-0 flex items-center justify-center`}>
-                                <span className="text-white text-xs font-black">{trainee.initials}</span>
+                              <div className={`w-9 h-9 rounded-full ${record.avatarColor} shrink-0 flex items-center justify-center`}>
+                                <span className="text-white text-xs font-black">{record.initials}</span>
                               </div>
                             )}
                             <div>
-                              <p className="text-sm font-bold text-[#0d121b]">{trainee.name}</p>
-                              <p className="text-xs text-[#4c669a]">{trainee.location}</p>
+                              <p className="text-sm font-bold text-[#0d121b]">{record.name}</p>
+                              <p className="text-xs text-[#4c669a]">{record.location}</p>
                             </div>
                           </div>
                         </td>
-
-                        {/* Current Course */}
                         <td className="px-4 py-4">
                           <div className="flex items-center gap-2">
-                            <span className="material-symbols-outlined text-[18px] text-[#4c669a]">{trainee.courseIcon}</span>
-                            <div>
-                              <p className="text-sm font-semibold text-[#0d121b]">{trainee.course}</p>
-                              <p className="text-xs text-[#4c669a]">{trainee.certName}</p>
-                            </div>
+                            <span className="material-symbols-outlined text-[18px] text-[#4c669a]">{record.courseIcon}</span>
+                            <p className="text-sm font-semibold text-[#0d121b]">{record.course}</p>
                           </div>
                         </td>
-
-                        {/* Progress */}
                         <td className="px-4 py-4">
-                          <div className="flex items-center gap-3">
-                            <div className="flex-1 h-1 rounded-full bg-[#e7ebf3] overflow-hidden">
-                              <div
-                                className={`h-full rounded-full transition-all duration-500 ${
-                                  trainee.progress >= 100 ? 'bg-green-500' :
-                                  trainee.progress >= 80  ? 'bg-amber-400' :
-                                                            'bg-[#2e4150]'
-                                }`}
-                                style={{ width: `${trainee.progress}%` }}
-                              />
-                            </div>
-                            <span className="text-xs font-black text-[#4c669a] w-8 text-right shrink-0">{trainee.progress}%</span>
-                          </div>
-                        </td>
-
-                        {/* Status */}
-                        <td className="px-4 py-4">
-                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold font-black uppercase tracking-wide ${status.badge}`}>
-                            <span className={`w-1.5 h-1.5 rounded-full ${status.dot}`} />
-                            {status.label}
+                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold font-black uppercase tracking-wide ${badge}`}>
+                            <span className={`w-1.5 h-1.5 rounded-full ${dot}`} />
+                            {record.status}
                           </span>
                         </td>
-
-                        {/* Due Date */}
                         <td className="px-4 py-4 text-sm text-[#4c669a] font-medium">
-                          {formatDate(trainee.dueDate)}
+                          {formatDate(record.expiryDate)}
                         </td>
-
-                        {/* Actions */}
                         <td className="px-5 py-4 text-right">
                           <button
                             onClick={() => {
-                              navigateToUrl(`/training/record/${trainee.id}`);
+                              navigateToUrl(`/training/record/${record.id}`);
                               onNavigate('TRAINING_DETAIL');
                             }}
-                            className="text-[#000] text-xs font-semibold font-black capitalize tracking-wide transition-colors cursor-pointer  "
+                            className="text-[#000] text-xs font-semibold font-black capitalize tracking-wide transition-colors cursor-pointer"
                           >
                             View Details
                           </button>
@@ -486,9 +308,8 @@ const TrainingCertification: React.FC<TrainingCertificationProps> = ({ onNavigat
             </table>
           </div>
 
-          {/* Footer */}
           <div className="px-5 py-3 border-t border-[#e7ebf3] bg-[#f8fafc] flex items-center justify-between">
-            <p className="text-xs text-[#4c669a]">Showing <span className="font-bold text-[#0d121b]">{filteredTrainees.length}</span> of <span className="font-bold text-[#0d121b]">{trainees.length}</span> records</p>
+            <p className="text-xs text-[#4c669a]">Showing <span className="font-bold text-[#0d121b]">{filteredRecords.length}</span> of <span className="font-bold text-[#0d121b]">{trainingRecords.length}</span> records</p>
             <p className="text-xs text-[#4c669a]">Last updated: <span className="font-bold text-[#0d121b]">Today</span></p>
           </div>
         </div>
@@ -499,15 +320,15 @@ const TrainingCertification: React.FC<TrainingCertificationProps> = ({ onNavigat
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setIsModalOpen(false)} />
-          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 animate-in fade-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between px-6 pt-6 pb-4">
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between px-6 pt-6 pb-4 sticky top-0 bg-white border-b border-[#e7ebf3]">
               <h3 className="text-lg font-bold text-[#0d121b]">Assign Training</h3>
               <button onClick={() => setIsModalOpen(false)} className="p-1 rounded-lg hover:bg-[#e7ebf3] transition-colors cursor-pointer">
                 <span className="material-symbols-outlined text-[20px] text-[#4c669a]">close</span>
               </button>
             </div>
 
-            <div className="px-6 pb-6 space-y-4">
+            <div className="px-6 pb-6 space-y-4 pt-4">
               <div className="space-y-1.5">
                 <label className="text-sm font-bold text-[#0d121b]">Employee <span className="text-red-500">*</span></label>
                 <select
@@ -516,20 +337,20 @@ const TrainingCertification: React.FC<TrainingCertificationProps> = ({ onNavigat
                   className="w-full h-11 rounded-lg border border-[#e7ebf3] bg-[#f6f6f8] px-4 text-sm text-[#0d121b] outline-none focus:border-[#2e4150] transition-colors cursor-pointer"
                 >
                   <option value="">Select an employee…</option>
-                  {verifiedEmployees.map(emp => (
+                  {assignableEmployees.map(emp => (
                     <option key={emp.id} value={emp.id}>{emp.name} — {emp.location || 'Unassigned'}</option>
                   ))}
                 </select>
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-sm font-bold text-[#0d121b]">Training Type <span className="text-red-500">*</span></label>
+                <label className="text-sm font-bold text-[#0d121b]">Training Course <span className="text-red-500">*</span></label>
                 <select
                   value={modalCourse}
                   onChange={e => setModalCourse(e.target.value)}
                   className="w-full h-11 rounded-lg border border-[#e7ebf3] bg-[#f6f6f8] px-4 text-sm text-[#0d121b] outline-none focus:border-[#2e4150] transition-colors cursor-pointer"
                 >
-                  <option value="">Select training type…</option>
+                  <option value="">Select training course…</option>
                   {TRAINING_TYPES.map(t => (
                     <option key={t.label} value={t.label}>{t.label}</option>
                   ))}
@@ -540,10 +361,76 @@ const TrainingCertification: React.FC<TrainingCertificationProps> = ({ onNavigat
                 <label className="text-sm font-bold text-[#0d121b]">Training Start Date <span className="text-red-500">*</span></label>
                 <input
                   type="date"
-                  value={modalDate}
-                  onChange={e => setModalDate(e.target.value)}
+                  value={modalStartDate}
+                  onChange={e => setModalStartDate(e.target.value)}
                   className="w-full h-11 rounded-lg border border-[#e7ebf3] bg-[#f6f6f8] px-4 text-sm text-[#0d121b] outline-none focus:border-[#2e4150] transition-colors"
                 />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-sm font-bold text-[#0d121b]">Training End Date</label>
+                <input
+                  type="date"
+                  value={modalEndDate}
+                  onChange={e => {
+                    const endDate = e.target.value;
+                    setModalEndDate(endDate);
+                    setModalExpiryDate(addOneYear(endDate));
+                  }}
+                  className="w-full h-11 rounded-lg border border-[#e7ebf3] bg-[#f6f6f8] px-4 text-sm text-[#0d121b] outline-none focus:border-[#2e4150] transition-colors"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-sm font-bold text-[#0d121b]">Expiry Date</label>
+                <input
+                  type="date"
+                  value={modalExpiryDate}
+                  readOnly
+                  className="w-full h-11 rounded-lg border border-[#e7ebf3] bg-[#e7ebf3] px-4 text-sm text-[#0d121b] cursor-not-allowed"
+                />
+                <p className="text-xs text-[#4c669a]">Auto-set to 1 year after training completion</p>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-sm font-bold text-[#0d121b]">Status</label>
+                <select
+                  value={modalStatus}
+                  onChange={e => setModalStatus(e.target.value as 'Trained' | 'Not Trained')}
+                  className="w-full h-11 rounded-lg border border-[#e7ebf3] bg-[#f6f6f8] px-4 text-sm text-[#0d121b] outline-none focus:border-[#2e4150] transition-colors cursor-pointer"
+                >
+                  <option value="Not Trained">Not Trained</option>
+                  <option value="Trained">Trained</option>
+                </select>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-sm font-bold text-[#0d121b]">Certificate Document</label>
+                <div
+                  className="w-full border-2 border-dashed border-[#e7ebf3] rounded-xl p-4 flex flex-col items-center gap-2 cursor-pointer hover:border-[#2e4150]/40 transition-colors"
+                  onClick={() => {
+                    const input = document.createElement('input');
+                    input.type = 'file';
+                    input.accept = '.pdf,.jpg,.jpeg,.png,.doc,.docx';
+                    input.onchange = (e: Event) => {
+                      const file = (e.target as HTMLInputElement)?.files?.[0];
+                      if (file) {
+                        setModalCertFile(file.name);
+                        const reader = new FileReader();
+                        reader.onload = () => setModalCertData(reader.result as string);
+                        reader.readAsDataURL(file);
+                      }
+                    };
+                    input.click();
+                  }}
+                >
+                  <span className="material-symbols-outlined text-[24px] text-[#4c669a]">cloud_upload</span>
+                  {modalCertFile ? (
+                    <p className="text-sm font-semibold text-[#0d121b]">{modalCertFile}</p>
+                  ) : (
+                    <p className="text-xs text-[#4c669a]">Click to upload (optional)</p>
+                  )}
+                </div>
               </div>
 
               <div className="flex items-center justify-end gap-3 pt-2">
@@ -555,7 +442,7 @@ const TrainingCertification: React.FC<TrainingCertificationProps> = ({ onNavigat
                 </button>
                 <button
                   onClick={handleAssign}
-                  disabled={!modalEmpId || !modalCourse || !modalDate}
+                  disabled={!isValidAssign}
                   className="flex items-center gap-2 rounded-full bg-[#2e4150] text-white text-sm font-bold px-6 h-10 cursor-pointer hover:bg-[#2e4150]/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <span className="material-symbols-outlined text-[18px]">add_circle</span>

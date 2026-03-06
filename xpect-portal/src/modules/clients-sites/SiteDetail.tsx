@@ -1,7 +1,5 @@
-import React from 'react';
-import { getSiteById, getClientById, getAssignmentsBySite } from './mockData';
-import { addedSites } from './SitesList';
-import { addedClients } from './ClientsList';
+import React, { useState } from 'react';
+import { useClientsSites } from '../../context/ClientsSitesContext';
 
 interface SiteDetailProps {
   siteId: string;
@@ -21,9 +19,21 @@ const COMPLIANCE_STYLES = {
 };
 
 const SiteDetail: React.FC<SiteDetailProps> = ({ siteId, onBack }) => {
-  const site        = getSiteById(siteId) || addedSites.find(s => s.id === siteId);
-  const client      = site ? (getClientById(site.clientId) || addedClients.find(c => c.id === site.clientId)) : undefined;
+  const { getSiteById, getClientById, getAssignmentsBySite, deleteSite } = useClientsSites();
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const site        = getSiteById(siteId);
+  const client      = site ? getClientById(site.clientId) : undefined;
   const assignments = site ? getAssignmentsBySite(siteId) : [];
+
+  const handleDelete = async () => {
+    try {
+      await deleteSite(siteId);
+      setShowDeleteConfirm(false);
+      onBack();
+    } catch {
+      // Could show error toast
+    }
+  };
 
   if (!site) return (
     <div className="flex-1 flex items-center justify-center p-10">
@@ -43,16 +53,38 @@ const SiteDetail: React.FC<SiteDetailProps> = ({ siteId, onBack }) => {
           <span className="material-symbols-outlined text-[18px]">arrow_back</span>
           Back to Sites
         </button>
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center justify-between gap-4 flex-wrap">
           <div>
             <h1 className="text-[#0d121b] text-xl  sm:text-[30px] font-bold   font-black">{site.name}</h1>
             <p className="text-[#6b7a99] text-sm mt-0.5">{client?.name ?? '—'} · {site.postcode}</p>
           </div>
-          <span className={`inline-flex items-center px-3 py-1.5 rounded text-sm font-bold uppercase tracking-wide ${rs.badge}`}>
-            {site.riskLevel} Risk
-          </span>
+          <div className="flex items-center gap-2">
+            <span className={`inline-flex items-center px-3 py-1.5 rounded text-sm font-bold uppercase tracking-wide ${rs.badge}`}>
+              {site.riskLevel} Risk
+            </span>
+            <button
+              onClick={() => setShowDeleteConfirm(true)}
+              className="flex items-center gap-2 px-3 py-1.5 rounded border border-red-200 text-red-600 bg-red-50 hover:bg-red-100 text-sm font-semibold transition-colors cursor-pointer"
+            >
+              <span className="material-symbols-outlined text-[18px]">delete</span>
+              Delete
+            </button>
+          </div>
         </div>
       </div>
+
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setShowDeleteConfirm(false)} role="dialog" aria-modal="true" aria-labelledby="delete-site-title">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full mx-4 p-6" onClick={e => e.stopPropagation()}>
+            <h3 id="delete-site-title" className="text-lg font-bold text-[#0d121b] mb-2">Delete Site</h3>
+            <p className="text-sm text-[#6b7a99] mb-6">Are you sure you want to delete &quot;{site.name}&quot;? This will also remove all worker assignments to this site. This action cannot be undone.</p>
+            <div className="flex gap-3">
+              <button onClick={handleDelete} className="flex-1 px-4 py-2.5 rounded-xl bg-red-600 text-white text-sm font-semibold hover:bg-red-700 cursor-pointer">Delete</button>
+              <button onClick={() => setShowDeleteConfirm(false)} className="flex-1 px-4 py-2.5 rounded-xl border border-[#e7ebf3] text-[#2e4150] text-sm font-semibold hover:bg-[#f6f7fb] cursor-pointer">Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="flex-1 px-0 py-5 space-y-5">
 

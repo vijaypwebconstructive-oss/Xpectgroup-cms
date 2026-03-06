@@ -1,4 +1,5 @@
-import { RiskAssessment, RAMS, Chemical, SDS } from './types';
+import { RiskAssessment, RAMS, Chemical, SDS, Hazard, ComplianceRequirement } from './types';
+import { loadStorage, saveStorage } from '../../utils/storage';
 
 // Helper
 const daysFromNow = (days: number): string => {
@@ -13,6 +14,7 @@ export const MOCK_RISK_ASSESSMENTS: RiskAssessment[] = [
   {
     id: 'ra-001',
     title: 'General Office Cleaning Risk Assessment',
+    sector: 'Office',
     taskType: 'Routine Cleaning',
     riskLevel: 'Low',
     createdBy: 'Patricia Nwachukwu',
@@ -49,6 +51,7 @@ export const MOCK_RISK_ASSESSMENTS: RiskAssessment[] = [
   {
     id: 'ra-002',
     title: 'Healthcare Facility Deep Clean',
+    sector: 'Healthcare',
     taskType: 'Deep Clean',
     riskLevel: 'High',
     createdBy: 'Tom Briggs',
@@ -125,6 +128,7 @@ export const MOCK_RISK_ASSESSMENTS: RiskAssessment[] = [
   {
     id: 'ra-004',
     title: 'School Classroom Evening Clean',
+    sector: 'Schools',
     taskType: 'Routine Cleaning',
     riskLevel: 'Low',
     createdBy: 'Amanda Foster',
@@ -155,6 +159,7 @@ export const MOCK_RISK_ASSESSMENTS: RiskAssessment[] = [
   {
     id: 'ra-005',
     title: 'Industrial Kitchen & Canteen Clean',
+    sector: 'Hospitality',
     taskType: 'Kitchen Cleaning',
     riskLevel: 'Medium',
     createdBy: 'Tom Briggs',
@@ -185,46 +190,6 @@ export const MOCK_RISK_ASSESSMENTS: RiskAssessment[] = [
         harm: 'Eye injury, skin burns',
         control: 'Wear goggles and nitrile gloves. Eyewash station on-site. Follow COSHH sheet.',
         residualRisk: 'Low',
-      },
-    ],
-  },
-  {
-    id: 'ra-006',
-    title: 'Construction Site Post-Build Clean',
-    taskType: 'Post-Construction Clean',
-    riskLevel: 'High',
-    createdBy: 'Claire Ashton',
-    lastReviewDate: daysFromNow(-45),
-    nextReviewDate: daysFromNow(-15),
-    approvalStatus: 'not_approved',
-    taskDescription: 'Final builder\'s clean of new commercial build including removing construction debris, dust, adhesive residues and builder\'s compounds from all surfaces.',
-    equipmentUsed: ['Industrial vacuum', 'Razor scrapers', 'Chemical strippers', 'Pressure washer', 'HEPA filter vacuum'],
-    workArea: 'All floors, glazing, fixtures, sanitary ware, external areas',
-    requiredPPE: ['Gloves', 'Hard hat', 'Eye protection', 'Mask', 'Safety shoes', 'Hi-vis vest'],
-    hazards: [
-      {
-        hazard: 'Construction debris — cuts and punctures',
-        harm: 'Lacerations, puncture wounds, tetanus risk',
-        control: 'Wear cut-resistant gloves. Steel toe-cap boots mandatory. Clear debris before cleaning.',
-        residualRisk: 'Medium',
-      },
-      {
-        hazard: 'Silica dust inhalation',
-        harm: 'Silicosis, lung disease',
-        control: 'FFP3 mask mandatory. Wet suppression where possible. HEPA vacuum only. Limit exposure time.',
-        residualRisk: 'Medium',
-      },
-      {
-        hazard: 'Chemical strippers — fume inhalation',
-        harm: 'Respiratory damage, dizziness',
-        control: 'Use only in ventilated areas. Wear full-face respirator. Read COSHH sheets before use.',
-        residualRisk: 'Medium',
-      },
-      {
-        hazard: 'Unstable structures / unfinished areas',
-        harm: 'Crush injury, fall through floor',
-        control: 'Pre-work site survey mandatory. Do not enter unbarriered areas. Site induction required.',
-        residualRisk: 'Medium',
       },
     ],
   },
@@ -344,33 +309,6 @@ export const MOCK_RAMS: RAMS[] = [
     linkedRiskAssessmentIds: ['ra-001'],
     signedCopyAvailable: true,
   },
-  {
-    id: 'rams-005',
-    siteName: 'Greenfield Industrial Unit 7',
-    clientName: 'Greenfield Manufacturing',
-    description: 'Post-build construction clean of newly completed warehouse unit including concrete dust removal and glazing clean.',
-    workingHours: 'Monday–Wednesday, 07:00–17:00',
-    status: 'draft',
-    lastUpdated: daysFromNow(-2),
-    supervisor: 'Claire Ashton',
-    workMethod: [
-      'Site induction with site manager before works commence.',
-      'Don full PPE: hard hat, hi-vis, steel-cap boots, FFP3 mask, goggles, gloves.',
-      'Begin with HEPA vacuum of all concrete dust from floors.',
-      'Scrape adhesive residues from floor tiles using razor scraper.',
-      'Power wash external areas and loading bay.',
-      'Clean all glazing inside and out using water-fed system.',
-      'Remove all waste and debris to skip — segregate waste streams.',
-      'Final walk-through with site manager before sign-off.',
-    ],
-    emergencyProcedures: [
-      'Injury: Call 999. First aid kit in site office. Report to site manager.',
-      'Dust emergency / fume exposure: Exit immediately. Fresh air. Call 999 if symptoms persist.',
-      'Fire: Activate alarm. Exit via main gate. Muster in car park.',
-    ],
-    linkedRiskAssessmentIds: ['ra-006'],
-    signedCopyAvailable: false,
-  },
 ];
 
 // ── Chemicals (COSHH Register) ────────────────────────────────────────────────
@@ -455,53 +393,18 @@ export const MOCK_CHEMICALS: Chemical[] = [
     handlingInstructions: 'Dissolve one tablet per litre of cold water (NOT hot). Wear mask when dissolving. Do not mix with any other chemicals.',
     maxExposureLimit: '0.5 ppm STEL (chlorine gas)',
   },
-  {
-    id: 'chem-006',
-    name: 'Prochem Tile & Grout Cleaner',
-    manufacturer: 'Prochem Europe Ltd',
-    hazardType: 'Irritant',
-    hazardSymbols: ['GHS07'],
-    storageLocation: 'Chemical store — shelf A3',
-    ppeRequired: ['Gloves', 'Eye protection'],
-    sdsAvailable: true,
-    sdsId: 'sds-006',
-    firstAidMeasures: 'Skin: rinse with water. Eyes: rinse with water 10 minutes. Consult doctor if irritation continues.',
-    spillResponse: 'Mop up with absorbent. Rinse area with water. Ventilate.',
-    disposalMethod: 'Diluted: drain disposal. Concentrated: environmental regulations apply.',
-    handlingInstructions: 'Dilute 1:5 with water. Apply with brush, leave 5 minutes, agitate and rinse.',
-    maxExposureLimit: 'Not established',
-  },
-  {
-    id: 'chem-007',
-    name: 'P3-Alcodes IPA Disinfectant 70%',
-    manufacturer: 'Ecolab Professional',
-    hazardType: 'Flammable',
-    hazardSymbols: ['GHS02', 'GHS07'],
-    storageLocation: 'Chemical store — flammable cabinet (max 50L)',
-    ppeRequired: ['Gloves', 'Eye protection'],
-    sdsAvailable: true,
-    sdsId: 'sds-007',
-    firstAidMeasures: 'Inhalation of vapour: fresh air, rest. Skin: wash thoroughly. Eyes: rinse with water.',
-    spillResponse: 'Eliminate all ignition sources immediately. Absorb with dry sand. Dispose as flammable waste.',
-    disposalMethod: 'Flammable liquid waste contractor only.',
-    handlingInstructions: 'Highly flammable. Keep away from heat and ignition sources. No smoking. Flash point 12°C.',
-    maxExposureLimit: '400 ppm TWA, 500 ppm STEL (IPA)',
-  },
-  {
-    id: 'chem-008',
-    name: 'Fabuloso Multi-Purpose Cleaner',
-    manufacturer: 'Colgate-Palmolive',
-    hazardType: 'Low Hazard',
-    hazardSymbols: [],
-    storageLocation: 'Chemical store — shelf A4',
-    ppeRequired: ['Gloves'],
-    sdsAvailable: false,
-    firstAidMeasures: 'Skin: rinse with water. Eyes: rinse with water. If swallowed: drink water, do not induce vomiting.',
-    spillResponse: 'Mop up, rinse area with water.',
-    disposalMethod: 'Drain disposal acceptable when diluted.',
-    handlingInstructions: 'Ready to use. Do not mix with bleach or other chemicals. Avoid eye contact.',
-  },
 ];
+
+// ── Added Chemicals (COSHH Register) ──────────────────────────────────────────
+const CHEMICALS_ADDED_KEY = 'coshh_addedChemicals';
+export const addedChemicals: Chemical[] = loadStorage<Chemical[]>(CHEMICALS_ADDED_KEY, []);
+
+export const addChemical = (c: Chemical): void => {
+  addedChemicals.unshift(c);
+  saveStorage(CHEMICALS_ADDED_KEY, addedChemicals);
+};
+
+export const getAllChemicals = (): Chemical[] => [...MOCK_CHEMICALS, ...addedChemicals];
 
 // ── SDS Library ───────────────────────────────────────────────────────────────
 
@@ -564,49 +467,127 @@ export const MOCK_SDS: SDS[] = [
     manufacturer: 'Ecolab Ltd',
     revision: 'Rev. 1',
   },
-  {
-    id: 'sds-006',
-    chemicalId: 'chem-006',
-    chemicalName: 'Prochem Tile & Grout Cleaner',
-    issueDate: '2024-01-10',
-    reviewDate: daysFromNow(340),
-    status: 'valid',
-    manufacturer: 'Prochem Europe Ltd',
-    fileName: 'Prochem-TileGrout-SDS.pdf',
-    fileSize: '0.7 MB',
-    revision: 'Rev. 2',
-  },
-  {
-    id: 'sds-007',
-    chemicalId: 'chem-007',
-    chemicalName: 'P3-Alcodes IPA Disinfectant 70%',
-    issueDate: '2023-08-01',
-    reviewDate: daysFromNow(160),
-    status: 'valid',
-    manufacturer: 'Ecolab Professional',
-    fileName: 'P3-Alcodes-IPA-SDS.pdf',
-    fileSize: '1.1 MB',
-    revision: 'Rev. 5',
-  },
-  {
-    id: 'sds-008',
-    chemicalId: 'chem-008',
-    chemicalName: 'Fabuloso Multi-Purpose Cleaner',
-    issueDate: '2023-01-01',
-    reviewDate: daysFromNow(-10),
-    status: 'expired',
-    manufacturer: 'Colgate-Palmolive',
-    revision: 'Rev. 1',
-  },
 ];
+
+// ── Added SDS (SDS Library) ───────────────────────────────────────────────────
+const SDS_ADDED_KEY = 'coshh_addedSDS';
+export const addedSDS: SDS[] = loadStorage<SDS[]>(SDS_ADDED_KEY, []);
+
+export const addSDS = (s: SDS): void => {
+  addedSDS.unshift(s);
+  saveStorage(SDS_ADDED_KEY, addedSDS);
+};
+
+export const getAllSDS = (): SDS[] => [...MOCK_SDS, ...addedSDS];
+
+// ── Added Risk Assessments (New Assessment form) ─────────────────────────────
+
+const RISK_ASSESSMENTS_KEY = 'risk_addedAssessments';
+const DELETED_RISK_IDS_KEY = 'risk_deletedIds';
+
+export const addedRiskAssessments: RiskAssessment[] = loadStorage<RiskAssessment[]>(RISK_ASSESSMENTS_KEY, []);
+export const deletedRiskIds = new Set<string>(loadStorage<string[]>(DELETED_RISK_IDS_KEY, []));
+
+const persistRiskAssessments = () => {
+  saveStorage(RISK_ASSESSMENTS_KEY, addedRiskAssessments);
+  saveStorage(DELETED_RISK_IDS_KEY, Array.from(deletedRiskIds));
+};
+
+export const getAllRiskAssessments = (): RiskAssessment[] =>
+  [...MOCK_RISK_ASSESSMENTS, ...addedRiskAssessments].filter(r => !deletedRiskIds.has(r.id));
+
+export const addRiskAssessment = (ra: RiskAssessment): void => {
+  addedRiskAssessments.push(ra);
+  persistRiskAssessments();
+};
+
+export const deleteRiskAssessment = (id: string): void => {
+  deletedRiskIds.add(id);
+  const idx = addedRiskAssessments.findIndex(r => r.id === id);
+  if (idx >= 0) addedRiskAssessments.splice(idx, 1);
+  persistRiskAssessments();
+};
+
+// ── Hazard overrides (editable in Risk Assessment Detail) ─────────────────────
+
+const HAZARD_OVERRIDES_KEY = 'risk_hazardOverrides';
+export const riskHazardOverrides: Record<string, Hazard[]> = loadStorage<Record<string, Hazard[]>>(HAZARD_OVERRIDES_KEY, {});
+
+export const getHazardsForRisk = (riskId: string): Hazard[] => {
+  const ra = getAllRiskAssessments().find(r => r.id === riskId);
+  return riskHazardOverrides[riskId] ?? ra?.hazards ?? [];
+};
+
+export const setHazardsForRisk = (riskId: string, hazards: Hazard[]): void => {
+  riskHazardOverrides[riskId] = hazards;
+  saveStorage(HAZARD_OVERRIDES_KEY, riskHazardOverrides);
+};
+
+// ── Required PPE overrides (editable in Risk Assessment Detail) ─────────────────
+
+const PPE_OVERRIDES_KEY = 'risk_ppeOverrides';
+export const riskPPEOverrides: Record<string, string[]> = loadStorage<Record<string, string[]>>(PPE_OVERRIDES_KEY, {});
+
+export const getRequiredPPEForRisk = (riskId: string): string[] => {
+  const ra = getAllRiskAssessments().find(r => r.id === riskId);
+  return riskPPEOverrides[riskId] ?? ra?.requiredPPE ?? [];
+};
+
+export const setRequiredPPEForRisk = (riskId: string, ppe: string[]): void => {
+  riskPPEOverrides[riskId] = ppe;
+  saveStorage(PPE_OVERRIDES_KEY, riskPPEOverrides);
+};
+
+// ── Client compliance requirements (editable in Risk Assessment Detail) ────────
+
+const COMPLIANCE_OVERRIDES_KEY = 'risk_complianceOverrides';
+const complianceOverrides: Record<string, ComplianceRequirement[]> = loadStorage<Record<string, ComplianceRequirement[]>>(COMPLIANCE_OVERRIDES_KEY, {});
+
+export const getComplianceForRisk = (riskId: string): ComplianceRequirement[] => {
+  return complianceOverrides[riskId] ?? [];
+};
+
+export const setComplianceForRisk = (riskId: string, items: ComplianceRequirement[]): void => {
+  complianceOverrides[riskId] = items;
+  saveStorage(COMPLIANCE_OVERRIDES_KEY, complianceOverrides);
+};
+
+// ── Added RAMS (new RAMS form) ────────────────────────────────────────────────
+
+const RAMS_ADDED_KEY = 'rams_added';
+const RAMS_DELETED_IDS_KEY = 'rams_deletedIds';
+
+export const addedRAMS: RAMS[] = loadStorage<RAMS[]>(RAMS_ADDED_KEY, []);
+export const deletedRAMSIds = new Set<string>(loadStorage<string[]>(RAMS_DELETED_IDS_KEY, []));
+
+const persistRAMS = () => {
+  saveStorage(RAMS_ADDED_KEY, addedRAMS);
+  saveStorage(RAMS_DELETED_IDS_KEY, Array.from(deletedRAMSIds));
+};
+
+export const getAllRAMS = (): RAMS[] =>
+  [...MOCK_RAMS, ...addedRAMS].filter(r => !deletedRAMSIds.has(r.id));
+
+export const addRAMS = (r: RAMS): void => {
+  addedRAMS.unshift(r);
+  persistRAMS();
+};
+
+export const deleteRAMS = (id: string): void => {
+  deletedRAMSIds.add(id);
+  const idx = addedRAMS.findIndex(r => r.id === id);
+  if (idx >= 0) addedRAMS.splice(idx, 1);
+  persistRAMS();
+};
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-export const getRiskById       = (id: string) => MOCK_RISK_ASSESSMENTS.find(r => r.id === id);
-export const getRAMSById       = (id: string) => MOCK_RAMS.find(r => r.id === id);
-export const getChemicalById   = (id: string) => MOCK_CHEMICALS.find(c => c.id === id);
-export const getSDSById        = (id: string) => MOCK_SDS.find(s => s.id === id);
-export const getSDSByChemical  = (chemId: string) => MOCK_SDS.find(s => s.chemicalId === chemId);
+export const getRiskById       = (id: string) => getAllRiskAssessments().find(r => r.id === id);
+export const getRAMSById       = (id: string) => getAllRAMS().find(r => r.id === id);
+export const isMockRAMS        = (id: string) => MOCK_RAMS.some(r => r.id === id);
+export const getChemicalById   = (id: string) => getAllChemicals().find(c => c.id === id);
+export const getSDSById        = (id: string) => getAllSDS().find(s => s.id === id);
+export const getSDSByChemical  = (chemId: string) => getAllSDS().find(s => s.chemicalId === chemId);
 
 export const daysUntil = (dateStr: string): number => {
   if (!dateStr) return Infinity;

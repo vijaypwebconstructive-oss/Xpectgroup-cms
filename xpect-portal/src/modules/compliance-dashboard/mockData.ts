@@ -6,48 +6,97 @@ import {
   StaffSummary,
 } from './types';
 
-import { MOCK_DOCUMENTS } from '../document-control/mockData';
-import { addedDocuments } from '../document-control/DocumentsLibrary';
-import { MOCK_RISK_ASSESSMENTS, MOCK_RAMS, MOCK_CHEMICALS, MOCK_SDS } from '../risk-coshh/mockData';
-import { MOCK_CLIENTS, MOCK_ASSIGNMENTS, daysUntil as csDaysUntil, contractHealth } from '../clients-sites/mockData';
-import { MOCK_PPE_RECORDS, MOCK_PPE_INVENTORY } from '../../views/ppeData';
-
-const daysFromNow = (days: number): string => {
-  const d = new Date();
-  d.setDate(d.getDate() + days);
-  return d.toISOString().split('T')[0];
-};
+import type { RiskAssessment, RAMS } from '../risk-coshh/types';
+import type { Client, WorkerAssignment } from '../clients-sites/types';
+import { getAllRiskAssessments, getAllRAMS } from '../risk-coshh/mockData';
+import type { PolicyDocument } from '../document-control/types';
+import type { PPEIssueRecord, PPEInventoryRecord } from '../../types';
+import type { TrainingRecord } from '../../views/trainingMockData';
 
 const now = () => new Date().toISOString();
 
-const daysUntilDate = (dateStr: string): number => {
+export const daysUntilDate = (dateStr: string): number => {
   if (!dateStr) return Infinity;
   const n = new Date(); n.setHours(0, 0, 0, 0);
   return Math.ceil((new Date(dateStr).getTime() - n.getTime()) / 86_400_000);
 };
 
-// ── Training Expiry Records ──────────────────────────────────────────────────
-export const MOCK_TRAINING_EXPIRY: TrainingExpiry[] = [
-  { id: 'te-001', employee: 'Marcus Thompson', training: 'Working at Height', expiryDate: daysFromNow(3), daysRemaining: 3 },
-  { id: 'te-002', employee: 'Sarah Okafor', training: 'Manual Handling', expiryDate: daysFromNow(5), daysRemaining: 5 },
-  { id: 'te-003', employee: 'Liam Patel', training: 'COSHH Awareness', expiryDate: daysFromNow(6), daysRemaining: 6 },
-  { id: 'te-004', employee: 'Amara Diallo', training: 'First Aid at Work', expiryDate: daysFromNow(9), daysRemaining: 9 },
-  { id: 'te-005', employee: 'Jordan Wells', training: 'Fire Safety Awareness', expiryDate: daysFromNow(12), daysRemaining: 12 },
-  { id: 'te-006', employee: 'Priya Nair', training: 'Lone Working Policy', expiryDate: daysFromNow(15), daysRemaining: 15 },
-  { id: 'te-007', employee: 'Ethan Brooks', training: 'Slips, Trips & Falls', expiryDate: daysFromNow(18), daysRemaining: 18 },
-  { id: 'te-008', employee: 'Fatima Hassan', training: 'PPE Awareness', expiryDate: daysFromNow(22), daysRemaining: 22 },
-  { id: 'te-009', employee: 'Carlos Reyes', training: 'Infection Control', expiryDate: daysFromNow(26), daysRemaining: 26 },
-  { id: 'te-010', employee: 'Ngozi Eze', training: 'Hazardous Waste Handling', expiryDate: daysFromNow(29), daysRemaining: 29 },
-];
+/** Build TrainingExpiry list from training records (API-backed) */
+export const buildTrainingExpiry = (records: TrainingRecord[]): TrainingExpiry[] => {
+  return records
+    .filter(r => r.expiryDate)
+    .map(r => {
+      const days = daysUntilDate(r.expiryDate);
+      return {
+        id: r.id,
+        employee: r.name,
+        training: r.course,
+        expiryDate: r.expiryDate,
+        daysRemaining: days,
+      };
+    })
+    .filter(t => t.daysRemaining <= 90)
+    .sort((a, b) => a.daysRemaining - b.daysRemaining);
+};
 
 // ── Dynamically computed alerts from real project data ───────────────────────
 
-export const buildComplianceAlerts = (): ComplianceAlert[] => {
+export interface RiskCoshhData {
+  riskAssessments: RiskAssessment[];
+  ramsList: RAMS[];
+}
+
+export interface ClientsSitesData {
+  clients: Client[];
+  assignments: WorkerAssignment[];
+}
+
+export interface PolicyDocumentsData {
+  documents: PolicyDocument[];
+}
+
+export interface PPERecordsData {
+  records: PPEIssueRecord[];
+  inventory: PPEInventoryRecord[];
+}
+
+export interface TrainingData {
+  trainingRecords: TrainingRecord[];
+}
+
+const daysUntilDateOnly = (dateStr: string): number => {
+  if (!dateStr) return Infinity;
+  const n = new Date(); n.setHours(0, 0, 0, 0);
+  return Math.ceil((new Date(dateStr).getTime() - n.getTime()) / 86_400_000);
+};
+
+const contractHealth = (client: Client): 'Valid' | 'Expiring' | 'Expired' => {
+  const contractDays = daysUntilDateOnly(client.contractEnd);
+  const insuranceDays = daysUntilDateOnly(client.insuranceExpiry);
+  if (contractDays < 0 || insuranceDays < 0) return 'Expired';
+  if (contractDays <= 30 || insuranceDays <= 30) return 'Expiring';
+  return 'Valid';
+};
+
+export const buildComplianceAlerts = (
+  riskCoshh?: RiskCoshhData,
+  clientsSites?: ClientsSitesData,
+  policyDocs?: PolicyDocumentsData,
+  ppeData?: PPERecordsData,
+  trainingData?: TrainingData
+): ComplianceAlert[] => {
   const alerts: ComplianceAlert[] = [];
   let idx = 0;
   const id = () => `alert-${String(++idx).padStart(3, '0')}`;
 
-  const allDocuments = [...addedDocuments, ...MOCK_DOCUMENTS];
+  const allDocuments = policyDocs?.documents ?? [];
+  const allRiskAssessments = riskCoshh?.riskAssessments ?? getAllRiskAssessments();
+  const allRAMS = riskCoshh?.ramsList ?? getAllRAMS();
+  const allClients = clientsSites?.clients ?? [];
+  const allAssignments = clientsSites?.assignments ?? [];
+  const ppeRecords = ppeData?.records ?? [];
+  const ppeInventory = ppeData?.inventory ?? [];
+  const trainingExpiry = trainingData?.trainingRecords ? buildTrainingExpiry(trainingData.trainingRecords) : [];
 
   // --- DOCUMENTS ---
   const expiredDocs = allDocuments.filter(d => d.status === 'expired');
@@ -84,7 +133,7 @@ export const buildComplianceAlerts = (): ComplianceAlert[] => {
   }
 
   // --- RISK ASSESSMENTS ---
-  const overdueRAs = MOCK_RISK_ASSESSMENTS.filter(r => r.nextReviewDate && daysUntilDate(r.nextReviewDate) < 0);
+  const overdueRAs = allRiskAssessments.filter(r => r.nextReviewDate && daysUntilDate(r.nextReviewDate) < 0);
   if (overdueRAs.length) {
     alerts.push({
       id: id(),
@@ -95,7 +144,7 @@ export const buildComplianceAlerts = (): ComplianceAlert[] => {
     });
   }
 
-  const unapprovedRAMS = MOCK_RAMS.filter(r => r.status === 'review_required' || r.status === 'draft');
+  const unapprovedRAMS = allRAMS.filter(r => r.status === 'review_required' || r.status === 'draft');
   if (unapprovedRAMS.length) {
     alerts.push({
       id: id(),
@@ -106,31 +155,8 @@ export const buildComplianceAlerts = (): ComplianceAlert[] => {
     });
   }
 
-  // --- COSHH ---
-  const noSDSChemicals = MOCK_CHEMICALS.filter(c => !c.sdsAvailable);
-  if (noSDSChemicals.length) {
-    alerts.push({
-      id: id(),
-      message: `${noSDSChemicals.length} chemical${noSDSChemicals.length > 1 ? 's have' : ' has'} no Safety Data Sheet on file — ${noSDSChemicals.map(c => c.name).join(', ')}.`,
-      severity: 'warning',
-      module: 'Risk & COSHH',
-      timestamp: now(),
-    });
-  }
-
-  const expiredSDS = MOCK_SDS.filter(s => s.status === 'expired');
-  if (expiredSDS.length) {
-    alerts.push({
-      id: id(),
-      message: `${expiredSDS.length} Safety Data Sheet${expiredSDS.length > 1 ? 's have' : ' has'} expired — ${expiredSDS.map(s => s.chemicalName).join(', ')}.`,
-      severity: 'warning',
-      module: 'Risk & COSHH',
-      timestamp: now(),
-    });
-  }
-
   // --- PPE ---
-  const overduePPE = MOCK_PPE_RECORDS.filter(p => p.status === 'Overdue');
+  const overduePPE = ppeRecords.filter(p => p.status === 'Overdue');
   if (overduePPE.length) {
     alerts.push({
       id: id(),
@@ -141,7 +167,7 @@ export const buildComplianceAlerts = (): ComplianceAlert[] => {
     });
   }
 
-  const outOfStock = MOCK_PPE_INVENTORY.filter(i => i.stockStatus === 'Out of Stock');
+  const outOfStock = ppeInventory.filter(i => i.stockStatus === 'Out of Stock');
   if (outOfStock.length) {
     alerts.push({
       id: id(),
@@ -152,7 +178,7 @@ export const buildComplianceAlerts = (): ComplianceAlert[] => {
     });
   }
 
-  const lowStock = MOCK_PPE_INVENTORY.filter(i => i.stockStatus === 'Low Stock');
+  const lowStock = ppeInventory.filter(i => i.stockStatus === 'Low Stock');
   if (lowStock.length) {
     alerts.push({
       id: id(),
@@ -164,13 +190,13 @@ export const buildComplianceAlerts = (): ComplianceAlert[] => {
   }
 
   // --- CLIENTS ---
-  const expiredClients = MOCK_CLIENTS.filter(c => contractHealth(c) === 'Expired');
+  const expiredClients = allClients.filter(c => contractHealth(c) === 'Expired');
   if (expiredClients.length) {
     alerts.push({
       id: id(),
       message: `${expiredClients.length} client${expiredClients.length > 1 ? 's have' : ' has'} expired insurance or contracts — ${expiredClients.map(c => {
-        const insDays = csDaysUntil(c.insuranceExpiry);
-        const conDays = csDaysUntil(c.contractEnd);
+        const insDays = daysUntilDateOnly(c.insuranceExpiry);
+        const conDays = daysUntilDateOnly(c.contractEnd);
         const reasons = [];
         if (insDays < 0) reasons.push(`insurance expired ${Math.abs(insDays)} days ago`);
         if (conDays < 0) reasons.push(`contract expired ${Math.abs(conDays)} days ago`);
@@ -182,7 +208,7 @@ export const buildComplianceAlerts = (): ComplianceAlert[] => {
     });
   }
 
-  const expiringClients = MOCK_CLIENTS.filter(c => contractHealth(c) === 'Expiring');
+  const expiringClients = allClients.filter(c => contractHealth(c) === 'Expiring');
   if (expiringClients.length) {
     alerts.push({
       id: id(),
@@ -194,7 +220,7 @@ export const buildComplianceAlerts = (): ComplianceAlert[] => {
   }
 
   // --- WORKER COMPLIANCE ---
-  const nonCompliant = MOCK_ASSIGNMENTS.filter(a => a.complianceStatus === 'Non-Compliant');
+  const nonCompliant = allAssignments.filter(a => a.complianceStatus === 'Non-Compliant');
   if (nonCompliant.length) {
     alerts.push({
       id: id(),
@@ -205,12 +231,12 @@ export const buildComplianceAlerts = (): ComplianceAlert[] => {
     });
   }
 
-  // --- TRAINING ---
-  const urgentTraining = MOCK_TRAINING_EXPIRY.filter(t => t.daysRemaining <= 7);
-  if (urgentTraining.length) {
+  // --- TRAINING (expiring within 90 days) ---
+  const expiringTraining = trainingExpiry;
+  if (expiringTraining.length) {
     alerts.push({
       id: id(),
-      message: `${urgentTraining.length} training certificate${urgentTraining.length > 1 ? 's expire' : ' expires'} within 7 days — ${urgentTraining.map(t => `${t.employee} (${t.training})`).join(', ')}.`,
+      message: `${expiringTraining.length} training certificate${expiringTraining.length > 1 ? 's expire' : ' expires'} within 90 days — ${expiringTraining.map(t => `${t.employee} (${t.training})`).join(', ')}.`,
       severity: 'critical',
       module: 'Training',
       timestamp: now(),
@@ -220,18 +246,18 @@ export const buildComplianceAlerts = (): ComplianceAlert[] => {
   return alerts;
 };
 
-export const MOCK_COMPLIANCE_ALERTS: ComplianceAlert[] = buildComplianceAlerts();
-
 // ── Site Compliance Issues — derived from real assignment + site data ─────────
 
-export const buildSiteIssues = (): SiteIssue[] => {
+export const buildSiteIssues = (riskCoshh?: RiskCoshhData, clientsSites?: ClientsSitesData): SiteIssue[] => {
   const issues: SiteIssue[] = [];
   let idx = 0;
   const id = () => `si-${String(++idx).padStart(3, '0')}`;
 
-  const nonCompliant = MOCK_ASSIGNMENTS.filter(a => a.complianceStatus === 'Non-Compliant');
-  const siteGroups = new Map<string, typeof nonCompliant>();
-  nonCompliant.forEach(a => {
+  const nonCompliantAssignments = (clientsSites?.assignments ?? []).filter(a => a.complianceStatus === 'Non-Compliant');
+  const allClientsList = clientsSites?.clients ?? [];
+  const allRAMS = riskCoshh?.ramsList ?? [];
+  const siteGroups = new Map<string, typeof nonCompliantAssignments>();
+  nonCompliantAssignments.forEach(a => {
     const key = a.siteId;
     if (!siteGroups.has(key)) siteGroups.set(key, []);
     siteGroups.get(key)!.push(a);
@@ -239,7 +265,7 @@ export const buildSiteIssues = (): SiteIssue[] => {
 
   siteGroups.forEach((workers, _siteId) => {
     const first = workers[0];
-    const clientName = MOCK_CLIENTS.find(c => c.id === first.clientId)?.name ?? 'Unknown';
+    const clientName = allClientsList.find(c => c.id === first.clientId)?.name ?? 'Unknown';
     issues.push({
       id: id(),
       site: first.siteName,
@@ -249,7 +275,7 @@ export const buildSiteIssues = (): SiteIssue[] => {
     });
   });
 
-  const unapprovedRAMS = MOCK_RAMS.filter(r => r.status !== 'approved');
+  const unapprovedRAMS = allRAMS.filter(r => r.status !== 'approved');
   unapprovedRAMS.forEach(r => {
     issues.push({
       id: id(),
@@ -260,17 +286,6 @@ export const buildSiteIssues = (): SiteIssue[] => {
     });
   });
 
-  const noSDSChemicals = MOCK_CHEMICALS.filter(c => !c.sdsAvailable);
-  if (noSDSChemicals.length) {
-    issues.push({
-      id: id(),
-      site: 'All sites using these chemicals',
-      client: '—',
-      issue: `${noSDSChemicals.length} chemical${noSDSChemicals.length > 1 ? 's' : ''} in use without Safety Data Sheet — ${noSDSChemicals.map(c => c.name).join(', ')}`,
-      severity: 'high',
-    });
-  }
-
   return issues;
 };
 
@@ -278,8 +293,8 @@ export const MOCK_SITE_ISSUES: SiteIssue[] = buildSiteIssues();
 
 // ── Document Summary — derived from real document data ───────────────────────
 
-export const buildDocumentSummary = (): DocumentSummary => {
-  const allDocs = [...addedDocuments, ...MOCK_DOCUMENTS];
+export const buildDocumentSummary = (documents: PolicyDocument[]): DocumentSummary => {
+  const allDocs = documents ?? [];
   return {
     approved: allDocs.filter(d => d.status === 'approved').length,
     pending: allDocs.filter(d => d.status === 'pending').length,
@@ -288,16 +303,15 @@ export const buildDocumentSummary = (): DocumentSummary => {
   };
 };
 
-export const MOCK_DOCUMENT_SUMMARY: DocumentSummary = buildDocumentSummary();
 
 // ── Staff Summary — derived from real assignment data ────────────────────────
 
-export const buildStaffSummary = (): StaffSummary => {
-  const total = MOCK_ASSIGNMENTS.length;
-  const compliant = MOCK_ASSIGNMENTS.filter(a => a.complianceStatus === 'Compliant').length;
-  const nonCompliant = MOCK_ASSIGNMENTS.filter(a => a.complianceStatus === 'Non-Compliant').length;
-  const expiringSoon = MOCK_ASSIGNMENTS.filter(a => a.complianceStatus === 'Expiring').length;
+export const buildStaffSummary = (assignments: WorkerAssignment[] = []): StaffSummary => {
+  const allAssignments = assignments;
+  const total = allAssignments.length;
+  const compliant = allAssignments.filter(a => a.complianceStatus === 'Compliant').length;
+  const nonCompliant = allAssignments.filter(a => a.complianceStatus === 'Non-Compliant').length;
+  const expiringSoon = allAssignments.filter(a => a.complianceStatus === 'Expiring').length;
   return { total, compliant, nonCompliant, expiringSoon };
 };
 
-export const MOCK_STAFF_SUMMARY: StaffSummary = buildStaffSummary();

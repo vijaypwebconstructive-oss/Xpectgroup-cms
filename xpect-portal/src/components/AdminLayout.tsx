@@ -235,7 +235,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, currentView, onNavi
                 }`}
               >
                 <span className="material-symbols-outlined text-[18px]">safety_check</span>
-                PPE Records
+                PPE Invoices
               </button>
             </div>
           </div>
@@ -353,13 +353,14 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, currentView, onNavi
             </span>
           </button>
 
-          <div className={`overflow-hidden transition-all duration-300 ease-in-out ${isRiskCoshhOpen ? 'max-h-64 opacity-100' : 'max-h-0 opacity-0'}`}>
+          <div className={`overflow-hidden transition-all duration-300 ease-in-out ${isRiskCoshhOpen ? 'max-h-80 opacity-100' : 'max-h-0 opacity-0'}`}>
             <div className="mt-0.5 ml-3 pl-3 border-l border-white/20 space-y-0.5">
               {(
                 [
+                  { riskView: 'risk-list'       as RiskView, icon: 'assignment',      label: 'Risk Assessments' },
                   { riskView: 'rams-list'       as RiskView, icon: 'assignment_add',  label: 'RAMS' },
-                  { riskView: 'coshh-register'  as RiskView, icon: 'science',         label: 'COSHH Register' },
-                  { riskView: 'sds-library'     as RiskView, icon: 'menu_book',       label: 'SDS Library' },
+                  // { riskView: 'coshh-register'  as RiskView, icon: 'science',         label: 'COSHH Register' },
+                  // { riskView: 'sds-library'     as RiskView, icon: 'menu_book',       label: 'SDS Library' },
                 ] as { riskView: RiskView; icon: string; label: string }[]
               ).map(({ riskView, icon, label }) => (
                 <button

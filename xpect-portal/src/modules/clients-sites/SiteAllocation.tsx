@@ -1,26 +1,44 @@
-import React, { useState } from 'react';
-import { MOCK_SITES, MOCK_CLIENTS, getAssignmentsBySite } from './mockData';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useClientsSites } from '../../context/ClientsSitesContext';
+import { useCleaners } from '../../context/CleanersContext';
+import { useTraining } from '../../context/TrainingContext';
 import { Site, WorkerAssignment } from './types';
-import { addedSites } from './SitesList';
-import { addedClients } from './ClientsList';
+import { getInitials } from '../../views/trainingMockData';
 
 interface SiteAllocationProps {
   onBack: () => void;
 }
 
-// Personnel pool with richer data for the design
-const PERSONNEL: (WorkerAssignment & { location: string; avatar: string })[] = [
-  { id: 'ua-001', workerId: 'ua-w-001', workerName: 'Sophie Williams',  workerInitials: 'SW', workerAvatarColor: 'bg-violet-500',  location: 'Manchester Central', siteId: '', siteName: '', clientId: '', completedTrainings: ['Manual Handling', 'Fire Safety', 'COSHH Awareness', 'Enhanced DBS', 'Child Safeguarding', 'CSCS Card', 'Working at Height', 'PPE Awareness', 'Biohazard Handling', 'Clinical Waste', 'Infection Control', 'Food Hygiene L2'], complianceStatus: 'Compliant',     assignedSince: '', role: 'Senior Cleaner', avatar: '' },
-  { id: 'ua-002', workerId: 'ua-w-002', workerName: 'Kevin Adeyemi',    workerInitials: 'KA', workerAvatarColor: 'bg-teal-600',     location: 'Salford North',      siteId: '', siteName: '', clientId: '', completedTrainings: ['Manual Handling'],                                     complianceStatus: 'Non-Compliant', assignedSince: '', role: 'Cleaner',        avatar: '' },
-  { id: 'ua-003', workerId: 'ua-w-003', workerName: 'Laura McKenna',    workerInitials: 'LM', workerAvatarColor: 'bg-pink-600',     location: 'Manchester South',   siteId: '', siteName: '', clientId: '', completedTrainings: ['Manual Handling', 'COSHH Awareness'],                    complianceStatus: 'Expiring',      assignedSince: '', role: 'Senior Cleaner', avatar: '' },
-  { id: 'ua-004', workerId: 'ua-w-004', workerName: 'Daniel Chukwu',    workerInitials: 'DC', workerAvatarColor: 'bg-sky-600',      location: 'Trafford',           siteId: '', siteName: '', clientId: '', completedTrainings: ['Manual Handling', 'Fire Safety', 'COSHH Awareness', 'Enhanced DBS', 'Child Safeguarding'], complianceStatus: 'Compliant', assignedSince: '', role: 'Cleaner', avatar: '' },
-  { id: 'ua-005', workerId: 'ua-w-005', workerName: 'Ola Adegoke',      workerInitials: 'OA', workerAvatarColor: 'bg-lime-600',     location: 'Eccles',             siteId: '', siteName: '', clientId: '', completedTrainings: ['Manual Handling', 'COSHH Awareness'],                    complianceStatus: 'Compliant',     assignedSince: '', role: 'Cleaner',        avatar: '' },
-  { id: 'ua-006', workerId: 'ua-w-006', workerName: 'Mei Zhao',         workerInitials: 'MZ', workerAvatarColor: 'bg-orange-500',   location: 'Stretford',          siteId: '', siteName: '', clientId: '', completedTrainings: [],                                                         complianceStatus: 'Non-Compliant', assignedSince: '', role: 'New Starter',    avatar: '' },
+const AVATAR_COLORS = [
+  'bg-blue-500', 'bg-pink-500', 'bg-emerald-500', 'bg-violet-500',
+  'bg-orange-500', 'bg-rose-500', 'bg-sky-500', 'bg-teal-500',
+  'bg-indigo-500', 'bg-amber-500', 'bg-cyan-500', 'bg-lime-500',
 ];
+
+/** Map training course names to site-required training names */
+const mapCourseToRequired = (course: string): string | null => {
+  const c = course.toLowerCase();
+  if (c.includes('manual handling')) return 'Manual Handling';
+  if (c.includes('coshh')) return 'COSHH Awareness';
+  if (c.includes('fire safety')) return 'Fire Safety';
+  if (c.includes('dbs') || c.includes('enhanced dbs')) return 'Enhanced DBS';
+  if (c.includes('child safeguarding') || c.includes('safeguarding')) return 'Child Safeguarding';
+  if (c.includes('biohazard')) return 'Biohazard Handling';
+  if (c.includes('clinical waste')) return 'Clinical Waste';
+  if (c.includes('infection control')) return 'Infection Control';
+  if (c.includes('working at height') || c.includes('height')) return 'Working at Height';
+  if (c.includes('ppe')) return 'PPE Awareness';
+  if (c.includes('cscs')) return 'CSCS Card';
+  if (c.includes('first aid')) return 'First Aid';
+  if (c.includes('food hygiene')) return 'Food Hygiene L2';
+  return null;
+};
+
+export type PersonnelItem = WorkerAssignment & { location: string; avatar: string };
 
 type ComplianceLevel = 'Fully Compliant' | 'Partial Compliance' | 'Non-Compliant';
 
-const evaluateCompliance = (worker: typeof PERSONNEL[0], site: Site): ComplianceLevel => {
+const evaluateCompliance = (worker: PersonnelItem, site: Site): ComplianceLevel => {
   const missing = site.requiredTrainings.filter(t => !worker.completedTrainings.includes(t));
   if (missing.length === 0) return 'Fully Compliant';
   if (missing.length < site.requiredTrainings.length) return 'Partial Compliance';
@@ -46,27 +64,99 @@ const COMPLIANCE_ICON_COLOR: Record<ComplianceLevel, string> = {
 };
 
 const SiteAllocation: React.FC<SiteAllocationProps> = ({ onBack }) => {
-  const allSites   = [...addedSites, ...MOCK_SITES];
-  const allClients = [...MOCK_CLIENTS, ...addedClients];
+  const { sites: allSites, clients: allClients, getAssignmentsBySite, assignments: allAssignments, addAssignment, removeAssignment, getSiteCountByWorker } = useClientsSites();
+  const { cleaners, loading: cleanersLoading, error: cleanersError } = useCleaners();
+  const { trainingRecords } = useTraining();
 
   const [selectedSiteId, setSelectedSiteId] = useState(allSites[0]?.id ?? '');
   const [workerSearch, setWorkerSearch]     = useState('');
-  const [assigned, setAssigned]             = useState<Set<string>>(new Set());
-  const [confirmWorker, setConfirmWorker]   = useState<typeof PERSONNEL[0] | null>(null);
+  const [, setAssignmentsVersion]           = useState(0);
+  const [confirmWorker, setConfirmWorker]   = useState<PersonnelItem | null>(null);
+
+  const personnel: PersonnelItem[] = useMemo(() => {
+    const nameLower = (s: string) => s.trim().toLowerCase();
+    return cleaners.map((c, i) => {
+      const trained = trainingRecords.filter(
+        tr => nameLower(tr.name) === nameLower(c.name) && tr.status === 'Trained'
+      );
+      const completedTrainings: string[] = [];
+      trained.forEach(tr => {
+        const mapped = mapCourseToRequired(tr.course);
+        if (mapped && !completedTrainings.includes(mapped)) completedTrainings.push(mapped);
+      });
+      let complianceStatus: 'Compliant' | 'Expiring' | 'Non-Compliant' = 'Non-Compliant';
+      if (completedTrainings.length > 0) {
+        complianceStatus = completedTrainings.length >= 3 ? 'Compliant' : 'Expiring';
+      }
+      return {
+        id: `personnel-${c.id}`,
+        workerId: c.id,
+        workerName: c.name,
+        workerInitials: getInitials(c.name),
+        workerAvatarColor: AVATAR_COLORS[i % AVATAR_COLORS.length],
+        location: c.location || '—',
+        siteId: '',
+        siteName: '',
+        clientId: '',
+        completedTrainings,
+        complianceStatus,
+        assignedSince: '',
+        role: 'Cleaner',
+        avatar: c.avatar || '',
+      };
+    });
+  }, [cleaners, trainingRecords]);
+
+  useEffect(() => {
+    if (allSites.length > 0 && (!selectedSiteId || !allSites.some(s => s.id === selectedSiteId))) {
+      setSelectedSiteId(allSites[0].id);
+    }
+  }, [allSites, selectedSiteId]);
 
   const selectedSite = allSites.find(s => s.id === selectedSiteId);
   const existingWorkers = selectedSite ? getAssignmentsBySite(selectedSiteId) : [];
 
-  const filteredPersonnel = PERSONNEL.filter(p =>
+  const filteredPersonnel = personnel.filter(p =>
     !workerSearch || p.workerName.toLowerCase().includes(workerSearch.toLowerCase())
   );
 
-  const handleAssign = (person: typeof PERSONNEL[0]) => {
+  const isAssignedToSelectedSite = (workerId: string) =>
+    selectedSiteId && allAssignments.some(a => a.workerId === workerId && a.siteId === selectedSiteId);
+
+  const doAssign = async (person: PersonnelItem) => {
+    if (!selectedSite) return;
+    if (isAssignedToSelectedSite(person.workerId)) return;
+    const level = evaluateCompliance(person, selectedSite);
+    if (level === 'Non-Compliant') return;
+    const newAssignment: Omit<WorkerAssignment, 'id'> = {
+      workerId: person.workerId,
+      workerName: person.workerName,
+      workerInitials: person.workerInitials,
+      workerAvatarColor: person.workerAvatarColor,
+      siteId: selectedSite.id,
+      siteName: selectedSite.name,
+      clientId: selectedSite.clientId,
+      completedTrainings: person.completedTrainings,
+      complianceStatus: person.complianceStatus,
+      assignedSince: new Date().toISOString().split('T')[0],
+      role: person.role,
+    };
+    await addAssignment(newAssignment);
+    setAssignmentsVersion(v => v + 1);
+  };
+
+  const handleAssign = (person: PersonnelItem) => {
     if (!selectedSite) return;
     const level = evaluateCompliance(person, selectedSite);
     if (level === 'Non-Compliant') return;
     if (level === 'Partial Compliance') { setConfirmWorker(person); return; }
-    setAssigned(prev => new Set(prev).add(person.id));
+    doAssign(person);
+  };
+
+  const handleUnassign = async (workerId: string) => {
+    if (!selectedSiteId) return;
+    await removeAssignment(workerId, selectedSiteId);
+    setAssignmentsVersion(v => v + 1);
   };
 
   return (
@@ -157,29 +247,44 @@ const SiteAllocation: React.FC<SiteAllocationProps> = ({ onBack }) => {
             </div>
 
             {/* Column headers */}
-            <div className="grid grid-cols-[1fr_auto_auto] gap-4 px-5 py-2 bg-[#f8fafc] border-b border-[#e7ebf3] ">
+            <div className="grid grid-cols-[1fr_auto_auto_auto] gap-4 px-5 py-2 bg-[#f8fafc] border-b border-[#e7ebf3] ">
               <p className="text-xs font-bold text-[#6b7a99] uppercase tracking-wider">Worker</p>
+              <p className="text-xs font-bold text-[#6b7a99] uppercase tracking-wider w-24 text-center">Assigned</p>
               <p className="text-xs font-bold text-[#6b7a99] uppercase tracking-wider w-44 text-center">Compliance Indicator</p>
               <p className="text-xs font-bold text-[#6b7a99] uppercase tracking-wider w-32 text-right">Action</p>
             </div>
 
             {/* Personnel rows */}
             <div className="divide-y divide-[#f0f2f7]">
-              {filteredPersonnel.length === 0 ? (
+              {cleanersLoading ? (
+                <div className="py-14 text-center">
+                  <span className="material-symbols-outlined text-[#4c669a] text-4xl animate-spin block mb-2">progress_activity</span>
+                  <p className="text-[#4c669a] text-sm font-semibold">Loading personnel…</p>
+                </div>
+              ) : cleanersError ? (
+                <div className="py-14 text-center">
+                  <span className="material-symbols-outlined text-red-500 text-[48px] block mb-2">error</span>
+                  <p className="text-red-600 text-sm font-semibold">{cleanersError}</p>
+                </div>
+              ) : filteredPersonnel.length === 0 ? (
                 <div className="py-14 text-center">
                   <span className="material-symbols-outlined text-[#d1d5db] text-4xl block mb-2">search_off</span>
-                  <p className="text-[#6b7a99] text-sm font-semibold">No workers match your search</p>
+                  <p className="text-[#6b7a99] text-sm font-semibold">
+                    {personnel.length === 0 ? 'No employees in the system' : 'No workers match your search'}
+                  </p>
                 </div>
               ) : filteredPersonnel.map(person => {
                 const compliance = selectedSite ? evaluateCompliance(person, selectedSite) : 'Non-Compliant';
-                const isAssigned = assigned.has(person.id);
+                const isAssigned = isAssignedToSelectedSite(person.workerId);
+                const siteCount = getSiteCountByWorker(person.workerId);
+                const sitesLabel = siteCount === 1 ? '1 site' : `${siteCount} sites`;
                 const canAssign  = compliance === 'Fully Compliant' || compliance === 'Partial Compliance';
                 const missingTrainings = selectedSite
                   ? selectedSite.requiredTrainings.filter(t => !person.completedTrainings.includes(t))
                   : [];
 
                 return (
-                  <div key={person.id} className="grid grid-cols-[1fr_auto_auto] min-w-full gap-4 items-center px-5 py-4">
+                  <div key={person.id} className="grid grid-cols-[1fr_auto_auto_auto] min-w-full gap-4 items-center px-5 py-4">
                     {/* Worker info */}
                     <div className="flex items-center gap-3 min-w-0">
                       <div className={`w-10 h-10 rounded-full ${person.workerAvatarColor} flex items-center justify-center shrink-0 text-white text-sm font-black`}>
@@ -196,6 +301,11 @@ const SiteAllocation: React.FC<SiteAllocationProps> = ({ onBack }) => {
                       </div>
                     </div>
 
+                    {/* Sites assigned */}
+                    <div className="w-24 flex justify-center">
+                      <span className="text-xs font-semibold text-[#4c669a]">{sitesLabel}</span>
+                    </div>
+
                     {/* Compliance badge */}
                     <div className="w-44 flex justify-center">
                       <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-bold ${COMPLIANCE_BADGE[compliance]}`}>
@@ -209,10 +319,12 @@ const SiteAllocation: React.FC<SiteAllocationProps> = ({ onBack }) => {
                     {/* Action */}
                     <div className="w-32 flex justify-end">
                       {isAssigned ? (
-                        <span className="inline-flex items-center gap-1 text-xs text-green-700 font-bold bg-green-100 border border-green-200 px-3 py-2 rounded-lg">
-                          <span className="material-symbols-outlined text-[14px]">check_circle</span>
-                          Assigned
-                        </span>
+                        <button
+                          onClick={() => handleUnassign(person.workerId)}
+                          className="h-9 px-4 rounded-lg border border-red-200 text-red-600 bg-red-50 text-xs font-bold hover:bg-red-100 transition-all cursor-pointer uppercase tracking-wide"
+                        >
+                          Unassign
+                        </button>
                       ) : canAssign ? (
                         <button
                           onClick={() => handleAssign(person)}
@@ -271,7 +383,7 @@ const SiteAllocation: React.FC<SiteAllocationProps> = ({ onBack }) => {
                 Cancel
               </button>
               <button
-                onClick={() => { setAssigned(prev => new Set(prev).add(confirmWorker.id)); setConfirmWorker(null); }}
+                onClick={async () => { await doAssign(confirmWorker); setConfirmWorker(null); }}
                 className="flex-1 h-10 rounded-xl bg-[#2e4150] text-white text-sm font-bold hover:bg-[#253545] transition-all cursor-pointer"
               >
                 Assign Anyway

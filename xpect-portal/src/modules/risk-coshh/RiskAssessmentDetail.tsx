@@ -1,13 +1,11 @@
-import React from 'react';
-import { getRiskById, daysUntil } from './mockData';
-import { RiskLevel, ApprovalStatus } from './types';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useRiskCoshh } from '../../context/RiskCoshhContext';
+import { RiskLevel, Hazard, ComplianceRequirement } from './types';
 
 interface Props {
   riskId: string;
   onBack: () => void;
 }
-
-const fmt = (d: string) => d ? new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
 
 const riskBadgeCls = (level: RiskLevel) => ({
   Low:    'bg-green-100 text-green-700 border border-green-200',
@@ -19,21 +17,118 @@ const riskDot = (level: RiskLevel) => ({
   Low: 'bg-green-500', Medium: 'bg-amber-500', High: 'bg-red-500',
 }[level]);
 
-const approvalBadge = (status: ApprovalStatus) => ({
-  approved:     { cls: 'bg-green-100 text-green-700 border border-green-200',   label: 'Approved',     icon: 'verified' },
-  pending:      { cls: 'bg-blue-100 text-blue-700 border border-blue-200',     label: 'Pending',      icon: 'pending' },
-  not_approved: { cls: 'bg-red-100 text-red-700 border border-red-200',        label: 'Not Approved', icon: 'cancel' },
-}[status]);
-
-const InfoRow: React.FC<{ label: string; value: string }> = ({ label, value }) => (
-  <div>
-    <p className="text-xs font-semibold text-[#6b7a99] uppercase tracking-wide mb-0.5">{label}</p>
-    <p className="text-sm font-medium text-[#0d121b]">{value || '—'}</p>
-  </div>
-);
+const RESIDUAL_OPTIONS: RiskLevel[] = ['Low', 'Medium', 'High'];
+const COMMON_PPE = ['Gloves', 'Safety shoes', 'Eye protection', 'Mask', 'Hi-vis vest', 'Apron', 'Hard hat', 'Safety harness'];
 
 const RiskAssessmentDetail: React.FC<Props> = ({ riskId, onBack }) => {
+  const { getRiskById, updateRiskAssessment, deleteRiskAssessment } = useRiskCoshh();
   const ra = getRiskById(riskId);
+  const [hazards, setHazards] = useState<Hazard[]>(ra?.hazards ?? []);
+  const [ppe, setPPE] = useState<string[]>(ra?.requiredPPE ?? []);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [addingPPE, setAddingPPE] = useState(false);
+  const [newPPE, setNewPPE] = useState('');
+  const [adding, setAdding] = useState(false);
+  const [newHazard, setNewHazard] = useState<Hazard>({
+    hazard: '',
+    harm: '',
+    control: '',
+    residualRisk: 'Low',
+  });
+  const [complianceRequirements, setComplianceRequirements] = useState<ComplianceRequirement[]>(ra?.complianceRequirements ?? []);
+  const [addingCompliance, setAddingCompliance] = useState(false);
+  const [newCompliance, setNewCompliance] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (ra) {
+      setHazards(ra.hazards ?? []);
+      setPPE(ra.requiredPPE ?? []);
+      setComplianceRequirements(ra.complianceRequirements ?? []);
+    }
+  }, [ra]);
+
+  const persistCompliance = useCallback(async (items: ComplianceRequirement[]) => {
+    setComplianceRequirements(items);
+    if (!riskId) return;
+    setSaving(true);
+    try {
+      await updateRiskAssessment(riskId, { complianceRequirements: items });
+    } finally {
+      setSaving(false);
+    }
+  }, [riskId, updateRiskAssessment]);
+
+  const persistPPE = useCallback(async (items: string[]) => {
+    setPPE(items);
+    if (!riskId) return;
+    setSaving(true);
+    try {
+      await updateRiskAssessment(riskId, { requiredPPE: items });
+    } finally {
+      setSaving(false);
+    }
+  }, [riskId, updateRiskAssessment]);
+
+  const handleDeleteAssessment = async () => {
+    try {
+      await deleteRiskAssessment(riskId);
+      setShowDeleteConfirm(false);
+      onBack();
+    } catch {
+      // Could show error toast
+    }
+  };
+
+  const addPPE = (item: string) => {
+    const trimmed = item.trim();
+    if (trimmed && !ppe.includes(trimmed)) persistPPE([...ppe, trimmed]);
+    setNewPPE('');
+    setAddingPPE(false);
+  };
+
+  const removePPE = (item: string) => {
+    persistPPE(ppe.filter(p => p !== item));
+  };
+
+  const addCompliance = () => {
+    const trimmed = newCompliance.trim();
+    if (trimmed) {
+      persistCompliance([...complianceRequirements, { id: crypto.randomUUID(), label: trimmed, checked: false }]);
+      setNewCompliance('');
+      setAddingCompliance(false);
+    }
+  };
+
+  const removeCompliance = (id: string) => {
+    persistCompliance(complianceRequirements.filter(c => c.id !== id));
+  };
+
+  const toggleCompliance = (id: string) => {
+    persistCompliance(complianceRequirements.map(c => c.id === id ? { ...c, checked: !c.checked } : c));
+  };
+
+  const persistHazards = useCallback(async (h: Hazard[]) => {
+    setHazards(h);
+    if (!riskId) return;
+    setSaving(true);
+    try {
+      await updateRiskAssessment(riskId, { hazards: h });
+    } finally {
+      setSaving(false);
+    }
+  }, [riskId, updateRiskAssessment]);
+
+  const handleAdd = () => {
+    if (!newHazard.hazard.trim()) return;
+    persistHazards([...hazards, { ...newHazard }]);
+    setNewHazard({ hazard: '', harm: '', control: '', residualRisk: 'Low' });
+    setAdding(false);
+  };
+
+  const handleDelete = (index: number) => {
+    persistHazards(hazards.filter((_, i) => i !== index));
+  };
 
   if (!ra) {
     return (
@@ -47,10 +142,6 @@ const RiskAssessmentDetail: React.FC<Props> = ({ riskId, onBack }) => {
     );
   }
 
-  const ab = approvalBadge(ra.approvalStatus);
-  const daysToReview = daysUntil(ra.nextReviewDate);
-  const isOverdue = daysToReview <= 0;
-
   return (
     <div className="min-h-full bg-[#f6f7fb]">
 
@@ -60,49 +151,57 @@ const RiskAssessmentDetail: React.FC<Props> = ({ riskId, onBack }) => {
           <span className="material-symbols-outlined text-[18px]">arrow_back</span>
           Back to Risk Assessments
         </button>
-        <div className="flex items-start gap-4 flex-wrap">
-          <div className="w-12 h-12 rounded-xl bg-[#2e4150] flex items-center justify-center shrink-0">
-            <span className="material-symbols-outlined text-white text-[24px]">health_and_safety</span>
-          </div>
-          <div className="flex-1 min-w-0">
-            <h1 className="text-xl font-bold text-[#0d121b]">{ra.title}</h1>
-            <div className="flex items-center gap-3 mt-1.5 flex-wrap">
-              <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-[#f0f2f7] text-[#2e4150]">{ra.taskType}</span>
-              <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${riskBadgeCls(ra.riskLevel)}`}>
-                <span className={`w-1.5 h-1.5 rounded-full ${riskDot(ra.riskLevel)}`} />
-                {ra.riskLevel} Risk
-              </span>
-              <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${ab.cls}`}>
-                <span className="material-symbols-outlined text-[14px]">{ab.icon}</span>
-                {ab.label}
-              </span>
+        <div className="flex items-start gap-4 flex-wrap justify-between">
+          <div className="flex items-start gap-4 flex-wrap">
+            <div className="w-12 h-12 rounded-xl bg-[#2e4150] flex items-center justify-center shrink-0">
+              <span className="material-symbols-outlined text-white text-[24px]">health_and_safety</span>
+            </div>
+            <div className="flex-1 min-w-0">
+              <h1 className="text-xl font-bold text-[#0d121b]">{ra.title}</h1>
+              <div className="flex items-center gap-3 mt-1.5 flex-wrap">
+                {ra.sector && (
+                  <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-[#f0f2f7] text-[#2e4150]">{ra.sector}</span>
+                )}
+                <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-[#f0f2f7] text-[#2e4150]">{ra.taskType}</span>
+              </div>
             </div>
           </div>
+          <button
+            onClick={() => setShowDeleteConfirm(true)}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-red-200 text-red-600 bg-red-50 hover:bg-red-100 text-sm font-semibold transition-colors"
+          >
+            <span className="material-symbols-outlined text-[18px]">delete</span>
+            Delete Assessment
+          </button>
         </div>
       </div>
 
-      {/* Warning banner — not approved or overdue */}
-      {(ra.approvalStatus !== 'approved' || isOverdue) && (
-        <div className={`mx-8 mt-5 flex items-center gap-3 rounded-xl px-5 py-3 border ${
-          ra.approvalStatus === 'not_approved'
-            ? 'bg-red-50 border-red-200'
-            : 'bg-amber-50 border-amber-200'
-        }`}>
-          <span className={`material-symbols-outlined text-[20px] ${ra.approvalStatus === 'not_approved' ? 'text-red-500' : 'text-amber-500'}`}>warning</span>
-          <p className={`text-sm font-semibold ${ra.approvalStatus === 'not_approved' ? 'text-red-700' : 'text-amber-700'}`}>
-            {ra.approvalStatus === 'not_approved'
-              ? 'Assessment must be approved before work begins. Work should NOT proceed until this is resolved.'
-              : isOverdue
-                ? `Review overdue — this assessment was due for review on ${fmt(ra.nextReviewDate)}. Please review immediately.`
-                : `Review due in ${daysToReview} day(s) — ${fmt(ra.nextReviewDate)}.`}
-          </p>
+      {/* Delete confirmation modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setShowDeleteConfirm(false)}>
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full mx-4 p-6" onClick={e => e.stopPropagation()}>
+            <h3 className="text-lg font-bold text-[#0d121b] mb-2">Delete Risk Assessment</h3>
+            <p className="text-sm text-[#6b7a99] mb-6">Are you sure you want to delete &quot;{ra.title}&quot;? This action cannot be undone.</p>
+            <div className="flex gap-3">
+              <button
+                onClick={handleDeleteAssessment}
+                className="flex-1 px-4 py-2.5 rounded-xl bg-red-600 text-white text-sm font-semibold hover:bg-red-700"
+              >
+                Delete
+              </button>
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className="flex-1 px-4 py-2.5 rounded-xl border border-[#e7ebf3] text-[#2e4150] text-sm font-semibold hover:bg-[#f6f7fb]"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
-      <div className="px-8 py-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-        {/* Left — main sections */}
-        <div className="lg:col-span-2 space-y-5">
+      <div className="px-8 py-6">
+        <div className="space-y-5 max-w-4xl">
 
           {/* A. Task Information */}
           <div className="bg-white rounded-xl border border-[#e7ebf3] shadow-sm p-6">
@@ -115,41 +214,92 @@ const RiskAssessmentDetail: React.FC<Props> = ({ riskId, onBack }) => {
                 <p className="text-xs font-semibold text-[#6b7a99] uppercase tracking-wide mb-1">Task Description</p>
                 <p className="text-sm text-[#0d121b] leading-relaxed">{ra.taskDescription}</p>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-[#e7ebf3]">
+              <div className="grid grid-cols-1 sm:grid-cols-1 gap-4 pt-2 border-t border-[#e7ebf3]">
                 <div>
                   <p className="text-xs font-semibold text-[#6b7a99] uppercase tracking-wide mb-1">Work Area</p>
                   <p className="text-sm text-[#0d121b]">{ra.workArea}</p>
                 </div>
-                <div>
+                {/* <div>
                   <p className="text-xs font-semibold text-[#6b7a99] uppercase tracking-wide mb-1">Equipment Used</p>
                   <div className="flex flex-wrap gap-1.5">
                     {ra.equipmentUsed.map((eq, i) => (
                       <span key={i} className="px-2 py-0.5 rounded text-xs font-medium bg-[#f0f2f7] text-[#2e4150]">{eq}</span>
                     ))}
                   </div>
-                </div>
+                </div> */}
               </div>
             </div>
           </div>
 
           {/* B. Hazard Table */}
           <div className="bg-white rounded-xl border border-[#e7ebf3] shadow-sm overflow-hidden">
-            <div className="px-6 py-4 border-b border-[#e7ebf3] flex items-center gap-2">
+            <div className="px-6 py-4 border-b border-[#e7ebf3] flex items-center gap-2 flex-wrap">
               <span className="material-symbols-outlined text-[18px] text-[#6b7a99]">warning</span>
-              <h2 className="text-base font-bold text-[#0d121b]">Hazard Identification & Controls</h2>
-              <span className="ml-auto px-2 py-0.5 rounded-full text-xs font-bold bg-[#f0f2f7] text-[#2e4150]">{ra.hazards.length} hazards</span>
+              <h2 className="text-base font-bold text-[#0d121b]">Risk Identification & Control</h2>
+              <span className="ml-auto px-2 py-0.5 rounded-full text-xs font-bold bg-[#f0f2f7] text-[#2e4150]">{hazards.length} hazards</span>
+              <button
+                onClick={() => setAdding(!adding)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#2e4150] text-white text-sm font-semibold hover:bg-[#3a5268] transition-colors"
+              >
+                <span className="material-symbols-outlined text-[18px]">add</span>
+                Add Risk
+              </button>
             </div>
+
+            {adding && (
+              <div className="p-4 bg-[#f6f7fb] border-b border-[#e7ebf3] space-y-3">
+                <input
+                  placeholder="Hazard"
+                  value={newHazard.hazard}
+                  onChange={e => setNewHazard(h => ({ ...h, hazard: e.target.value }))}
+                  className="w-full px-3 py-2 rounded-lg border border-[#e7ebf3] text-sm"
+                />
+                <input
+                  placeholder="Possible Harm"
+                  value={newHazard.harm}
+                  onChange={e => setNewHazard(h => ({ ...h, harm: e.target.value }))}
+                  className="w-full px-3 py-2 rounded-lg border border-[#e7ebf3] text-sm"
+                />
+                <textarea
+                  placeholder="Control Measures"
+                  value={newHazard.control}
+                  onChange={e => setNewHazard(h => ({ ...h, control: e.target.value }))}
+                  rows={2}
+                  className="w-full px-3 py-2 rounded-lg border border-[#e7ebf3] text-sm resize-none"
+                />
+                <select
+                  value={newHazard.residualRisk}
+                  onChange={e => setNewHazard(h => ({ ...h, residualRisk: e.target.value as RiskLevel }))}
+                  className="px-3 py-2 rounded-lg border border-[#e7ebf3] text-sm bg-white"
+                >
+                  {RESIDUAL_OPTIONS.map(o => (
+                    <option key={o} value={o}>{o}</option>
+                  ))}
+                </select>
+                <div className="flex gap-2">
+                  <button onClick={handleAdd} disabled={!newHazard.hazard.trim()}
+                    className="px-4 py-2 rounded-lg bg-[#2e4150] text-white text-sm font-semibold hover:bg-[#3a5268] disabled:opacity-50 disabled:cursor-not-allowed">
+                    Add
+                  </button>
+                  <button onClick={() => { setAdding(false); setNewHazard({ hazard: '', harm: '', control: '', residualRisk: 'Low' }); }}
+                    className="px-4 py-2 rounded-lg border border-[#e7ebf3] text-[#2e4150] text-sm font-semibold hover:bg-[#f6f7fb]">
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="bg-[#f6f7fb] border-b border-[#e7ebf3]">
-                    {['Hazard', 'Possible Harm', 'Control Measures', 'Residual Risk'].map(h => (
+                    {['Hazard', 'Possible Harm', 'Control Measures', 'Residual Risk', ''].map(h => (
                       <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-[#6b7a99] uppercase tracking-wide">{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#e7ebf3]">
-                  {ra.hazards.map((h, i) => (
+                  {hazards.map((h, i) => (
                     <tr key={i} className="hover:bg-[#f6f7fb] transition-colors">
                       <td className="px-4 py-3">
                         <div className="flex items-start gap-2">
@@ -165,6 +315,15 @@ const RiskAssessmentDetail: React.FC<Props> = ({ riskId, onBack }) => {
                           {h.residualRisk}
                         </span>
                       </td>
+                      <td className="px-4 py-3">
+                        <button
+                          onClick={e => { e.stopPropagation(); handleDelete(i); }}
+                          className="p-1.5 rounded-lg text-[#6b7a99] hover:bg-red-50 hover:text-red-600 transition-colors"
+                          title="Delete hazard"
+                        >
+                          <span className="material-symbols-outlined text-[18px]">delete</span>
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -172,86 +331,157 @@ const RiskAssessmentDetail: React.FC<Props> = ({ riskId, onBack }) => {
             </div>
           </div>
 
-          {/* C. Required PPE */}
+          {/* D. Client Compliance Requirements */}
           <div className="bg-white rounded-xl border border-[#e7ebf3] shadow-sm p-6">
-            <h2 className="text-base font-bold text-[#0d121b] mb-4 flex items-center gap-2">
-              <span className="material-symbols-outlined text-[18px] text-[#6b7a99]">safety_check</span>
-              Required PPE
-            </h2>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              {['Gloves', 'Safety shoes', 'Eye protection', 'Mask', 'Hi-vis vest', 'Apron', 'Hard hat', 'Safety harness'].map(item => {
-                const required = ra.requiredPPE.includes(item);
-                return (
-                  <div key={item} className={`flex items-center gap-2.5 p-3 rounded-xl border ${
-                    required ? 'border-green-200 bg-green-50' : 'border-[#e7ebf3] bg-[#f6f7fb] opacity-50'
-                  }`}>
-                    <span className={`material-symbols-outlined text-[18px] ${required ? 'text-green-600' : 'text-[#6b7a99]'}`}>
-                      {required ? 'check_circle' : 'radio_button_unchecked'}
-                    </span>
-                    <span className={`text-sm font-medium ${required ? 'text-green-800' : 'text-[#6b7a99]'}`}>{item}</span>
-                  </div>
-                );
-              })}
-            </div>
-            {/* Custom PPE items not in the standard list */}
-            {ra.requiredPPE.filter(p => !['Gloves', 'Safety shoes', 'Eye protection', 'Mask', 'Hi-vis vest', 'Apron', 'Hard hat', 'Safety harness'].includes(p)).map(extra => (
-              <div key={extra} className="flex items-center gap-2.5 p-3 rounded-xl border border-green-200 bg-green-50 mt-2">
-                <span className="material-symbols-outlined text-[18px] text-green-600">check_circle</span>
-                <span className="text-sm font-medium text-green-800">{extra}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Right — Approval panel */}
-        <div className="space-y-5">
-          <div className="bg-white rounded-xl border border-[#e7ebf3] shadow-sm p-6">
-            <h2 className="text-base font-bold text-[#0d121b] mb-4 flex items-center gap-2">
-              <span className="material-symbols-outlined text-[18px] text-[#6b7a99]">fact_check</span>
-              Approval Panel
-            </h2>
-            <div className="space-y-4">
-              <div className={`flex items-center gap-2.5 p-3 rounded-xl border ${ab.cls}`}>
-                <span className={`material-symbols-outlined text-[20px]`}>{ab.icon}</span>
-                <span className="text-sm font-bold">{ab.label}</span>
-              </div>
-
-              <div className="space-y-3 pt-2">
-                <InfoRow label="Assessor" value={ra.createdBy} />
-                {ra.approvedBy && <InfoRow label="Approved By" value={ra.approvedBy} />}
-                {ra.approvalDate && <InfoRow label="Approval Date" value={fmt(ra.approvalDate)} />}
-                <InfoRow label="Last Review" value={fmt(ra.lastReviewDate)} />
-                <InfoRow label="Next Review Due" value={fmt(ra.nextReviewDate)} />
-              </div>
-
-              {ra.approvalStatus !== 'approved' && (
-                <button className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-green-600 text-white text-sm font-semibold hover:bg-green-700 transition-colors mt-2">
-                  <span className="material-symbols-outlined text-[18px]">check_circle</span>
-                  Approve Assessment
-                </button>
+            <div className="flex items-center gap-2 flex-wrap mb-4">
+              <span className="material-symbols-outlined text-[18px] text-[#6b7a99]">verified_user</span>
+              <h2 className="text-base font-bold text-[#0d121b]"> Compliance Requirements</h2>
+              {ra.sector && (
+                <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-[#f0f2f7] text-[#2e4150]">Sector: {ra.sector}</span>
               )}
-              <button className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-[#e7ebf3] text-[#2e4150] text-sm font-semibold bg-white hover:bg-[#f6f7fb] transition-colors">
-                <span className="material-symbols-outlined text-[18px]">print</span>
-                Print / Export PDF
+              <button
+                onClick={() => setAddingCompliance(!addingCompliance)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#2e4150] text-white text-sm font-semibold hover:bg-[#3a5268] transition-colors ml-2"
+              >
+                <span className="material-symbols-outlined text-[18px]">add</span>
+                Add
               </button>
             </div>
+            <ul className="space-y-2 overflow-y-scroll max-h-[400px]">
+              {complianceRequirements.map(item => (
+                <li
+                  key={item.id}
+                  className={`flex items-center gap-3 p-3 rounded-xl transition-colors ${item.checked ? 'border border-green-200 bg-green-50' : 'border border-[#e7ebf3] hover:bg-[#f6f7fb]'}`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={item.checked}
+                    onChange={() => toggleCompliance(item.id)}
+                    className="w-5 h-5 rounded border-[#e7ebf3] text-[#2e4150] focus:ring-[#2e4150]/20"
+                  />
+                  <span className={`flex-1 text-sm ${item.checked ? 'text-green-800 font-medium' : 'text-[#0d121b] font-medium'}`}>
+                    {item.label}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => removeCompliance(item.id)}
+                    className="p-1.5 rounded-lg text-[#6b7a99] hover:bg-red-50 hover:text-red-600 transition-colors"
+                    title="Delete"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">delete</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+            {addingCompliance && (
+              <div className="mt-4 p-4 bg-[#f6f7fb] rounded-xl border border-[#e7ebf3] flex gap-2">
+                <input
+                  value={newCompliance}
+                  onChange={e => setNewCompliance(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addCompliance())}
+                  placeholder="Enter compliance requirement..."
+                  className="flex-1 px-3 py-2 rounded-lg border border-[#e7ebf3] text-sm focus:outline-none focus:ring-2 focus:ring-[#2e4150]/20"
+                />
+                <button
+                  type="button"
+                  onClick={addCompliance}
+                  disabled={!newCompliance.trim()}
+                  className="px-4 py-2 rounded-lg bg-[#2e4150] text-white text-sm font-semibold hover:bg-[#3a5268] disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Add
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setAddingCompliance(false); setNewCompliance(''); }}
+                  className="px-4 py-2 rounded-lg border border-[#e7ebf3] text-[#2e4150] text-sm font-semibold hover:bg-[#f6f7fb]"
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
+            {complianceRequirements.length === 0 && !addingCompliance && (
+              <p className="text-sm text-[#6b7a99]">No compliance requirements. Click Add to add one.</p>
+            )}
           </div>
 
-          {/* Review timeline */}
-          <div className={`rounded-xl border shadow-sm p-5 ${
-            isOverdue ? 'bg-red-50 border-red-200' : daysToReview <= 30 ? 'bg-amber-50 border-amber-200' : 'bg-white border-[#e7ebf3]'
-          }`}>
-            <div className="flex items-center gap-2 mb-2">
-              <span className={`material-symbols-outlined text-[18px] ${isOverdue ? 'text-red-500' : daysToReview <= 30 ? 'text-amber-500' : 'text-[#6b7a99]'}`}>event</span>
-              <p className="text-sm font-bold text-[#0d121b]">Review Schedule</p>
+          {/* C. Required PPE */}
+          <div className="bg-white rounded-xl border border-[#e7ebf3] shadow-sm p-6">
+            <div className="flex items-center gap-2 flex-wrap mb-4">
+              <span className="material-symbols-outlined text-[18px] text-[#6b7a99]">safety_check</span>
+              <h2 className="text-base font-bold text-[#0d121b]">Required PPE</h2>
+              <button
+                onClick={() => setAddingPPE(!addingPPE)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#2e4150] text-white text-sm font-semibold hover:bg-[#3a5268] transition-colors ml-2"
+              >
+                <span className="material-symbols-outlined text-[18px]">add</span>
+                Add PPE
+              </button>
             </div>
-            <p className={`text-base font-bold ${isOverdue ? 'text-red-600' : daysToReview <= 30 ? 'text-amber-600' : 'text-[#0d121b]'}`}>
-              {fmt(ra.nextReviewDate)}
-            </p>
-            <p className="text-xs text-[#6b7a99] mt-1">
-              {isOverdue ? `${Math.abs(daysToReview)} day(s) overdue` : `In ${daysToReview} day(s)`}
-            </p>
+            {addingPPE && (
+              <div className="mb-4 p-4 bg-[#f6f7fb] rounded-xl border border-[#e7ebf3] space-y-3">
+                <div className="flex gap-2 flex-wrap">
+                  {COMMON_PPE.filter(p => !ppe.includes(p)).map(item => (
+                    <button
+                      key={item}
+                      type="button"
+                      onClick={() => addPPE(item)}
+                      className="px-3 py-1.5 rounded-lg border border-[#e7ebf3] text-sm font-medium text-[#2e4150] hover:bg-white hover:border-[#2e4150]/30 transition-colors"
+                    >
+                      + {item}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    value={newPPE}
+                    onChange={e => setNewPPE(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addPPE(newPPE))}
+                    placeholder="Or type custom PPE..."
+                    className="flex-1 px-3 py-2 rounded-lg border border-[#e7ebf3] text-sm focus:outline-none focus:ring-2 focus:ring-[#2e4150]/20"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => addPPE(newPPE)}
+                    disabled={!newPPE.trim()}
+                    className="px-4 py-2 rounded-lg bg-[#2e4150] text-white text-sm font-semibold hover:bg-[#3a5268] disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Add
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => { setAddingPPE(false); setNewPPE(''); }}
+                  className="text-sm text-[#6b7a99] hover:text-[#0d121b]"
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
+            <div className="flex flex-wrap gap-3 overflow-y-scroll max-h-[200px]">
+              {ppe.map(item => (
+                <div
+                  key={item}
+                  className="flex items-center gap-2 p-3 rounded-xl border border-green-200 bg-green-50"
+                >
+                  <span className="material-symbols-outlined text-[18px] text-green-600">check_circle</span>
+                  <span className="text-sm font-medium text-green-800">{item}</span>
+                  <button
+                    type="button"
+                    onClick={() => removePPE(item)}
+                    className="p-1 rounded-lg text-[#6b7a99] hover:bg-red-100 hover:text-red-600 transition-colors"
+                    title="Remove"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">close</span>
+                  </button>
+                </div>
+              ))}
+            </div>
+            {ppe.length === 0 && !addingPPE && (
+              <p className="text-sm text-[#6b7a99]">No PPE required. Click &quot;Add PPE&quot; to add items.</p>
+            )}
           </div>
+
+          
         </div>
       </div>
     </div>

@@ -10,6 +10,15 @@ export type ContractHealth = 'Valid' | 'Expiring' | 'Expired';
 
 export type AssignmentStatus = 'Compliant' | 'Expiring' | 'Non-Compliant';
 
+export interface ClientDocument {
+  key: string;
+  name: string;
+  size: number;
+  type: string;
+  uploadedAt: string;
+  dataUrl: string;
+}
+
 export interface Client {
   id: string;
   name: string;
@@ -22,6 +31,7 @@ export interface Client {
   insuranceExpiry: string; // ISO date
   address: string;
   notes?: string;
+  documents?: ClientDocument[];
 }
 
 export interface Site {

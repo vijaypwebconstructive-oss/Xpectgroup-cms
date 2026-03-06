@@ -1,5 +1,5 @@
-import React from 'react';
-import { getIncidentById } from './mockData';
+import React, { useState } from 'react';
+import { useIncidents } from '../../context/IncidentsContext';
 
 interface Props {
   incidentId: string;
@@ -28,7 +28,19 @@ const InfoRow: React.FC<{ label: string; value: React.ReactNode }> = ({ label, v
 );
 
 const IncidentDetail: React.FC<Props> = ({ incidentId, onBack }) => {
+  const { getIncidentById, deleteIncident } = useIncidents();
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const incident = getIncidentById(incidentId);
+
+  const handleDelete = async () => {
+    try {
+      await deleteIncident(incidentId);
+      setShowDeleteConfirm(false);
+      onBack();
+    } catch {
+      // Could show error toast
+    }
+  };
 
   if (!incident) {
     return (
@@ -51,26 +63,50 @@ const IncidentDetail: React.FC<Props> = ({ incidentId, onBack }) => {
           <span className="material-symbols-outlined text-[18px]">arrow_back</span>
           Back to Incidents
         </button>
-        <div className="flex items-start gap-4 flex-wrap">
-          <div className="w-12 h-12 rounded-xl bg-[#2e4150] flex items-center justify-center shrink-0">
-            <span className="material-symbols-outlined text-white text-[24px]">report_problem</span>
+        <div className="flex items-start justify-between gap-4 flex-wrap">
+          <div className="flex items-start gap-4 flex-wrap">
+            <div className="w-12 h-12 rounded-xl bg-[#2e4150] flex items-center justify-center shrink-0">
+              <span className="material-symbols-outlined text-white text-[24px]">report_problem</span>
+            </div>
+            <div className="flex-1 min-w-0">
+              <h1 className="text-xl font-bold text-[#0d121b] font-mono">{incident.id}</h1>
+              <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${typeBadge(incident.type)}`}>{incident.type}</span>
+                <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${
+                  incident.injuryOccurred
+                    ? 'bg-red-100 text-red-700 border border-red-200'
+                    : 'bg-green-100 text-green-700 border border-green-200'
+                }`}>
+                  <span className={`w-1.5 h-1.5 rounded-full ${incident.injuryOccurred ? 'bg-red-500' : 'bg-green-500'}`} />
+                  Injury: {incident.injuryOccurred ? 'Yes' : 'No'}
+                </span>
+              </div>
+            </div>
           </div>
-          <div className="flex-1 min-w-0">
-            <h1 className="text-xl font-bold text-[#0d121b] font-mono">{incident.id}</h1>
-            <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-              <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${typeBadge(incident.type)}`}>{incident.type}</span>
-              <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${
-                incident.injuryOccurred
-                  ? 'bg-red-100 text-red-700 border border-red-200'
-                  : 'bg-green-100 text-green-700 border border-green-200'
-              }`}>
-                <span className={`w-1.5 h-1.5 rounded-full ${incident.injuryOccurred ? 'bg-red-500' : 'bg-green-500'}`} />
-                Injury: {incident.injuryOccurred ? 'Yes' : 'No'}
-              </span>
+          <button
+            onClick={() => setShowDeleteConfirm(true)}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl border border-red-200 text-red-600 bg-red-50 hover:bg-red-100 text-sm font-semibold transition-colors"
+          >
+            <span className="material-symbols-outlined text-[18px]">delete</span>
+            Delete
+          </button>
+        </div>
+      </div>
+
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setShowDeleteConfirm(false)} role="dialog" aria-modal="true" aria-labelledby="delete-incident-title">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full mx-4 p-6" onClick={e => e.stopPropagation()}>
+            <h3 id="delete-incident-title" className="text-lg font-bold text-[#0d121b] mb-2">Delete Incident</h3>
+            <p className="text-sm text-[#6b7a99] mb-6">
+              Are you sure you want to delete incident &quot;{incident.id}&quot;? This will also remove all associated corrective actions. This action cannot be undone.
+            </p>
+            <div className="flex gap-3">
+              <button onClick={handleDelete} className="flex-1 px-4 py-2.5 rounded-xl bg-red-600 text-white text-sm font-semibold hover:bg-red-700 cursor-pointer">Delete</button>
+              <button onClick={() => setShowDeleteConfirm(false)} className="flex-1 px-4 py-2.5 rounded-xl border border-[#e7ebf3] text-[#2e4150] text-sm font-semibold hover:bg-[#f6f7fb] cursor-pointer">Cancel</button>
             </div>
           </div>
         </div>
-      </div>
+      )}
 
       <div className="sm:px-8 px-4 sm:py-6 py-3">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">

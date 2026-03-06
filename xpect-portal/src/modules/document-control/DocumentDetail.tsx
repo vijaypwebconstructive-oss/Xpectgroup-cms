@@ -1,7 +1,7 @@
-import React, { useState, useCallback } from 'react';
-import { getDocById, daysUntilDate, updateDocStatus, MOCK_DOCUMENTS } from './mockData';
+import React, { useState, useCallback, useEffect } from 'react';
+import { usePolicyDocuments } from '../../context/PolicyDocumentsContext';
+import { daysUntilDate } from './mockData';
 import { PolicyDocument } from './types';
-import { addedDocuments } from './DocumentsLibrary';
 
 interface Props {
   docId: string;
@@ -51,21 +51,25 @@ const InfoRow: React.FC<{ label: string; value: string }> = ({ label, value }) =
 // ── Main component ────────────────────────────────────────────────────────────
 
 const DocumentDetail: React.FC<Props> = ({ docId, onBack }) => {
-  const [, forceUpdate] = useState(0);
+  const { documents, updateDocument, getDocumentById } = usePolicyDocuments();
+  const [doc, setDoc] = useState<PolicyDocument | null>(null);
   const [approvalNote, setApprovalNote] = useState('');
   const [confirmAction, setConfirmAction] = useState<'approve' | 'reject' | 'changes' | null>(null);
 
-  const doc = getDocById(docId) || addedDocuments.find(d => d.id === docId);
+  useEffect(() => {
+    const found = documents.find(d => d.id === docId);
+    if (found) setDoc(found);
+    else getDocumentById(docId).then(setDoc);
+  }, [docId, documents, getDocumentById]);
 
-  const handleApprovalAction = useCallback((action: 'approve' | 'reject' | 'changes') => {
+  const handleApprovalAction = useCallback(async (action: 'approve' | 'reject' | 'changes') => {
     if (!doc) return;
-    if (action === 'approve')  updateDocStatus(doc.id, 'approved');
-    if (action === 'reject')   updateDocStatus(doc.id, 'rejected');
-    if (action === 'changes')  updateDocStatus(doc.id, 'draft');
+    const status = action === 'approve' ? 'approved' : action === 'reject' ? 'rejected' : 'draft';
+    await updateDocument(doc.id, { status });
+    setDoc(prev => prev ? { ...prev, status } : null);
     setConfirmAction(null);
     setApprovalNote('');
-    forceUpdate(n => n + 1);
-  }, [doc]);
+  }, [doc, updateDocument]);
 
   if (!doc) {
     return (
@@ -82,8 +86,7 @@ const DocumentDetail: React.FC<Props> = ({ docId, onBack }) => {
   const daysToReview = doc.nextReviewDate ? daysUntilDate(doc.nextReviewDate) : null;
   const isOverdue = daysToReview !== null && daysToReview <= 0 && doc.status === 'approved';
 
-  // Re-read from mock array so approval updates reflect
-  const freshDoc = MOCK_DOCUMENTS.find(d => d.id === docId) ?? doc;
+  const freshDoc = doc;
 
   return (
     <div className="min-h-full bg-[#f6f7fb]">

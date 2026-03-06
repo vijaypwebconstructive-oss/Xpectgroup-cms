@@ -206,3 +206,173 @@ This is an automated message from Xpect Group.
     throw new Error(`Failed to resend OTP email: ${error.message}`);
   }
 };
+
+/**
+ * Send training expiry reminder email to cleaner
+ * @param {string} email - Recipient (cleaner) email
+ * @param {string} cleanerName - Cleaner name
+ * @param {string} courseName - Training course name
+ * @param {string} expiryDate - Expiry date (YYYY-MM-DD)
+ */
+export const sendTrainingExpiryReminder = async (email, cleanerName, courseName, expiryDate) => {
+  try {
+    if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) {
+      console.error('❌ Gmail credentials not configured');
+      throw new Error('Email service not configured');
+    }
+
+    const transporter = createTransporter();
+    const formattedDate = expiryDate ? new Date(expiryDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : expiryDate;
+
+    const mailOptions = {
+      from: `"Xpect Group" <${process.env.GMAIL_USER}>`,
+      to: email,
+      subject: 'Xpect Group – Training Certification Expiring Soon',
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        </head>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <div style="background-color: #f2f6f9; padding: 30px; border-radius: 10px;">
+            <h2 style="color: #2e4150; margin-top: 0;">Training Certification Expiring Soon</h2>
+            
+            <p>Dear ${cleanerName},</p>
+            
+            <p>This is a reminder that your training certification is expiring soon.</p>
+            
+            <div style="background-color: #fff3cd; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #f59e0b;">
+              <p style="margin: 0 0 8px 0; font-weight: bold; color: #92400e;">Training Course:</p>
+              <p style="margin: 0 0 8px 0; color: #2e4150;">${courseName}</p>
+              <p style="margin: 0 0 0 0; font-weight: bold; color: #92400e;">Expiry Date:</p>
+              <p style="margin: 0; color: #2e4150;">${formattedDate}</p>
+            </div>
+            
+            <p>Please arrange to renew your certification before the expiry date.</p>
+            
+            <p style="margin-top: 30px; font-size: 12px; color: #999; border-top: 1px solid #e7ebf3; padding-top: 20px;">
+              This is an automated message from Xpect Group.
+            </p>
+          </div>
+        </body>
+        </html>
+      `,
+      text: `
+Xpect Group – Training Certification Expiring Soon
+
+Dear ${cleanerName},
+
+This is a reminder that your training certification is expiring soon.
+
+Training Course: ${courseName}
+Expiry Date: ${formattedDate}
+
+Please arrange to renew your certification before the expiry date.
+
+This is an automated message from Xpect Group.
+      `
+    };
+
+    const info = await transporter.sendMail(mailOptions);
+
+    console.log('✅ Training expiry reminder sent:', {
+      messageId: info.messageId,
+      to: email,
+      cleanerName,
+      courseName
+    });
+
+    return {
+      success: true,
+      messageId: info.messageId,
+      to: email
+    };
+  } catch (error) {
+    console.error('❌ Error sending training expiry reminder:', error);
+    throw new Error(`Failed to send training expiry reminder: ${error.message}`);
+  }
+};
+
+/**
+ * Send PPE invoice email to client with attachment
+ * @param {string} email - Client email
+ * @param {string} clientName - Client name
+ * @param {string} attachmentFilename - Invoice filename
+ * @param {string} attachmentBase64 - Invoice file content (base64)
+ */
+export const sendPPEInvoice = async (email, clientName, attachmentFilename, attachmentBase64) => {
+  try {
+    if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) {
+      console.error('❌ Gmail credentials not configured');
+      throw new Error('Email service not configured');
+    }
+
+    const transporter = createTransporter();
+
+    const attachments = [];
+    if (attachmentFilename && attachmentBase64) {
+      let content = attachmentBase64;
+      if (content.includes(',')) {
+        content = content.split(',')[1] || content;
+      }
+      attachments.push({
+        filename: attachmentFilename,
+        content: Buffer.from(content, 'base64'),
+      });
+    }
+
+    const mailOptions = {
+      from: `"Xpect Group" <${process.env.GMAIL_USER}>`,
+      to: email,
+      subject: 'PPE Invoice – Xpect Group',
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        </head>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <div style="background-color: #f2f6f9; padding: 30px; border-radius: 10px;">
+            <h2 style="color: #2e4150; margin-top: 0;">PPE Invoice – Xpect Group</h2>
+            <p>Dear Client,</p>
+            <p>Please find attached the PPE invoice issued for your site.</p>
+            <p>Regards<br>Xpect Group</p>
+            <p style="margin-top: 30px; font-size: 12px; color: #999; border-top: 1px solid #e7ebf3; padding-top: 20px;">
+              This is an automated message from Xpect Group.
+            </p>
+          </div>
+        </body>
+        </html>
+      `,
+      text: `
+Dear Client,
+
+Please find attached the PPE invoice issued for your site.
+
+Regards
+Xpect Group
+      `,
+      attachments,
+    };
+
+    const info = await transporter.sendMail(mailOptions);
+
+    console.log('✅ PPE invoice sent:', {
+      messageId: info.messageId,
+      to: email,
+      clientName,
+    });
+
+    return {
+      success: true,
+      messageId: info.messageId,
+      to: email,
+    };
+  } catch (error) {
+    console.error('❌ Error sending PPE invoice:', error);
+    throw new Error(`Failed to send PPE invoice: ${error.message}`);
+  }
+};

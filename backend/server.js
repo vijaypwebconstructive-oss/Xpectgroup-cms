@@ -7,16 +7,34 @@ import documentRoutes from './routes/documents.js';
 import invitationRoutes from './routes/invitations.js';
 import adminRoutes from './routes/admin.js';
 import activityRoutes from './routes/activity.js';
+import trainingRoutes from './routes/training.js';
+import ppeRoutes from './routes/ppe.js';
+import riskCoshhRoutes from './routes/riskCoshh.js';
+import clientsSitesRoutes from './routes/clientsSites.js';
+import policyDocumentsRoutes from './routes/policyDocuments.js';
+import incidentsRoutes from './routes/incidents.js';
+import systemUsersRoutes from './routes/systemUsers.js';
+import trainingRecordsRoutes from './routes/trainingRecords.js';
 
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/xpect-portal';
 
-// Middleware
+// Middleware - allow multiple frontend origins (different ports for dev)
+const allowedOrigins = [
+  'http://localhost:3000',
+  'http://localhost:3001',
+  'http://localhost:5173',
+  process.env.FRONTEND_URL
+].filter(Boolean);
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  origin: (origin, cb) => {
+    if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
+    cb(null, false);
+  },
   credentials: true
 }));
 app.use(express.json({ limit: '50mb' }));
@@ -28,6 +46,14 @@ app.use('/api/documents', documentRoutes);
 app.use('/api/invitations', invitationRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/activity', activityRoutes);
+app.use('/api/training', trainingRoutes);
+app.use('/api/ppe', ppeRoutes);
+app.use('/api/risk-coshh', riskCoshhRoutes);
+app.use('/api/clients-sites', clientsSitesRoutes);
+app.use('/api/policy-documents', policyDocumentsRoutes);
+app.use('/api/incidents', incidentsRoutes);
+app.use('/api/users', systemUsersRoutes);
+app.use('/api/training-records', trainingRecordsRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

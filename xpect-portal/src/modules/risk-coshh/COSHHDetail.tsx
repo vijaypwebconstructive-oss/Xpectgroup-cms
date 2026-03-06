@@ -1,6 +1,5 @@
 import React from 'react';
-import { getChemicalById, getSDSByChemical } from './mockData';
-import { addedChemicals } from './COSHHRegister';
+import { useRiskCoshh } from '../../context/RiskCoshhContext';
 
 interface Props {
   chemicalId: string;
@@ -27,8 +26,9 @@ const InfoSection: React.FC<{ title: string; icon: string; children: React.React
 );
 
 const COSHHDetail: React.FC<Props> = ({ chemicalId, onBack, onViewSDS }) => {
-  const chemical = getChemicalById(chemicalId) || addedChemicals.find(c => c.id === chemicalId);
-  const sds = chemical ? getSDSByChemical(chemical.id) : undefined;
+  const { getChemicalById, getSDSByChemicalId } = useRiskCoshh();
+  const chemical = getChemicalById(chemicalId);
+  const sds = chemical ? getSDSByChemicalId(chemical.id) : undefined;
 
   if (!chemical) {
     return (

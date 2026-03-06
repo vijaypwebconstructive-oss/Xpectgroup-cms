@@ -12,6 +12,12 @@ export interface Hazard {
   residualRisk: RiskLevel;
 }
 
+export interface ComplianceRequirement {
+  id: string;
+  label: string;
+  checked: boolean;
+}
+
 export interface RiskAssessment {
   id: string;
   title: string;
@@ -28,7 +34,9 @@ export interface RiskAssessment {
   workArea: string;
   hazards: Hazard[];
   requiredPPE: string[];
+  complianceRequirements?: ComplianceRequirement[];
   siteId?: string;
+  sector?: string;  // e.g. Healthcare, Office, Schools, Construction, Hospitality
 }
 
 export interface RAMS {
@@ -44,6 +52,9 @@ export interface RAMS {
   emergencyProcedures: string[];
   linkedRiskAssessmentIds: string[];
   signedCopyAvailable: boolean;
+  signedDocumentFileName?: string;
+  /** When true, the document is stored and can be viewed. False/undefined = dummy data or unavailable. */
+  documentAvailable?: boolean;
 }
 
 export interface Chemical {

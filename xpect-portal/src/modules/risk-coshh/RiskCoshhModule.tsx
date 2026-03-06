@@ -15,10 +15,7 @@ import COSHHDetail          from './COSHHDetail';
 import SDSLibrary           from './SDSLibrary';
 
 const RiskCoshhModule: React.FC = () => {
-  const [navState, setNavState] = useState<RiskNavState>(() => {
-    syncRiskFromPathname(window.location.pathname);
-    return getRiskState();
-  });
+  const [navState, setNavState] = useState<RiskNavState>(() => getRiskState());
 
   useEffect(() => {
     const unsub = subscribeRisk(setNavState);
@@ -44,9 +41,6 @@ const RiskCoshhModule: React.FC = () => {
       return (
         <RiskAssessmentsList
           onSelectRisk={goToRisk}
-          onNavigateRAMS={goToRAMSList}
-          onNavigateCOSHH={goToCOSHH}
-          onNavigateSDS={goToSDS}
         />
       );
 
@@ -104,9 +98,6 @@ const RiskCoshhModule: React.FC = () => {
       return (
         <RiskAssessmentsList
           onSelectRisk={goToRisk}
-          onNavigateRAMS={goToRAMSList}
-          onNavigateCOSHH={goToCOSHH}
-          onNavigateSDS={goToSDS}
         />
       );
   }

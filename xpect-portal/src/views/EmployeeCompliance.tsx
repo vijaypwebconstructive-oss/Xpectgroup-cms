@@ -100,20 +100,6 @@ const MOCK_EMPLOYEES: ComplianceEmployee[] = [
     employmentType: 'Temporary',
     isMock: true,
   },
-  {
-    id: 'mock-006',
-    name: 'Priya Singh',
-    initials: 'PS',
-    avatarColor: 'bg-rose-500',
-    role: 'Cleaner',
-    location: 'Manchester South',
-    verificationStatus: VerificationStatus.REJECTED,
-    dbsStatus: DBSStatus.NOT_STARTED,
-    lastChecked: '2026-02-01',
-    nationality: 'Indian',
-    employmentType: 'Contractor',
-    isMock: true,
-  },
 ];
 
 // ── Style maps ───────────────────────────────────────────────

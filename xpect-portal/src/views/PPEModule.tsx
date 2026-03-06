@@ -1,48 +1,53 @@
-import React, { useState } from 'react';
-import { AppView, PPEIssueRecord } from '../types';
-import PPEList from './PPEList';
-import PPEIssue from './PPEIssue';
-import PPEDetail from './PPEDetail';
-import PPEInventory from './PPEInventory';
+import React, { useState, useEffect } from 'react';
+import { AppView } from '../types';
+import PPEInvoiceList from './PPEInvoiceList';
+import PPEAddRecord from './PPEAddRecord';
+import { navigateToUrl } from '../utils/routing';
 
-type PPESubView = 'list' | 'issue' | 'detail' | 'inventory';
+type PPESubView = 'list' | 'add';
 
 interface PPEModuleProps {
   onNavigate: (view: AppView) => void;
 }
 
 const SUB_NAV = [
-  { key: 'list'      as PPESubView, label: 'PPE Records',  icon: 'safety_check',  url: '/ppe' },
-  { key: 'issue'     as PPESubView, label: 'Issue PPE',    icon: 'add_circle',    url: '/ppe/issue' },
-  { key: 'inventory' as PPESubView, label: 'Inventory',    icon: 'inventory_2',   url: '/ppe/inventory' },
+  { key: 'list' as PPESubView, label: 'PPE Invoice List', icon: 'description', url: '/ppe' },
+  { key: 'add' as PPESubView, label: 'Add PPE Record', icon: 'add_circle', url: '/ppe/add' },
 ];
 
 const PPEModule: React.FC<PPEModuleProps> = ({ onNavigate: _onNavigate }) => {
-  const [subView, setSubView]               = useState<PPESubView>('list');
-  const [selectedRecord, setSelectedRecord] = useState<PPEIssueRecord | null>(null);
+  const syncFromPathname = (pathname: string): PPESubView => {
+    if (pathname.endsWith('/add')) return 'add';
+    return 'list';
+  };
 
-  const navigate = (view: PPESubView, record?: PPEIssueRecord) => {
+  const [subView, setSubView] = useState<PPESubView>(() => syncFromPathname(window.location.pathname));
+
+  useEffect(() => {
+    const handlePopState = () => {
+      setSubView(syncFromPathname(window.location.pathname));
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  const navigate = (view: PPESubView) => {
     setSubView(view);
-    if (record) setSelectedRecord(record);
-    const found = SUB_NAV.find(n => n.key === view);
-    const url   = view === 'detail' ? `/ppe/${record?.id || ''}` : (found?.url ?? '/ppe');
-    window.history.pushState({}, '', url);
+    const url = view === 'add' ? '/ppe/add' : '/ppe';
+    navigateToUrl(url);
   };
 
   return (
     <div className="flex-1 flex flex-col w-full py-[15px] sm:py-8 px-4 sm:px-6 md:px-10 animate-in slide-in-from-bottom-4 duration-500 min-h-[calc(100vh-160px)] w-screen sm:w-full sm:max-w-full">
       <div className="w-full space-y-6">
-
-        {/* Page header */}
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex flex-col gap-1">
-            <h1 className="text-[#0d121b] text-[1.6rem] sm:text-2xl  font-bold font-black">PPE Records</h1>
+            <h1 className="text-[#0d121b] text-[1.6rem] sm:text-2xl font-bold font-black">PPE Invoices</h1>
             <p className="text-[#4c669a] text-base">
-              Track personal protective equipment issuance, replacements, and worker acknowledgements.
+              Manage PPE invoices issued to clients.
             </p>
           </div>
-          {/* Sub-nav tabs — hidden on detail/issue views */}
-          {subView !== 'detail' && (
+          {subView !== 'add' && (
             <div className="flex items-center gap-1 bg-white border border-[#e7ebf3] rounded-full p-1">
               {SUB_NAV.map(tab => (
                 <button
@@ -63,24 +68,12 @@ const PPEModule: React.FC<PPEModuleProps> = ({ onNavigate: _onNavigate }) => {
           )}
         </div>
 
-        {/* Sub-view content */}
         {subView === 'list' && (
-          <PPEList
-            onOpenDetail={(record) => navigate('detail', record)}
-            onOpenIssue={() => navigate('issue')}
-            onOpenInventory={() => navigate('inventory')}
-          />
+          <PPEInvoiceList onAddRecord={() => navigate('add')} />
         )}
-        {subView === 'issue' && (
-          <PPEIssue onBack={() => navigate('list')} />
+        {subView === 'add' && (
+          <PPEAddRecord onBack={() => navigate('list')} />
         )}
-        {subView === 'detail' && selectedRecord && (
-          <PPEDetail record={selectedRecord} onBack={() => navigate('list')} />
-        )}
-        {subView === 'inventory' && (
-          <PPEInventory onBack={() => navigate('list')} />
-        )}
-
       </div>
     </div>
   );

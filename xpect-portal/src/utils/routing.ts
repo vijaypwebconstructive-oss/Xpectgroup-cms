@@ -10,10 +10,8 @@ const URL_TO_VIEW: Record<string, AppView> = {
   '/dashboard': 'DASHBOARD',
   '/compliance': 'EMPLOYEE_COMPLIANCE',
   '/training': 'TRAINING_CERTIFICATION',
-  '/training/assign': 'ASSIGN_TRAINING',
   '/ppe': 'PPE_LIST',
-  '/ppe/issue': 'PPE_LIST',
-  '/ppe/inventory': 'PPE_LIST',
+  '/ppe/add': 'PPE_LIST',
   // Note: /clients, /sites, /site-allocation and their sub-paths are handled
   // by the dynamic pattern check in getViewFromUrl (supports :id segments).
   // These static entries are kept only as fallback for the lookup table.
@@ -29,7 +27,6 @@ const VIEW_TO_URL: Record<AppView, string> = {
   'DASHBOARD': '/dashboard',
   'EMPLOYEE_COMPLIANCE': '/compliance',
   'TRAINING_CERTIFICATION': '/training',
-  'ASSIGN_TRAINING': '/training/assign',
   'TRAINING_DETAIL': '/training/record',
   'PPE_LIST': '/ppe',
   'CLIENTS_SITES': '/clients',
@@ -62,9 +59,6 @@ export const getViewFromUrl = (pathname: string): { view: AppView; params?: { to
   if (pathname.startsWith('/training/record/')) {
     const id = pathname.split('/')[3];
     return { view: 'TRAINING_DETAIL', params: { traineeId: id } };
-  }
-  if (pathname.startsWith('/training/assign')) {
-    return { view: 'ASSIGN_TRAINING' };
   }
   if (pathname.startsWith('/training')) {
     return { view: 'TRAINING_CERTIFICATION' };

@@ -297,6 +297,268 @@ export const api = {
       return fetchWithErrorHandling(`${API_BASE_URL}/activity/entity/${entityType}/${entityId}`);
     },
   },
+
+  // Training API
+  training: {
+    sendExpiryReminder: async (params: { email: string; cleanerName: string; courseName: string; expiryDate: string }) => {
+      return fetchWithErrorHandling(`${API_BASE_URL}/training/send-expiry-reminder`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(params),
+      });
+    },
+
+    checkAndSendExpiryReminders: async (recordsWithEmail: Array<{ id: string; name: string; course: string; expiryDate: string; email: string }>) => {
+      return fetchWithErrorHandling<{ success: boolean; sent: number }>(
+        `${API_BASE_URL}/training/check-and-send-expiry-reminders`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ recordsWithEmail }),
+        }
+      );
+    },
+  },
+
+  // Risk & COSHH API
+  riskCoshh: {
+    riskAssessments: {
+      getAll: () => fetchWithErrorHandling<import('../modules/risk-coshh/types').RiskAssessment[]>(`${API_BASE_URL}/risk-coshh/risk-assessments`),
+      getById: (id: string) => fetchWithErrorHandling<import('../modules/risk-coshh/types').RiskAssessment>(`${API_BASE_URL}/risk-coshh/risk-assessments/${id}`),
+      create: (data: Omit<import('../modules/risk-coshh/types').RiskAssessment, 'id'>) =>
+        fetchWithErrorHandling<import('../modules/risk-coshh/types').RiskAssessment>(`${API_BASE_URL}/risk-coshh/risk-assessments`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+        }),
+      update: (id: string, updates: { hazards?: import('../modules/risk-coshh/types').Hazard[]; requiredPPE?: string[]; complianceRequirements?: import('../modules/risk-coshh/types').ComplianceRequirement[] }) =>
+        fetchWithErrorHandling<import('../modules/risk-coshh/types').RiskAssessment>(`${API_BASE_URL}/risk-coshh/risk-assessments/${id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(updates),
+        }),
+      delete: (id: string) =>
+        fetch(`${API_BASE_URL}/risk-coshh/risk-assessments/${id}`, { method: 'DELETE' }).then(r => {
+          if (!r.ok) return r.json().then((err: { error?: string; message?: string }) => { throw new ApiError(r.status, err.message || err.error || 'Failed'); });
+        }),
+    },
+    rams: {
+      getAll: () => fetchWithErrorHandling<import('../modules/risk-coshh/types').RAMS[]>(`${API_BASE_URL}/risk-coshh/rams`),
+      getById: (id: string) => fetchWithErrorHandling<import('../modules/risk-coshh/types').RAMS>(`${API_BASE_URL}/risk-coshh/rams/${id}`),
+      create: (data: Omit<import('../modules/risk-coshh/types').RAMS, 'id'> & { documentData?: string }) =>
+        fetchWithErrorHandling<import('../modules/risk-coshh/types').RAMS>(`${API_BASE_URL}/risk-coshh/rams`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+        }),
+      delete: (id: string) =>
+        fetch(`${API_BASE_URL}/risk-coshh/rams/${id}`, { method: 'DELETE' }).then(r => {
+          if (!r.ok) return r.json().then((err: { error?: string; message?: string }) => { throw new ApiError(r.status, err.message || err.error || 'Failed'); });
+        }),
+    },
+    chemicals: {
+      getAll: () => fetchWithErrorHandling<import('../modules/risk-coshh/types').Chemical[]>(`${API_BASE_URL}/risk-coshh/chemicals`),
+      getById: (id: string) => fetchWithErrorHandling<import('../modules/risk-coshh/types').Chemical>(`${API_BASE_URL}/risk-coshh/chemicals/${id}`),
+      create: (data: Omit<import('../modules/risk-coshh/types').Chemical, 'id'>) =>
+        fetchWithErrorHandling<import('../modules/risk-coshh/types').Chemical>(`${API_BASE_URL}/risk-coshh/chemicals`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+        }),
+    },
+    sds: {
+      getAll: () => fetchWithErrorHandling<import('../modules/risk-coshh/types').SDS[]>(`${API_BASE_URL}/risk-coshh/sds`),
+      getById: (id: string) =>
+        fetchWithErrorHandling<import('../modules/risk-coshh/types').SDS & { documentData?: string }>(`${API_BASE_URL}/risk-coshh/sds/${id}`),
+      create: (data: Omit<import('../modules/risk-coshh/types').SDS, 'id'> & { documentData: string }) =>
+        fetchWithErrorHandling<import('../modules/risk-coshh/types').SDS>(`${API_BASE_URL}/risk-coshh/sds`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+        }),
+    },
+  },
+
+  // Clients & Sites API
+  clientsSites: {
+    getClients: () => fetchWithErrorHandling<import('../modules/clients-sites/types').Client[]>(`${API_BASE_URL}/clients-sites/clients`),
+    createClient: (data: Omit<import('../modules/clients-sites/types').Client, 'id'>) =>
+      fetchWithErrorHandling<import('../modules/clients-sites/types').Client>(`${API_BASE_URL}/clients-sites/clients`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      }),
+    getSites: () => fetchWithErrorHandling<import('../modules/clients-sites/types').Site[]>(`${API_BASE_URL}/clients-sites/sites`),
+    createSite: (data: Omit<import('../modules/clients-sites/types').Site, 'id'>) =>
+      fetchWithErrorHandling<import('../modules/clients-sites/types').Site>(`${API_BASE_URL}/clients-sites/sites`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      }),
+    getAssignments: () => fetchWithErrorHandling<import('../modules/clients-sites/types').WorkerAssignment[]>(`${API_BASE_URL}/clients-sites/assignments`),
+    createAssignment: (data: Omit<import('../modules/clients-sites/types').WorkerAssignment, 'id'>) =>
+      fetchWithErrorHandling<import('../modules/clients-sites/types').WorkerAssignment>(`${API_BASE_URL}/clients-sites/assignments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      }),
+    removeAssignment: (workerId: string, siteId: string) =>
+      fetchWithErrorHandling<{ success: boolean }>(`${API_BASE_URL}/clients-sites/assignments?workerId=${encodeURIComponent(workerId)}&siteId=${encodeURIComponent(siteId)}`, {
+        method: 'DELETE',
+      }),
+    deleteClient: (id: string) =>
+      fetchWithErrorHandling<{ success: boolean }>(`${API_BASE_URL}/clients-sites/clients/${id}`, { method: 'DELETE' }),
+    deleteSite: (id: string) =>
+      fetchWithErrorHandling<{ success: boolean }>(`${API_BASE_URL}/clients-sites/sites/${id}`, { method: 'DELETE' }),
+  },
+
+  // Policy Documents API (document control)
+  policyDocuments: {
+    getAll: () => fetchWithErrorHandling(`${API_BASE_URL}/policy-documents`),
+    getById: (id: string) => fetchWithErrorHandling(`${API_BASE_URL}/policy-documents/${id}`),
+    create: (data: any) =>
+      fetchWithErrorHandling(`${API_BASE_URL}/policy-documents`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      }),
+    update: (id: string, updates: any) =>
+      fetchWithErrorHandling(`${API_BASE_URL}/policy-documents/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
+      }),
+  },
+
+  // Incidents API
+  incidents: {
+    getAll: () => fetchWithErrorHandling(`${API_BASE_URL}/incidents`),
+    getById: (id: string) => fetchWithErrorHandling(`${API_BASE_URL}/incidents/${id}`),
+    getActions: (id: string) => fetchWithErrorHandling(`${API_BASE_URL}/incidents/${id}/actions`),
+    create: (data: any) =>
+      fetchWithErrorHandling(`${API_BASE_URL}/incidents`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      }),
+    update: (id: string, updates: any) =>
+      fetchWithErrorHandling(`${API_BASE_URL}/incidents/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
+      }),
+    createAction: (incidentId: string, data: any) =>
+      fetchWithErrorHandling(`${API_BASE_URL}/incidents/${incidentId}/actions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      }),
+    updateAction: (incidentId: string, actionId: string, updates: any) =>
+      fetchWithErrorHandling(`${API_BASE_URL}/incidents/${incidentId}/actions/${actionId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
+      }),
+    delete: (id: string) =>
+      fetchWithErrorHandling<{ success: boolean }>(`${API_BASE_URL}/incidents/${id}`, { method: 'DELETE' }),
+  },
+
+  // User Access API
+  users: {
+    getAll: () => fetchWithErrorHandling(`${API_BASE_URL}/users`),
+    getById: (id: string) => fetchWithErrorHandling(`${API_BASE_URL}/users/${id}`),
+    create: (data: any) =>
+      fetchWithErrorHandling(`${API_BASE_URL}/users`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      }),
+    update: (id: string, updates: any) =>
+      fetchWithErrorHandling(`${API_BASE_URL}/users/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
+      }),
+  },
+
+  // Training Records API
+  trainingRecords: {
+    getAll: () => fetchWithErrorHandling(`${API_BASE_URL}/training-records`),
+    getById: (id: string) => fetchWithErrorHandling(`${API_BASE_URL}/training-records/${id}`),
+    create: (data: any) =>
+      fetchWithErrorHandling(`${API_BASE_URL}/training-records`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      }),
+    update: (id: string, updates: any) =>
+      fetchWithErrorHandling(`${API_BASE_URL}/training-records/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
+      }),
+    delete: (id: string) =>
+      fetchWithErrorHandling(`${API_BASE_URL}/training-records/${id}`, { method: 'DELETE' }),
+  },
+
+  // PPE Invoice API
+  ppe: {
+    getInvoices: async () => {
+      return fetchWithErrorHandling<import('../types').PPEInvoiceRecord[]>(`${API_BASE_URL}/ppe/invoices`);
+    },
+    createInvoice: async (record: Omit<import('../types').PPEInvoiceRecord, 'id' | 'createdAt'>) => {
+      return fetchWithErrorHandling<import('../types').PPEInvoiceRecord>(`${API_BASE_URL}/ppe/invoices`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(record),
+      });
+    },
+    updateInvoice: async (id: string, updates: Partial<Pick<import('../types').PPEInvoiceRecord, 'emailStatus'>>) => {
+      return fetchWithErrorHandling<import('../types').PPEInvoiceRecord>(`${API_BASE_URL}/ppe/invoices/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
+      });
+    },
+    sendInvoice: async (params: { email: string; clientName: string; invoiceFilename: string; invoiceBase64: string }) => {
+      return fetchWithErrorHandling(`${API_BASE_URL}/ppe/send-invoice`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(params),
+      });
+    },
+    getRecords: () => fetchWithErrorHandling(`${API_BASE_URL}/ppe/records`),
+    getRecordById: (id: string) => fetchWithErrorHandling(`${API_BASE_URL}/ppe/records/${id}`),
+    createRecord: (data: any) =>
+      fetchWithErrorHandling(`${API_BASE_URL}/ppe/records`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      }),
+    updateRecord: (id: string, updates: any) =>
+      fetchWithErrorHandling(`${API_BASE_URL}/ppe/records/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
+      }),
+    deleteRecord: (id: string) =>
+      fetchWithErrorHandling(`${API_BASE_URL}/ppe/records/${id}`, { method: 'DELETE' }),
+    getInventory: () => fetchWithErrorHandling(`${API_BASE_URL}/ppe/inventory`),
+    createInventoryItem: (data: any) =>
+      fetchWithErrorHandling(`${API_BASE_URL}/ppe/inventory`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      }),
+    updateInventoryItem: (id: string, updates: any) =>
+      fetchWithErrorHandling(`${API_BASE_URL}/ppe/inventory/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
+      }),
+    deleteInventoryItem: (id: string) =>
+      fetchWithErrorHandling(`${API_BASE_URL}/ppe/inventory/${id}`, { method: 'DELETE' }),
+  },
 };
 
 export { ApiError };

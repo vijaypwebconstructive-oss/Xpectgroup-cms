@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Site, RiskLevel } from './types';
-import { MOCK_SITES, MOCK_CLIENTS, MOCK_ASSIGNMENTS } from './mockData';
-import { addedClients } from './ClientsList';
+import { useClientsSites } from '../../context/ClientsSitesContext';
 
 interface SitesListProps {
   onSelectSite:         (siteId: string) => void;
@@ -55,17 +54,16 @@ const emptyForm: SiteForm = {
   fireSafetyDoc: '', coshhAssessmentDoc: '', siteInductionDoc: '',
 };
 
-export const addedSites: Site[] = [];
-
 const SitesList: React.FC<SitesListProps> = ({ onSelectSite, onNavigateAllocation }) => {
+  const { sites, clients, assignments, loading, error, addSite } = useClientsSites();
   const [search, setSearch]             = useState('');
   const [clientFilter, setClientFilter] = useState('');
   const [riskFilter, setRiskFilter]     = useState('');
-  const [sites, setSites]               = useState<Site[]>([...MOCK_SITES, ...addedSites]);
   const [isModalOpen, setIsModalOpen]   = useState(false);
   const [form, setForm]                 = useState<SiteForm>(emptyForm);
   const [formErrors, setFormErrors]     = useState<Record<string, string>>({});
   const [successMsg, setSuccessMsg]     = useState('');
+  const [saving, setSaving]             = useState(false);
 
   const setField = (k: keyof SiteForm, v: string | string[]) => {
     setForm(prev => ({ ...prev, [k]: v }));
@@ -95,28 +93,32 @@ const SitesList: React.FC<SitesListProps> = ({ onSelectSite, onNavigateAllocatio
     return e;
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     const errs = validate();
     if (Object.keys(errs).length) { setFormErrors(errs); return; }
     setFormErrors({});
-    const newSite: Site = {
-      id: `site-${Date.now()}`,
-      name: form.name.trim(),
-      clientId: form.clientId,
-      address: form.address.trim(),
-      postcode: form.postcode.trim().toUpperCase(),
-      riskLevel: form.riskLevel as RiskLevel,
-      requiredTrainings: form.requiredTrainings,
-      emergencyContact: form.emergencyContact.trim(),
-      emergencyPhone: form.emergencyPhone.trim(),
-      accessInstructions: form.accessInstructions.trim(),
-      activeWorkers: 0,
-    };
-    addedSites.unshift(newSite);
-    setSites(prev => [newSite, ...prev]);
-    setForm(emptyForm);
-    setIsModalOpen(false);
-    flash(`Site "${newSite.name}" added successfully.`);
+    setSaving(true);
+    try {
+      const newSite = await addSite({
+        clientId: form.clientId,
+        name: form.name.trim(),
+        address: form.address.trim(),
+        postcode: form.postcode.trim().toUpperCase(),
+        riskLevel: form.riskLevel as RiskLevel,
+        requiredTrainings: form.requiredTrainings,
+        emergencyContact: form.emergencyContact.trim(),
+        emergencyPhone: form.emergencyPhone.trim(),
+        accessInstructions: form.accessInstructions.trim(),
+        activeWorkers: 0,
+      });
+      setForm(emptyForm);
+      setIsModalOpen(false);
+      flash(`Site "${newSite.name}" added successfully.`);
+    } catch {
+      setFormErrors({ submit: 'Failed to save site. Please try again.' });
+    } finally {
+      setSaving(false);
+    }
   };
 
   const openModal = () => { setForm(emptyForm); setFormErrors({}); setIsModalOpen(true); };
@@ -147,19 +149,19 @@ const SitesList: React.FC<SitesListProps> = ({ onSelectSite, onNavigateAllocatio
 
   const totalSites    = sites.length;
   const highRisk      = sites.filter(s => s.riskLevel === 'High').length;
-  const nonCompliant  = MOCK_ASSIGNMENTS.filter(a => a.complianceStatus === 'Non-Compliant').length;
-  const totalWorkers  = MOCK_ASSIGNMENTS.length;
+  const nonCompliant  = assignments.filter(a => a.complianceStatus === 'Non-Compliant').length;
+  const totalWorkers  = assignments.length;
 
-  const allClients = [...MOCK_CLIENTS, ...addedClients];
+  const allClients = clients;
 
   const enriched = sites.map(s => {
     const client      = allClients.find(c => c.id === s.clientId);
-    const assignments = MOCK_ASSIGNMENTS.filter(a => a.siteId === s.id);
-    const nonC = assignments.filter(a => a.complianceStatus === 'Non-Compliant').length;
-    const exp  = assignments.filter(a => a.complianceStatus === 'Expiring').length;
+    const siteAssignments = assignments.filter(a => a.siteId === s.id);
+    const nonC = siteAssignments.filter(a => a.complianceStatus === 'Non-Compliant').length;
+    const exp  = siteAssignments.filter(a => a.complianceStatus === 'Expiring').length;
     const overallStatus: ComplianceKey =
       nonC > 0 ? 'Non-Compliant' : exp > 0 ? 'Expiring' : 'Compliant';
-    return { ...s, client, assignmentCount: assignments.length, overallStatus };
+    return { ...s, client, assignmentCount: siteAssignments.length, overallStatus };
   });
 
   const filtered = enriched.filter(s => {
@@ -258,7 +260,19 @@ const SitesList: React.FC<SitesListProps> = ({ onSelectSite, onNavigateAllocatio
           <span className="bg-[#f2f6f9] text-[#4c669a] text-xs font-bold px-2.5 py-1 rounded-full">{filtered.length} records</span>
         </div>
 
-        {/* Table */}
+        {loading && (
+          <div className="px-5 py-14 text-center">
+            <span className="material-symbols-outlined text-[#4c669a] text-4xl animate-spin block mb-2">progress_activity</span>
+            <p className="text-[#4c669a] text-sm font-semibold">Loading sites…</p>
+          </div>
+        )}
+        {error && !loading && (
+          <div className="px-5 py-14 text-center">
+            <span className="material-symbols-outlined text-red-500 text-[48px] block mb-2">error</span>
+            <p className="text-red-600 text-sm font-semibold">{error}</p>
+          </div>
+        )}
+        {!loading && !error && (
         <div className="overflow-x-auto">
           <table className="w-full min-w-[900px]">
             <thead>
@@ -330,6 +344,7 @@ const SitesList: React.FC<SitesListProps> = ({ onSelectSite, onNavigateAllocatio
             </tbody>
           </table>
         </div>
+        )}
 
         <div className="px-5 py-3 border-t border-[#e7ebf3] bg-[#f8fafc] flex items-center justify-between">
           <p className="text-xs text-[#4c669a]">
@@ -484,14 +499,15 @@ const SitesList: React.FC<SitesListProps> = ({ onSelectSite, onNavigateAllocatio
 
             {/* Modal footer */}
             <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-[#e7ebf3] sticky bottom-0 bg-white rounded-b-2xl">
+              {formErrors.submit && <p className="text-red-500 text-xs mr-auto">{formErrors.submit}</p>}
               <button type="button" onClick={() => setIsModalOpen(false)}
                 className="px-6 py-2.5 rounded-full border border-[#c7d2e0] text-[#4c669a] text-sm font-bold hover:bg-[#f2f6f9] transition-all cursor-pointer">
                 Cancel
               </button>
-              <button type="button" onClick={handleSubmit}
-                className="flex items-center gap-2 px-6 py-2.5 rounded-full bg-[#2e4150] text-white text-sm font-bold hover:bg-[#2e4150]/90 transition-all cursor-pointer">
+              <button type="button" onClick={handleSubmit} disabled={saving}
+                className="flex items-center gap-2 px-6 py-2.5 rounded-full bg-[#2e4150] text-white text-sm font-bold hover:bg-[#2e4150]/90 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
                 <span className="material-symbols-outlined text-[18px]">add_circle</span>
-                Add Site
+                {saving ? 'Saving…' : 'Add Site'}
               </button>
             </div>
           </div>

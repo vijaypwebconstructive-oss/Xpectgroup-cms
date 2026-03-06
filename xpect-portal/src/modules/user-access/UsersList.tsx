@@ -1,12 +1,10 @@
 import React, { useState, useMemo } from 'react';
-import { MOCK_USERS } from './mockData';
+import { useUserAccess } from '../../context/UserAccessContext';
 import { SystemUser, UserRole, AccountStatus, ROLE_DESCRIPTIONS } from './types';
 
 interface Props {
   onSelectUser: (id: string) => void;
 }
-
-export const addedUsers: SystemUser[] = [];
 
 const ROLES: UserRole[] = ['Admin', 'Supervisor', 'CMS Operator'];
 
@@ -58,10 +56,10 @@ const emptyForm: UserForm = {
 };
 
 const UsersList: React.FC<Props> = ({ onSelectUser }) => {
+  const { users: usersList, addUser } = useUserAccess();
   const [search, setSearch]         = useState('');
   const [roleFilter, setRoleFilter] = useState<UserRole | ''>('');
   const [statusFilter, setStatusFilter] = useState<AccountStatus | ''>('');
-  const [usersList, setUsersList]   = useState<SystemUser[]>([...addedUsers, ...MOCK_USERS]);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [form, setForm]               = useState<UserForm>({ ...emptyForm });
@@ -84,28 +82,22 @@ const UsersList: React.FC<Props> = ({ onSelectUser }) => {
     if (!form.password)              e.password        = 'Password is required.';
     else if (form.password.length < 8) e.password     = 'Password must be at least 8 characters.';
     if (form.password !== form.confirmPassword) e.confirmPassword = 'Passwords do not match.';
-    const allEmails = [...addedUsers, ...MOCK_USERS].map(u => u.email.toLowerCase());
+    const allEmails = usersList.map(u => u.email.toLowerCase());
     if (form.email && allEmails.includes(form.email.toLowerCase().trim())) e.email = 'This email is already in use.';
     return e;
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     const errs = validate();
     if (Object.keys(errs).length) { setFormErrors(errs); return; }
 
-    const nextNum = MOCK_USERS.length + addedUsers.length + 1;
-    const newUser: SystemUser = {
-      id: `usr-${String(nextNum).padStart(3, '0')}`,
+    const newUser = await addUser({
       fullName: form.fullName.trim(),
       email: form.email.trim().toLowerCase(),
-      phone: form.phone.trim() || undefined,
+      phone: form.phone.trim() || '',
       role: form.role as UserRole,
       status: form.status,
-      createdAt: new Date().toISOString().split('T')[0],
-    };
-
-    addedUsers.unshift(newUser);
-    setUsersList([newUser, ...usersList]);
+    });
     setForm({ ...emptyForm });
     setFormErrors({});
     setIsModalOpen(false);

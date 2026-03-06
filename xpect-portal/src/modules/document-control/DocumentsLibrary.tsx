@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
-import { MOCK_DOCUMENTS, daysUntilDate } from './mockData';
+import { usePolicyDocuments } from '../../context/PolicyDocumentsContext';
+import { daysUntilDate } from './mockData';
 import { PolicyDocument, DocCategory, DocStatus, ReviewFrequency } from './types';
 
 interface Props {
@@ -8,8 +9,6 @@ interface Props {
   onNavigateApprovals: () => void;
   onNavigateReviews: () => void;
 }
-
-export const addedDocuments: PolicyDocument[] = [];
 
 const CATEGORIES: DocCategory[] = [
   'Health & Safety', 'Environmental', 'Quality', 'Work Instructions', 'Forms', 'Insurance',
@@ -75,10 +74,10 @@ const emptyForm: DocForm = {
 
 const DocumentsLibrary: React.FC<Props> = ({ onSelectDoc, onCreateDoc: _onCreateDoc, onNavigateApprovals, onNavigateReviews }) => {
   void _onCreateDoc;
+  const { documents: docsList, addDocument } = usePolicyDocuments();
   const [search, setSearch]         = useState('');
   const [category, setCategory]     = useState<DocCategory | ''>('');
   const [statusFilter, setStatus]   = useState<DocStatus | ''>('');
-  const [docsList, setDocsList]     = useState<PolicyDocument[]>([...addedDocuments, ...MOCK_DOCUMENTS]);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [form, setForm]               = useState<DocForm>({ ...emptyForm });
@@ -102,15 +101,22 @@ const DocumentsLibrary: React.FC<Props> = ({ onSelectDoc, onCreateDoc: _onCreate
     return e;
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     const errs = validate();
     if (Object.keys(errs).length) { setFormErrors(errs); return; }
 
-    const nextNum = MOCK_DOCUMENTS.length + addedDocuments.length + 1;
     const todayStr = new Date().toISOString().split('T')[0];
+    let fileData: string | undefined;
+    if (form.file) {
+      fileData = await new Promise<string>((res, rej) => {
+        const r = new FileReader();
+        r.onload = () => res(r.result as string);
+        r.onerror = rej;
+        r.readAsDataURL(form.file!);
+      });
+    }
 
-    const newDoc: PolicyDocument = {
-      id: `doc-${String(nextNum).padStart(3, '0')}`,
+    const newDoc = await addDocument({
       title: form.title.trim(),
       category: form.category as DocCategory,
       owner: form.owner.trim(),
@@ -122,12 +128,12 @@ const DocumentsLibrary: React.FC<Props> = ({ onSelectDoc, onCreateDoc: _onCreate
       nextReviewDate: addMonths(form.effectiveDate, form.reviewFrequencyMonths),
       reviewFrequencyMonths: form.reviewFrequencyMonths,
       description: form.description.trim(),
-      fileName: form.file ? form.file.name : undefined,
+      fileName: form.file ? form.file.name : '',
       fileSize: form.file
         ? (form.file.size < 1024 * 1024
             ? `${(form.file.size / 1024).toFixed(0)} KB`
             : `${(form.file.size / (1024 * 1024)).toFixed(1)} MB`)
-        : undefined,
+        : '',
       submittedBy: form.owner.trim(),
       submittedDate: todayStr,
       versionHistory: [{
@@ -137,10 +143,8 @@ const DocumentsLibrary: React.FC<Props> = ({ onSelectDoc, onCreateDoc: _onCreate
         notes: 'Initial submission — pending approval.',
         approvalStatus: 'pending',
       }],
-    };
-
-    addedDocuments.unshift(newDoc);
-    setDocsList([newDoc, ...docsList]);
+      fileData,
+    });
     setForm({ ...emptyForm });
     setFormErrors({});
     setIsModalOpen(false);

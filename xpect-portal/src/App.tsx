@@ -10,7 +10,6 @@ import ThankYouView from './views/ThankYouView';
 import StaffInvites from './views/StaffInvites';
 import EmployeeCompliance from './views/EmployeeCompliance';
 import TrainingCertification from './views/TrainingCertification';
-import AssignTraining from './views/AssignTraining';
 import TrainingDetail from './views/TrainingDetail';
 import PPEModule from './views/PPEModule';
 import ClientSitesModule from './modules/clients-sites/ClientSitesModule';
@@ -149,6 +148,7 @@ const App: React.FC = () => {
     if (currentView === 'INCIDENTS') return;
     if (currentView === 'TRAINING_DETAIL') return;
     if (currentView === 'USER_ACCESS') return;
+    if (currentView === 'PPE_LIST') return;
 
     const url = getUrlForView(currentView, {
       inviteToken: onboardingInviteToken || undefined,
@@ -203,6 +203,7 @@ const App: React.FC = () => {
     if (view === 'INCIDENTS') return;
     if (view === 'TRAINING_DETAIL') return;
     if (view === 'USER_ACCESS') return;
+    if (view === 'PPE_LIST') return;
 
     // Update URL based on view and cleaner (if applicable)
     const url = getUrlForView(view, { 
@@ -322,8 +323,6 @@ const App: React.FC = () => {
               return <EmployeeCompliance onNavigate={navigateTo} />;
             case 'TRAINING_CERTIFICATION':
               return <TrainingCertification onNavigate={navigateTo} />;
-            case 'ASSIGN_TRAINING':
-              return <AssignTraining onNavigate={navigateTo} />;
             case 'TRAINING_DETAIL':
               return <TrainingDetail onNavigate={navigateTo} />;
             case 'PPE_LIST':

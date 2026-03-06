@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import { getUserById } from './mockData';
-import { addedUsers } from './UsersList';
+import { useUserAccess } from '../../context/UserAccessContext';
 import { UserRole, AccountStatus, ROLE_PERMISSIONS, ROLE_DESCRIPTIONS, ACCESS_LABELS } from './types';
 
 interface Props {
@@ -39,7 +38,8 @@ const fmtDateTime = (d?: string) => {
 };
 
 const UserDetail: React.FC<Props> = ({ userId, onBack }) => {
-  const user = getUserById(userId) || addedUsers.find(u => u.id === userId);
+  const { getUserById, updateUser } = useUserAccess();
+  const user = getUserById(userId);
   const [localStatus, setLocalStatus] = useState<AccountStatus | null>(null);
 
   if (!user) {
@@ -62,10 +62,10 @@ const UserDetail: React.FC<Props> = ({ userId, onBack }) => {
   const permissions = ROLE_PERMISSIONS[user.role];
   const initials = user.fullName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
 
-  const toggleStatus = () => {
+  const toggleStatus = async () => {
     const next = currentStatus === 'active' ? 'disabled' : 'active';
     setLocalStatus(next);
-    user.status = next;
+    await updateUser(user.id, { status: next });
   };
 
   return (

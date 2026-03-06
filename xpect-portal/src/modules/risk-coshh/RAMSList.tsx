@@ -1,41 +1,14 @@
-import React, { useState, useMemo } from 'react';
-import { MOCK_RAMS } from './mockData';
-import { RAMS, RAMSStatus } from './types';
+import React, { useState, useMemo, useRef } from 'react';
+import { useRiskCoshh } from '../../context/RiskCoshhContext';
+import { useClientsSites } from '../../context/ClientsSitesContext';
+import { RAMSStatus } from './types';
 
 interface Props {
   onSelectRAMS: (id: string) => void;
   onBack: () => void;
 }
 
-export const addedRAMS: RAMS[] = [];
-
-const statusBadge = (status: RAMSStatus) => {
-  const map: Record<RAMSStatus, { cls: string; label: string }> = {
-    approved:        { cls: 'bg-green-100 text-green-700 border border-green-200',  label: 'Approved' },
-    draft:           { cls: 'bg-gray-100 text-gray-600 border border-gray-200',     label: 'Draft' },
-    review_required: { cls: 'bg-amber-100 text-amber-700 border border-amber-200',  label: 'Review Required' },
-  };
-  return map[status];
-};
-
 const fmt = (d: string) => d ? new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
-
-const SITES = [
-  'St. Mary\'s Hospital — Ward B',
-  'Meridian Tower — Floors 12-18',
-  'Westside Primary School',
-  'Hartley & Co Headquarters',
-  'Greenfield Industrial Unit 7',
-  'NHS Trust East — Main Reception',
-];
-
-const CLIENTS = [
-  'NHS Trust East',
-  'Meridian Capital Group',
-  'Westside Academy Trust',
-  'Hartley & Co',
-  'Greenfield Logistics',
-];
 
 const SUPERVISORS = [
   'Patricia Nwachukwu', 'Tom Briggs', 'Richard Hammond',
@@ -47,30 +20,50 @@ interface RAMSForm {
   clientName: string;
   description: string;
   workingHours: string;
-  status: RAMSStatus;
   supervisor: string;
   workMethod: string;
   emergencyProcedures: string;
+  signedDocumentFile: File | null;
 }
 
 const emptyForm: RAMSForm = {
   siteName: '', clientName: '', description: '', workingHours: '',
-  status: 'draft', supervisor: '', workMethod: '', emergencyProcedures: '',
+  supervisor: '', workMethod: '', emergencyProcedures: '', signedDocumentFile: null,
 };
 
 const RAMSList: React.FC<Props> = ({ onSelectRAMS, onBack }) => {
+  const { ramsList, ramsLoading, ramsError, addRAMS } = useRiskCoshh();
+  const { clients, sites } = useClientsSites();
+
+  const sitesByClient = useMemo(() => {
+    const map: Record<string, { id: string; name: string }[]> = {};
+    for (const s of sites) {
+      if (!map[s.clientId]) map[s.clientId] = [];
+      map[s.clientId].push({ id: s.id, name: s.name });
+    }
+    return map;
+  }, [sites]);
+  const allSiteOptions = useMemo(() =>
+    sites.map(s => ({ id: s.id, name: s.name })),
+  [sites]);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- used by cached/legacy code referencing SITES
+  const SITES = useMemo(() => sites.map(s => s.name), [sites]);
   const [search, setSearch]       = useState('');
   const [statusFilter, setStatus] = useState<RAMSStatus | ''>('');
-  const [ramsList, setRamsList]   = useState<RAMS[]>([...addedRAMS, ...MOCK_RAMS]);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const fileInputRef                  = useRef<HTMLInputElement>(null);
   const [form, setForm]               = useState<RAMSForm>({ ...emptyForm });
   const [formErrors, setFormErrors]   = useState<Record<string, string>>({});
   const [successMsg, setSuccessMsg]   = useState('');
 
-  const setField = (key: keyof RAMSForm, val: string) => {
-    setForm(f => ({ ...f, [key]: val }));
-    setFormErrors(e => { const n = { ...e }; delete n[key]; return n; });
+  const setField = (key: keyof RAMSForm, val: string | File | null) => {
+    setForm(f => {
+      const next = { ...f, [key]: val };
+      if (key === 'clientName') next.siteName = ''; // Clear site when client changes
+      return next;
+    });
+    setFormErrors(e => { const n = { ...e }; delete n[key as string]; return n; });
   };
 
   const flash = (msg: string) => { setSuccessMsg(msg); setTimeout(() => setSuccessMsg(''), 3000); };
@@ -85,52 +78,58 @@ const RAMSList: React.FC<Props> = ({ onSelectRAMS, onBack }) => {
     return e;
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     const errs = validate();
     if (Object.keys(errs).length) { setFormErrors(errs); return; }
 
-    const nextNum = MOCK_RAMS.length + addedRAMS.length + 1;
-    const newRAMS: RAMS = {
-      id: `rams-${String(nextNum).padStart(3, '0')}`,
+    const newRAMSData = {
       siteName: form.siteName.trim(),
       clientName: form.clientName.trim(),
       description: form.description.trim(),
       workingHours: form.workingHours.trim(),
-      status: form.status,
+      status: 'draft' as const,
       lastUpdated: new Date().toISOString().split('T')[0],
       supervisor: form.supervisor.trim(),
       workMethod: form.workMethod.trim() ? form.workMethod.trim().split('\n').filter(l => l.trim()) : [],
       emergencyProcedures: form.emergencyProcedures.trim() ? form.emergencyProcedures.trim().split('\n').filter(l => l.trim()) : [],
       linkedRiskAssessmentIds: [],
-      signedCopyAvailable: false,
+      signedCopyAvailable: !!form.signedDocumentFile,
+      signedDocumentFileName: form.signedDocumentFile?.name,
+      documentAvailable: false,
     };
 
-    addedRAMS.unshift(newRAMS);
-    setRamsList([newRAMS, ...ramsList]);
+    let documentData: string | undefined;
+    if (form.signedDocumentFile) {
+      documentData = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(form.signedDocumentFile!);
+      });
+    }
+
+    await addRAMS({ ...newRAMSData, documentData: documentData ?? undefined });
+    setStatus('');
     setForm({ ...emptyForm });
     setFormErrors({});
     setIsModalOpen(false);
-    flash(`RAMS "${newRAMS.siteName}" added successfully.`);
+    flash(`RAMS "${newRAMSData.siteName}" added successfully.`);
   };
 
   const openModal = () => {
     setForm({ ...emptyForm });
     setFormErrors({});
+    fileInputRef.current && (fileInputRef.current.value = '');
     setIsModalOpen(true);
   };
 
   const filtered = useMemo(() => {
-    let list = [...ramsList];
-    if (search)       list = list.filter(r => r.siteName.toLowerCase().includes(search.toLowerCase()) || r.clientName.toLowerCase().includes(search.toLowerCase()));
-    if (statusFilter) list = list.filter(r => r.status === statusFilter);
-    return list;
-  }, [search, statusFilter, ramsList]);
+    let out = [...ramsList];
+    if (search)       out = out.filter(r => r.siteName.toLowerCase().includes(search.toLowerCase()) || r.clientName.toLowerCase().includes(search.toLowerCase()));
+    if (statusFilter) out = out.filter(r => r.status === statusFilter);
+    return out;
+  }, [ramsList, search, statusFilter]);
 
-  const stats = useMemo(() => ({
-    total: ramsList.length,
-    approved: ramsList.filter(r => r.status === 'approved').length,
-    draft: ramsList.filter(r => r.status === 'draft').length,
-  }), [ramsList]);
 
   const fieldCls = (key: string) =>
     `w-full px-3 py-2.5 bg-[#f6f7fb] border rounded-xl text-sm text-[#0d121b] placeholder:text-[#6b7a99] focus:outline-none focus:ring-2 focus:ring-[#2e4150]/20 ${
@@ -172,7 +171,7 @@ const RAMSList: React.FC<Props> = ({ onSelectRAMS, onBack }) => {
       <div className="sm:px-8 px-4 sm:py-6 py-3 space-y-5">
 
         {/* Stats */}
-        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+        {/* <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
           {[
             { label: 'Total RAMS',  value: stats.total,    icon: 'assignment',    bg: 'bg-blue-50 text-blue-600' },
             { label: 'Approved',    value: stats.approved, icon: 'verified',      bg: 'bg-green-50 text-green-600' },
@@ -188,7 +187,7 @@ const RAMSList: React.FC<Props> = ({ onSelectRAMS, onBack }) => {
               </div>
             </div>
           ))}
-        </div>
+        </div> */}
 
         {/* Filters */}
         <div className="bg-white rounded-xl border border-[#e7ebf3] shadow-sm p-4 flex flex-wrap gap-3 items-center">
@@ -218,22 +217,30 @@ const RAMSList: React.FC<Props> = ({ onSelectRAMS, onBack }) => {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-[#e7ebf3] bg-[#f6f7fb]">
-                  {['Site Name', 'Client', 'Work Description', 'Working Hours', 'Last Updated', 'Status', ''].map(h => (
+                  {['Site Name', 'Client', 'Work Description', 'Working Hours', 'Last Updated', ''].map(h => (
                     <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-[#6b7a99] uppercase tracking-wide whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#e7ebf3]">
-                {filtered.length === 0
+                {ramsLoading ? (
+                  <tr><td colSpan={6} className="px-4 py-16 text-center">
+                    <span className="material-symbols-outlined text-[#4c669a] text-4xl animate-spin block mb-2">progress_activity</span>
+                    <p className="text-[#4c669a] font-medium">Loading RAMS…</p>
+                  </td></tr>
+                ) : ramsError ? (
+                  <tr><td colSpan={6} className="px-4 py-16 text-center">
+                    <span className="material-symbols-outlined text-red-500 text-[48px] block mb-3">error</span>
+                    <p className="text-red-600 font-medium">{ramsError}</p>
+                  </td></tr>
+                ) : filtered.length === 0
                   ? (
-                    <tr><td colSpan={7} className="px-4 py-16 text-center">
+                    <tr><td colSpan={6} className="px-4 py-16 text-center">
                       <span className="material-symbols-outlined text-[48px] text-[#e7ebf3] block mb-3">assignment</span>
                       <p className="text-[#6b7a99] font-medium">No RAMS found</p>
                     </td></tr>
                   )
-                  : filtered.map(r => {
-                    const sb = statusBadge(r.status);
-                    return (
+                  : filtered.map(r => (
                       <tr key={r.id} onClick={() => onSelectRAMS(r.id)} className="cursor-pointer hover:bg-[#f6f7fb] transition-colors">
                         <td className="px-4 py-4">
                           <div className="flex items-center gap-2">
@@ -245,15 +252,11 @@ const RAMSList: React.FC<Props> = ({ onSelectRAMS, onBack }) => {
                         <td className="px-4 py-4 text-[#0d121b] max-w-[200px] truncate">{r.description}</td>
                         <td className="px-4 py-4 text-[#6b7a99] whitespace-nowrap">{r.workingHours}</td>
                         <td className="px-4 py-4 text-[#6b7a99] whitespace-nowrap">{fmt(r.lastUpdated)}</td>
-                        <td className="px-4 py-4">
-                          <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${sb.cls}`}>{sb.label}</span>
-                        </td>
                         <td className="px-4 py-4 text-right">
                           <span className="text-sm font-semibold text-[#2e4150] hover:underline">View</span>
                         </td>
                       </tr>
-                    );
-                  })}
+                    ))}
               </tbody>
             </table>
           </div>
@@ -287,39 +290,55 @@ const RAMSList: React.FC<Props> = ({ onSelectRAMS, onBack }) => {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-[#6b7a99] uppercase tracking-wide mb-1.5">Site Name <span className="text-red-500">*</span></label>
-                  <select value={form.siteName} onChange={e => setField('siteName', e.target.value)} className={fieldCls('siteName')}>
-                    <option value="">Select site…</option>
-                    {SITES.map(s => <option key={s} value={s}>{s}</option>)}
-                  </select>
-                  {formErrors.siteName && <p className="text-xs text-red-500 mt-1">{formErrors.siteName}</p>}
-                </div>
-                <div>
                   <label className="block text-xs font-semibold text-[#6b7a99] uppercase tracking-wide mb-1.5">Client Name <span className="text-red-500">*</span></label>
                   <select value={form.clientName} onChange={e => setField('clientName', e.target.value)} className={fieldCls('clientName')}>
                     <option value="">Select client…</option>
-                    {CLIENTS.map(c => <option key={c} value={c}>{c}</option>)}
+                    {clients.map(c => (
+                      <option key={c.id} value={c.name}>{c.name}</option>
+                    ))}
                   </select>
                   {formErrors.clientName && <p className="text-xs text-red-500 mt-1">{formErrors.clientName}</p>}
                 </div>
+                <div>
+                  <label className="block text-xs font-semibold text-[#6b7a99] uppercase tracking-wide mb-1.5">Site Name <span className="text-red-500">*</span></label>
+                  <select value={form.siteName} onChange={e => setField('siteName', e.target.value)} className={fieldCls('siteName')} disabled={!form.clientName}>
+                    <option value="">Select site…</option>
+                    {(form.clientName
+                      ? (sitesByClient[clients.find(c => c.name === form.clientName)?.id ?? ''] ?? allSiteOptions)
+                      : []
+                    ).map(s => (
+                      <option key={s.id} value={s.name}>{s.name}</option>
+                    ))}
+                  </select>
+                  {formErrors.siteName && <p className="text-xs text-red-500 mt-1">{formErrors.siteName}</p>}
+                </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-[#6b7a99] uppercase tracking-wide mb-1.5">Supervisor <span className="text-red-500">*</span></label>
-                  <select value={form.supervisor} onChange={e => setField('supervisor', e.target.value)} className={fieldCls('supervisor')}>
-                    <option value="">Select supervisor…</option>
-                    {SUPERVISORS.map(s => <option key={s} value={s}>{s}</option>)}
-                  </select>
-                  {formErrors.supervisor && <p className="text-xs text-red-500 mt-1">{formErrors.supervisor}</p>}
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-[#6b7a99] uppercase tracking-wide mb-1.5">Status</label>
-                  <select value={form.status} onChange={e => setField('status', e.target.value)} className={fieldCls('status')}>
-                    <option value="draft">Draft</option>
-                    <option value="approved">Approved</option>
-                    <option value="review_required">Review Required</option>
-                  </select>
+              <div>
+                <label className="block text-xs font-semibold text-[#6b7a99] uppercase tracking-wide mb-1.5">Supervisor <span className="text-red-500">*</span></label>
+                <select value={form.supervisor} onChange={e => setField('supervisor', e.target.value)} className={fieldCls('supervisor')}>
+                  <option value="">Select supervisor…</option>
+                  {SUPERVISORS.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+                {formErrors.supervisor && <p className="text-xs text-red-500 mt-1">{formErrors.supervisor}</p>}
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-[#6b7a99] uppercase tracking-wide mb-1.5">Signed RAMS Document</label>
+                <div className="p-4 rounded-xl border-2 border-dashed border-[#e7ebf3] bg-[#f6f7fb] hover:border-[#2e4150]/30 transition-colors">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".pdf,.doc,.docx"
+                    onChange={e => setField('signedDocumentFile', e.target.files?.[0] ?? null)}
+                    className="block w-full text-sm text-[#6b7a99] file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-[#2e4150] file:text-white hover:file:bg-[#3a5268] file:cursor-pointer"
+                  />
+                  {form.signedDocumentFile && (
+                    <p className="mt-2 text-sm text-green-600 font-medium flex items-center gap-1.5">
+                      <span className="material-symbols-outlined text-[18px]">check_circle</span>
+                      {form.signedDocumentFile.name}
+                    </p>
+                  )}
                 </div>
               </div>
 

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { MOCK_DOCUMENTS } from './mockData';
-import { DocCategory, PolicyDocument, ReviewFrequency } from './types';
+import { usePolicyDocuments } from '../../context/PolicyDocumentsContext';
+import { DocCategory, ReviewFrequency } from './types';
 
 interface Props {
   onBack: () => void;
@@ -23,6 +23,7 @@ const addMonths = (date: string, months: number): string => {
 };
 
 const DocumentCreate: React.FC<Props> = ({ onBack, onCreated }) => {
+  const { addDocument } = usePolicyDocuments();
   const [form, setForm] = useState({
     title: '',
     category: '' as DocCategory | '',
@@ -52,18 +53,14 @@ const DocumentCreate: React.FC<Props> = ({ onBack, onCreated }) => {
     return e;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const errs = validate();
     if (Object.keys(errs).length) { setErrors(errs); return; }
 
     setSubmitting(true);
-
-    // Simulate brief "save" delay
-    setTimeout(() => {
-      const newId = `doc-${Date.now()}`;
-      const newDoc: PolicyDocument = {
-        id: newId,
+    try {
+      const newDoc = await addDocument({
         title: form.title.trim(),
         category: form.category as DocCategory,
         owner: form.owner.trim(),
@@ -75,8 +72,8 @@ const DocumentCreate: React.FC<Props> = ({ onBack, onCreated }) => {
         nextReviewDate: addMonths(form.effectiveDate, form.reviewFrequencyMonths),
         reviewFrequencyMonths: form.reviewFrequencyMonths,
         description: form.description.trim(),
-        fileName: fileSelected ? (form.fileName || 'document.pdf') : undefined,
-        fileSize: fileSelected ? '0.8 MB' : undefined,
+        fileName: fileSelected ? (form.fileName || 'document.pdf') : '',
+        fileSize: fileSelected ? '0.8 MB' : '',
         versionHistory: [
           {
             version: '1.0',
@@ -86,11 +83,11 @@ const DocumentCreate: React.FC<Props> = ({ onBack, onCreated }) => {
             approvalStatus: 'pending',
           },
         ],
-      };
-      MOCK_DOCUMENTS.unshift(newDoc);
+      });
+      onCreated(newDoc.id);
+    } finally {
       setSubmitting(false);
-      onCreated(newId);
-    }, 600);
+    }
   };
 
   const fieldCls = (key: string) =>

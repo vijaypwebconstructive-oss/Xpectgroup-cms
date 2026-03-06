@@ -110,26 +110,6 @@ const MOCK_CLEANERS: Cleaner[] = [
     shiftType: 'Any',
     declarations: { accuracy: true, rtw: true, approval: true, gdpr: true },
   },
-  {
-    id: 'mock-s-006',
-    name: 'Priya Singh',
-    email: 'priya.singh@xpectgroup.com',
-    phoneNumber: '+44 7700 900987',
-    dob: '1993-01-25',
-    address: '19 Willow Drive, Manchester, M20 3NB',
-    gender: 'Female',
-    startDate: '2024-02-01',
-    employmentType: EmploymentType.CONTRACTOR,
-    verificationStatus: VerificationStatus.REJECTED,
-    dbsStatus: DBSStatus.NOT_STARTED,
-    location: 'Manchester South',
-    onboardingProgress: 30,
-    citizenshipStatus: 'Indian',
-    hourlyPayRate: 11.44,
-    contractStatus: 'Paused',
-    shiftType: 'Evening',
-    declarations: { accuracy: true, rtw: false, approval: false, gdpr: true },
-  },
 ];
 
 // Avatar colour palette for initials fallback

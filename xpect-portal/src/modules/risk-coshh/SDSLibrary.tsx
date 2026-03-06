@@ -1,17 +1,19 @@
 import React, { useState, useMemo } from 'react';
-import { MOCK_SDS, MOCK_CHEMICALS, getChemicalById, daysUntil } from './mockData';
+import { useRiskCoshh } from '../../context/RiskCoshhContext';
 import { SDS, SDSStatus } from './types';
-import { addedChemicals } from './COSHHRegister';
 
 interface Props {
   onBack: () => void;
   onNavigateCOSHH: () => void;
 }
 
-export const addedSDS: SDS[] = [];
-
 const fmt = (d: string) => d ? new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
 const today = () => new Date().toISOString().split('T')[0];
+const daysUntil = (dateStr: string): number => {
+  if (!dateStr) return Infinity;
+  const now = new Date(); now.setHours(0, 0, 0, 0);
+  return Math.ceil((new Date(dateStr).getTime() - now.getTime()) / 86_400_000);
+};
 
 const statusBadge = (status: SDSStatus) => {
   const map: Record<SDSStatus, { cls: string; label: string }> = {
@@ -65,16 +67,14 @@ const emptyForm: SDSForm = {
 };
 
 const SDSLibrary: React.FC<Props> = ({ onBack, onNavigateCOSHH }) => {
+  const { sdsList, sdsLoading, sdsError, addSDS, getChemicalById, chemicals } = useRiskCoshh();
   const [search, setSearch]           = useState('');
   const [statusFilter, setStatus]     = useState<SDSStatus | ''>('');
-  const [extraSDS, setExtraSDS]       = useState<SDS[]>([...addedSDS]);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [form, setForm]               = useState<SDSForm>({ ...emptyForm });
   const [formErrors, setFormErrors]   = useState<Record<string, string>>({});
   const [successMsg, setSuccessMsg]   = useState('');
-
-  const allChemicals = useMemo(() => [...addedChemicals, ...MOCK_CHEMICALS], []);
 
   const setField = (key: keyof SDSForm, val: string | File | null) => {
     setForm(f => ({ ...f, [key]: val }));
@@ -99,15 +99,19 @@ const SDSLibrary: React.FC<Props> = ({ onBack, onNavigateCOSHH }) => {
     return e;
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     const errs = validate();
     if (Object.keys(errs).length) { setFormErrors(errs); return; }
 
-    const nextNum = MOCK_SDS.length + addedSDS.length + 1;
     const file = form.sdsFile!;
+    const documentData = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
 
-    const newSDS: SDS = {
-      id: `sds-${String(nextNum).padStart(3, '0')}`,
+    await addSDS({
       chemicalId: '',
       chemicalName: form.chemicalName.trim(),
       issueDate: form.issueDate,
@@ -125,14 +129,12 @@ const SDSLibrary: React.FC<Props> = ({ onBack, onNavigateCOSHH }) => {
       emergencyContact: form.emergencyContact.trim() || undefined,
       storageRequirements: form.storageRequirements.trim() || undefined,
       language: form.language,
-    };
-
-    addedSDS.unshift(newSDS);
-    setExtraSDS([newSDS, ...extraSDS]);
+      documentData,
+    });
     setForm({ ...emptyForm });
     setFormErrors({});
     setIsModalOpen(false);
-    flash(`SDS for "${newSDS.chemicalName}" uploaded successfully.`);
+    flash(`SDS for "${form.chemicalName.trim()}" uploaded successfully.`);
   };
 
   const openModal = () => {
@@ -142,24 +144,24 @@ const SDSLibrary: React.FC<Props> = ({ onBack, onNavigateCOSHH }) => {
   };
 
   const allSDS: SDSWithComputed[] = useMemo(() =>
-    [...extraSDS, ...MOCK_SDS].map(s => ({ ...s, computedStatus: computeStatus(s) })),
-  [extraSDS]);
+    sdsList.map(s => ({ ...s, computedStatus: computeStatus(s) })),
+  [sdsList]);
 
-  const sdsList = useMemo(() => allSDS.filter(s => !!s.fileName), [allSDS]);
+  const sdsWithFiles = useMemo(() => allSDS.filter(s => !!s.fileName), [allSDS]);
 
   const filtered = useMemo(() => {
-    let list = [...sdsList];
+    let list = [...sdsWithFiles];
     if (search)       list = list.filter(s => s.chemicalName.toLowerCase().includes(search.toLowerCase()) || s.manufacturer.toLowerCase().includes(search.toLowerCase()));
     if (statusFilter) list = list.filter(s => s.computedStatus === statusFilter);
     return list;
-  }, [sdsList, search, statusFilter]);
+  }, [sdsWithFiles, search, statusFilter]);
 
   const stats = useMemo(() => ({
-    total:      sdsList.length,
-    valid:      sdsList.filter(s => s.computedStatus === 'valid').length,
-    reviewSoon: sdsList.filter(s => s.computedStatus === 'review_soon').length,
-    expired:    sdsList.filter(s => s.computedStatus === 'expired').length,
-  }), [sdsList]);
+    total:      sdsWithFiles.length,
+    valid:      sdsWithFiles.filter(s => s.computedStatus === 'valid').length,
+    reviewSoon: sdsWithFiles.filter(s => s.computedStatus === 'review_soon').length,
+    expired:    sdsWithFiles.filter(s => s.computedStatus === 'expired').length,
+  }), [sdsWithFiles]);
 
   const fieldCls = (key: string) =>
     `w-full px-3 py-2.5 bg-[#f6f7fb] border rounded-xl text-sm text-[#0d121b] placeholder:text-[#6b7a99] focus:outline-none focus:ring-2 focus:ring-[#2e4150]/20 ${
@@ -285,7 +287,17 @@ const SDSLibrary: React.FC<Props> = ({ onBack, onNavigateCOSHH }) => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#e7ebf3]">
-                {filtered.length === 0
+                {sdsLoading ? (
+                  <tr><td colSpan={8} className="px-4 py-16 text-center">
+                    <span className="material-symbols-outlined text-[#4c669a] text-4xl animate-spin block mb-2">progress_activity</span>
+                    <p className="text-[#4c669a] font-medium">Loading SDS…</p>
+                  </td></tr>
+                ) : sdsError ? (
+                  <tr><td colSpan={8} className="px-4 py-16 text-center">
+                    <span className="material-symbols-outlined text-red-500 text-[48px] block mb-3">error</span>
+                    <p className="text-red-600 font-medium">{sdsError}</p>
+                  </td></tr>
+                ) : filtered.length === 0
                   ? (
                     <tr><td colSpan={8} className="px-4 py-16 text-center">
                       <span className="material-symbols-outlined text-[48px] text-[#e7ebf3] block mb-3">menu_book</span>
@@ -295,7 +307,7 @@ const SDSLibrary: React.FC<Props> = ({ onBack, onNavigateCOSHH }) => {
                   )
                   : filtered.map(s => {
                     const sb = statusBadge(s.computedStatus);
-                    const chemical = getChemicalById(s.chemicalId) || addedChemicals.find(c => c.id === s.chemicalId);
+                    const chemical = getChemicalById(s.chemicalId);
                     const days = daysUntil(s.reviewDate);
                     return (
                       <tr key={s.id} className="hover:bg-[#f6f7fb] transition-colors">
@@ -342,7 +354,7 @@ const SDSLibrary: React.FC<Props> = ({ onBack, onNavigateCOSHH }) => {
           </div>
           {filtered.length > 0 && (
             <div className="px-4 py-3 border-t border-[#e7ebf3] bg-[#f6f7fb] text-xs text-[#6b7a99]">
-              Showing {filtered.length} of {sdsList.length} SDS documents
+              Showing {filtered.length} of {sdsWithFiles.length} SDS documents
             </div>
           )}
         </div>
@@ -374,7 +386,7 @@ const SDSLibrary: React.FC<Props> = ({ onBack, onNavigateCOSHH }) => {
                 <input type="text" list="chem-suggestions" placeholder="e.g. Sodium Hypochlorite" value={form.chemicalName}
                   onChange={e => setField('chemicalName', e.target.value)} className={fieldCls('chemicalName')} />
                 <datalist id="chem-suggestions">
-                  {allChemicals.map(c => <option key={c.id} value={c.name} />)}
+                  {chemicals.map(c => <option key={c.id} value={c.name} />)}
                 </datalist>
                 {formErrors.chemicalName && <p className="text-xs text-red-500 mt-1">{formErrors.chemicalName}</p>}
               </div>

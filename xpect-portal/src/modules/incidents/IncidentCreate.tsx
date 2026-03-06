@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { MOCK_INCIDENTS } from './mockData';
-import { Incident, IncidentType } from './types';
+import { useIncidents } from '../../context/IncidentsContext';
+import { IncidentType } from './types';
 
 interface Props {
   onBack: () => void;
@@ -51,6 +51,7 @@ const today = () => new Date().toISOString().split('T')[0];
 const nowTime = () => new Date().toTimeString().slice(0, 5);
 
 const IncidentCreate: React.FC<Props> = ({ onBack, onCreated }) => {
+  const { addIncident } = useIncidents();
   const [step, setStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -91,19 +92,19 @@ const IncidentCreate: React.FC<Props> = ({ onBack, onCreated }) => {
 
   const prevStep = () => setStep(s => Math.max(s - 1, 1));
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (step < 3) {
+      nextStep();
+      return;
+    }
     const errs = validateStep(step);
     if (Object.keys(errs).length) { setErrors(errs); return; }
 
     setSubmitting(true);
-    setTimeout(() => {
-      const nextNum = MOCK_INCIDENTS.length + 1;
-      const newId = `INC-${String(nextNum).padStart(3, '0')}`;
+    try {
       const dateTime = `${form.date}T${form.time}:00.000Z`;
-
-      const newIncident: Incident = {
-        id: newId,
+      const created = await addIncident({
         date: dateTime,
         site: form.site,
         worker: form.worker,
@@ -119,12 +120,11 @@ const IncidentCreate: React.FC<Props> = ({ onBack, onCreated }) => {
         supervisorNotified: form.supervisorNotified,
         witnessNotes: form.witnessNotes.trim() || undefined,
         hasPhotos: form.hasPhotos,
-      };
-
-      MOCK_INCIDENTS.unshift(newIncident);
+      });
+      onCreated(created.id);
+    } finally {
       setSubmitting(false);
-      onCreated(newId);
-    }, 600);
+    }
   };
 
   const fieldCls = (key: string) =>
@@ -383,7 +383,7 @@ const IncidentCreate: React.FC<Props> = ({ onBack, onCreated }) => {
             </button>
 
             {step < 3 ? (
-              <button type="button" onClick={nextStep}
+              <button type="button" onClick={(e) => { e.preventDefault(); nextStep(); }}
                 className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-[#2e4150] text-white text-sm font-semibold hover:bg-[#3a5268] transition-colors shadow-sm">
                 Next
                 <span className="material-symbols-outlined text-[18px]">arrow_forward</span>

@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { MOCK_CHEMICALS } from './mockData';
+import { useRiskCoshh } from '../../context/RiskCoshhContext';
 import { Chemical } from './types';
 
 interface Props {
@@ -7,8 +7,6 @@ interface Props {
   onBack: () => void;
   onNavigateSDS: () => void;
 }
-
-export const addedChemicals: Chemical[] = [];
 
 const HAZARD_TYPES = ['Irritant', 'Corrosive', 'Flammable', 'Oxidising', 'Toxic', 'Health Hazard', 'Environmental Hazard'];
 const PPE_OPTIONS  = ['Nitrile Gloves', 'Safety Goggles', 'Face Shield', 'FFP2 Mask', 'FFP3 Mask', 'Chemical Apron', 'Rubber Boots', 'Lab Coat'];
@@ -43,9 +41,9 @@ const emptyForm: ChemForm = {
 };
 
 const COSHHRegister: React.FC<Props> = ({ onSelectChemical, onBack, onNavigateSDS }) => {
+  const { chemicals, chemicalsLoading, chemicalsError, addChemical } = useRiskCoshh();
   const [search, setSearch]             = useState('');
   const [hazardFilter, setHazard]       = useState('');
-  const [chemList, setChemList]         = useState<Chemical[]>([...addedChemicals, ...MOCK_CHEMICALS]);
 
   const [isModalOpen, setIsModalOpen]   = useState(false);
   const [form, setForm]                 = useState<ChemForm>({ ...emptyForm });
@@ -81,15 +79,13 @@ const COSHHRegister: React.FC<Props> = ({ onSelectChemical, onBack, onNavigateSD
     return e;
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     const errs = validate();
     if (Object.keys(errs).length) { setFormErrors(errs); return; }
 
-    const nextNum = MOCK_CHEMICALS.length + addedChemicals.length + 1;
     const hasSDS = !!form.sdsFile;
 
-    const newChem: Chemical = {
-      id: `chem-${String(nextNum).padStart(3, '0')}`,
+    await addChemical({
       name: form.name.trim(),
       manufacturer: form.manufacturer.trim(),
       hazardType: form.hazardType,
@@ -102,14 +98,11 @@ const COSHHRegister: React.FC<Props> = ({ onSelectChemical, onBack, onNavigateSD
       disposalMethod: form.disposalMethod.trim(),
       handlingInstructions: form.handlingInstructions.trim(),
       maxExposureLimit: form.maxExposureLimit.trim() || undefined,
-    };
-
-    addedChemicals.unshift(newChem);
-    setChemList([newChem, ...chemList]);
+    });
     setForm({ ...emptyForm });
     setFormErrors({});
     setIsModalOpen(false);
-    flash(`"${newChem.name}" added to the COSHH register.`);
+    flash(`"${form.name.trim()}" added to the COSHH register.`);
   };
 
   const openModal = () => {
@@ -118,20 +111,20 @@ const COSHHRegister: React.FC<Props> = ({ onSelectChemical, onBack, onNavigateSD
     setIsModalOpen(true);
   };
 
-  const hazardTypes = useMemo(() => [...new Set(chemList.map(c => c.hazardType))], [chemList]);
+  const hazardTypes = useMemo(() => [...new Set(chemicals.map(c => c.hazardType))], [chemicals]);
 
   const filtered = useMemo(() => {
-    let list = [...chemList];
+    let list = [...chemicals];
     if (search)       list = list.filter(c => c.name.toLowerCase().includes(search.toLowerCase()) || c.manufacturer.toLowerCase().includes(search.toLowerCase()));
     if (hazardFilter) list = list.filter(c => c.hazardType === hazardFilter);
     return list;
-  }, [search, hazardFilter, chemList]);
+  }, [search, hazardFilter, chemicals]);
 
   const stats = useMemo(() => ({
-    total: chemList.length,
-    noSDS: chemList.filter(c => !c.sdsAvailable).length,
-    high:  chemList.filter(c => ['Corrosive', 'Flammable', 'Oxidising'].some(h => c.hazardType.includes(h))).length,
-  }), [chemList]);
+    total: chemicals.length,
+    noSDS: chemicals.filter(c => !c.sdsAvailable).length,
+    high:  chemicals.filter(c => ['Corrosive', 'Flammable', 'Oxidising'].some(h => c.hazardType.includes(h))).length,
+  }), [chemicals]);
 
   const fieldCls = (key: string) =>
     `w-full px-3 py-2.5 bg-[#f6f7fb] border rounded-xl text-sm text-[#0d121b] placeholder:text-[#6b7a99] focus:outline-none focus:ring-2 focus:ring-[#2e4150]/20 ${
@@ -250,7 +243,17 @@ const COSHHRegister: React.FC<Props> = ({ onSelectChemical, onBack, onNavigateSD
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#e7ebf3]">
-                {filtered.length === 0
+                {chemicalsLoading ? (
+                  <tr><td colSpan={7} className="px-4 py-16 text-center">
+                    <span className="material-symbols-outlined text-[#4c669a] text-4xl animate-spin block mb-2">progress_activity</span>
+                    <p className="text-[#4c669a] font-medium">Loading chemicals…</p>
+                  </td></tr>
+                ) : chemicalsError ? (
+                  <tr><td colSpan={7} className="px-4 py-16 text-center">
+                    <span className="material-symbols-outlined text-red-500 text-[48px] block mb-3">error</span>
+                    <p className="text-red-600 font-medium">{chemicalsError}</p>
+                  </td></tr>
+                ) : filtered.length === 0
                   ? (
                     <tr><td colSpan={7} className="px-4 py-16 text-center">
                       <span className="material-symbols-outlined text-[48px] text-[#e7ebf3] block mb-3">science</span>
@@ -295,7 +298,7 @@ const COSHHRegister: React.FC<Props> = ({ onSelectChemical, onBack, onNavigateSD
           </div>
           {filtered.length > 0 && (
             <div className="px-4 py-3 border-t border-[#e7ebf3] bg-[#f6f7fb] text-xs text-[#6b7a99]">
-              Showing {filtered.length} of {chemList.length} chemicals
+              Showing {filtered.length} of {chemicals.length} chemicals
             </div>
           )}
         </div>

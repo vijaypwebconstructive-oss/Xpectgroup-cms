@@ -1,4 +1,5 @@
 import { Client, Site, WorkerAssignment } from './types';
+import { loadStorage, saveStorage } from '../../utils/storage';
 
 // ── Helper — days from today ──────────────────────────────────
 const daysFromNow = (days: number): string => {
@@ -60,19 +61,6 @@ export const MOCK_CLIENTS: Client[] = [
     insuranceExpiry: daysFromNow(310),
     address: 'Unit 7, Trafford Park, Manchester, M17 1HH',
     notes: 'PPE mandatory on site at all times. Site induction required.',
-  },
-  {
-    id: 'cli-005',
-    name: 'Cityscape Retail Partners',
-    industry: 'Retail',
-    contactPerson: 'Claire Ashton',
-    email: 'c.ashton@cityscape-retail.co.uk',
-    phone: '+44 161 922 3300',
-    contractStart: '2024-06-01',
-    contractEnd: daysFromNow(15),
-    insuranceExpiry: daysFromNow(8),
-    address: 'Cityscape Mall, 200 Deansgate, Manchester, M3 4LQ',
-    notes: 'Evening and overnight cleans only. CCTV on premises.',
   },
 ];
 
@@ -143,71 +131,6 @@ export const MOCK_SITES: Site[] = [
     accessInstructions: 'Swipe card from facilities manager. Full PPE required.',
     activeWorkers: 5,
   },
-  {
-    id: 'site-006',
-    clientId: 'cli-003',
-    name: 'NW Healthcare — Outpatients',
-    address: 'Oxford Road, Manchester',
-    postcode: 'M13 9WM',
-    riskLevel: 'High',
-    requiredTrainings: ['Biohazard Handling', 'Infection Control', 'Manual Handling'],
-    emergencyContact: 'Dr. Patricia Nwachukwu',
-    emergencyPhone: '+44 7700 100003',
-    accessInstructions: 'Check in with ward sister before starting work.',
-    activeWorkers: 3,
-  },
-  {
-    id: 'site-007',
-    clientId: 'cli-004',
-    name: 'Bridgewater — Site Alpha',
-    address: 'Unit 7, Trafford Park, Manchester',
-    postcode: 'M17 1HH',
-    riskLevel: 'High',
-    requiredTrainings: ['CSCS Card', 'Working at Height', 'Manual Handling', 'PPE Awareness', 'Fire Safety'],
-    emergencyContact: 'Tom Briggs',
-    emergencyPhone: '+44 7700 100004',
-    accessInstructions: 'Hard hat and hi-vis mandatory. Site induction on first visit.',
-    activeWorkers: 4,
-  },
-  {
-    id: 'site-008',
-    clientId: 'cli-004',
-    name: 'Bridgewater — Welfare Block',
-    address: 'Unit 7a, Trafford Park, Manchester',
-    postcode: 'M17 1HJ',
-    riskLevel: 'Medium',
-    requiredTrainings: ['Manual Handling', 'COSHH Awareness', 'PPE Awareness'],
-    emergencyContact: 'Tom Briggs',
-    emergencyPhone: '+44 7700 100004',
-    accessInstructions: 'Open access during working hours. Sign welfare log.',
-    activeWorkers: 2,
-  },
-  {
-    id: 'site-009',
-    clientId: 'cli-005',
-    name: 'Cityscape Mall — Ground Floor',
-    address: '200 Deansgate, Manchester',
-    postcode: 'M3 4LQ',
-    riskLevel: 'Low',
-    requiredTrainings: ['Manual Handling', 'Fire Safety', 'COSHH Awareness'],
-    emergencyContact: 'Claire Ashton',
-    emergencyPhone: '+44 7700 100005',
-    accessInstructions: 'Night-entry via service entrance. Code: 9981.',
-    activeWorkers: 3,
-  },
-  {
-    id: 'site-010',
-    clientId: 'cli-005',
-    name: 'Cityscape Mall — Food Court',
-    address: '200 Deansgate, Manchester (Level 2)',
-    postcode: 'M3 4LR',
-    riskLevel: 'Medium',
-    requiredTrainings: ['Food Hygiene L2', 'Manual Handling', 'COSHH Awareness'],
-    emergencyContact: 'Claire Ashton',
-    emergencyPhone: '+44 7700 100005',
-    accessInstructions: 'Report to food court supervisor on arrival.',
-    activeWorkers: 2,
-  },
 ];
 
 // ── Worker Assignments ────────────────────────────────────────
@@ -220,30 +143,68 @@ export const MOCK_ASSIGNMENTS: WorkerAssignment[] = [
   { id: 'wa-006', workerId: 'mock-s-006', workerName: 'Priya Singh',    workerInitials: 'PS', workerAvatarColor: 'bg-rose-500',     siteId: 'site-003', siteName: 'Greenfield Primary Campus',         clientId: 'cli-002', completedTrainings: ['Manual Handling'],                                              complianceStatus: 'Non-Compliant', assignedSince: '2024-05-01', role: 'Cleaner' },
   { id: 'wa-007', workerId: 'w-007',      workerName: 'Luke Henderson',  workerInitials: 'LH', workerAvatarColor: 'bg-sky-500',     siteId: 'site-004', siteName: 'Greenfield Secondary Block',         clientId: 'cli-002', completedTrainings: ['Enhanced DBS', 'Child Safeguarding', 'Fire Safety'],          complianceStatus: 'Compliant',     assignedSince: '2024-02-20', role: 'Cleaner' },
   { id: 'wa-008', workerId: 'w-008',      workerName: 'Amara Osei',     workerInitials: 'AO', workerAvatarColor: 'bg-teal-500',     siteId: 'site-005', siteName: 'NW Healthcare — A&E Wing',         clientId: 'cli-003', completedTrainings: ['Biohazard Handling', 'Clinical Waste', 'Infection Control', 'COSHH Awareness', 'Manual Handling'], complianceStatus: 'Compliant', assignedSince: '2023-11-01', role: 'Senior Cleaner' },
-  { id: 'wa-009', workerId: 'w-009',      workerName: 'Chris Evans',    workerInitials: 'CE', workerAvatarColor: 'bg-indigo-500',   siteId: 'site-005', siteName: 'NW Healthcare — A&E Wing',         clientId: 'cli-003', completedTrainings: ['Biohazard Handling', 'Infection Control'],                     complianceStatus: 'Non-Compliant', assignedSince: '2024-06-01', role: 'Cleaner' },
-  { id: 'wa-010', workerId: 'w-010',      workerName: 'Fatima Hassan',  workerInitials: 'FH', workerAvatarColor: 'bg-amber-500',    siteId: 'site-006', siteName: 'NW Healthcare — Outpatients',      clientId: 'cli-003', completedTrainings: ['Biohazard Handling', 'Infection Control', 'Manual Handling'],  complianceStatus: 'Compliant',     assignedSince: '2024-03-10', role: 'Cleaner' },
-  { id: 'wa-011', workerId: 'w-011',      workerName: 'Michael Brown',  workerInitials: 'MB', workerAvatarColor: 'bg-lime-600',     siteId: 'site-007', siteName: 'Bridgewater — Site Alpha',         clientId: 'cli-004', completedTrainings: ['CSCS Card', 'Working at Height', 'Manual Handling', 'PPE Awareness', 'Fire Safety'], complianceStatus: 'Compliant', assignedSince: '2024-04-01', role: 'Cleaner' },
-  { id: 'wa-012', workerId: 'w-012',      workerName: 'Grace Obi',      workerInitials: 'GO', workerAvatarColor: 'bg-purple-500',   siteId: 'site-007', siteName: 'Bridgewater — Site Alpha',         clientId: 'cli-004', completedTrainings: ['Manual Handling', 'Fire Safety'],                              complianceStatus: 'Non-Compliant', assignedSince: '2024-05-15', role: 'Cleaner' },
-  { id: 'wa-013', workerId: 'w-013',      workerName: 'Ali Hassan',     workerInitials: 'AH', workerAvatarColor: 'bg-cyan-500',     siteId: 'site-008', siteName: 'Bridgewater — Welfare Block',      clientId: 'cli-004', completedTrainings: ['Manual Handling', 'COSHH Awareness', 'PPE Awareness'],          complianceStatus: 'Compliant',     assignedSince: '2024-03-20', role: 'Cleaner' },
-  { id: 'wa-014', workerId: 'w-014',      workerName: 'Nadia Kowalski', workerInitials: 'NK', workerAvatarColor: 'bg-fuchsia-500',  siteId: 'site-009', siteName: 'Cityscape Mall — Ground Floor',    clientId: 'cli-005', completedTrainings: ['Manual Handling', 'Fire Safety', 'COSHH Awareness'],          complianceStatus: 'Compliant',     assignedSince: '2024-07-01', role: 'Cleaner' },
-  { id: 'wa-015', workerId: 'w-015',      workerName: 'Tom Clarke',     workerInitials: 'TC', workerAvatarColor: 'bg-orange-400',   siteId: 'site-010', siteName: 'Cityscape Mall — Food Court',      clientId: 'cli-005', completedTrainings: ['Manual Handling', 'COSHH Awareness'],                          complianceStatus: 'Non-Compliant', assignedSince: '2024-08-01', role: 'Cleaner' },
 ];
+
+// ── Runtime assignments (mutable — Site Allocation adds here) ──
+const ASSIGNMENTS_KEY = 'clients_addedAssignments';
+export const addedAssignments: WorkerAssignment[] = loadStorage<WorkerAssignment[]>(ASSIGNMENTS_KEY, []);
+
+const persistAssignments = () => saveStorage(ASSIGNMENTS_KEY, addedAssignments);
+
+export const getAllAssignments = (): WorkerAssignment[] =>
+  [...MOCK_ASSIGNMENTS, ...addedAssignments];
+
+export const addAssignment = (a: WorkerAssignment): void => {
+  addedAssignments.push(a);
+  persistAssignments();
+};
+
+export const removeAssignment = (workerId: string, siteId: string): void => {
+  const idx = addedAssignments.findIndex(a => a.workerId === workerId && a.siteId === siteId);
+  if (idx >= 0) { addedAssignments.splice(idx, 1); persistAssignments(); }
+};
+
+// ── Added Clients & Sites (from ClientsList / SitesList) ─────────────────────
+const CLIENTS_ADDED_KEY = 'clients_added';
+const SITES_ADDED_KEY = 'sites_added';
+
+export const addedClients: Client[] = loadStorage<Client[]>(CLIENTS_ADDED_KEY, []);
+export const addedSites: Site[] = loadStorage<Site[]>(SITES_ADDED_KEY, []);
+
+export const addClient = (c: Client): void => {
+  addedClients.unshift(c);
+  saveStorage(CLIENTS_ADDED_KEY, addedClients);
+};
+
+export const addSite = (s: Site): void => {
+  addedSites.unshift(s);
+  saveStorage(SITES_ADDED_KEY, addedSites);
+};
+
+export const getAllClients = (): Client[] => [...MOCK_CLIENTS, ...addedClients];
+export const getAllSites = (): Site[] => [...MOCK_SITES, ...addedSites];
 
 // ── Derived helpers ───────────────────────────────────────────
 export const getSitesByClient = (clientId: string) =>
-  MOCK_SITES.filter(s => s.clientId === clientId);
+  getAllSites().filter(s => s.clientId === clientId);
 
 export const getAssignmentsBySite = (siteId: string) =>
-  MOCK_ASSIGNMENTS.filter(a => a.siteId === siteId);
+  getAllAssignments().filter(a => a.siteId === siteId);
 
 export const getAssignmentsByClient = (clientId: string) =>
-  MOCK_ASSIGNMENTS.filter(a => a.clientId === clientId);
+  getAllAssignments().filter(a => a.clientId === clientId);
+
+export const getAssignmentsByWorker = (workerId: string) =>
+  getAllAssignments().filter(a => a.workerId === workerId);
+
+export const getSiteCountByWorker = (workerId: string): number =>
+  new Set(getAssignmentsByWorker(workerId).map(a => a.siteId)).size;
 
 export const getClientById = (id: string) =>
-  MOCK_CLIENTS.find(c => c.id === id);
+  getAllClients().find(c => c.id === id);
 
 export const getSiteById = (id: string) =>
-  MOCK_SITES.find(s => s.id === id);
+  getAllSites().find(s => s.id === id);
 
 // Days until a date
 export const daysUntil = (dateStr: string): number => {

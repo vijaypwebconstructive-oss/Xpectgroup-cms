@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Client, Industry } from './types';
-import { MOCK_CLIENTS, MOCK_SITES, MOCK_ASSIGNMENTS, contractHealth, daysUntil } from './mockData';
+import { Industry } from './types';
+import { useClientsSites, contractHealth, daysUntil } from '../../context/ClientsSitesContext';
 
 interface ClientsListProps {
   onSelectClient:       (clientId: string) => void;
@@ -21,6 +21,24 @@ const formatDate = (d: string) =>
   new Date(d).toLocaleDateString('en-GB', { year: 'numeric', month: '2-digit', day: '2-digit' });
 
 const today = () => new Date().toISOString().split('T')[0];
+
+// Map Add Client form doc keys to ClientDetail DOC_DEFINITIONS keys
+const FORM_TO_DOC_KEY: Record<string, string> = {
+  contractDoc: 'contract',
+  insuranceCert: 'insurance',
+  riskAssessment: 'risk',
+  slaDocument: 'sla',
+  healthSafety: 'healthSafety',
+  gdprAgreement: 'gdpr',
+};
+
+const fileToDataUrl = (file: File): Promise<string> =>
+  new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result));
+    r.onerror = () => reject(new Error('Failed to read file'));
+    r.readAsDataURL(file);
+  });
 
 interface ClientForm {
   name: string;
@@ -60,16 +78,16 @@ const emptyForm: ClientForm = {
   gdprAgreement: '',
 };
 
-export const addedClients: Client[] = [];
-
 const ClientsList: React.FC<ClientsListProps> = ({ onSelectClient }) => {
+  const { clients, sites, assignments, loading, error, addClient } = useClientsSites();
   const [search, setSearch]                   = useState('');
   const [industryFilter, setIndustryFilter]   = useState('');
-  const [clients, setClients]                 = useState<Client[]>([...MOCK_CLIENTS, ...addedClients]);
   const [isModalOpen, setIsModalOpen]         = useState(false);
   const [form, setForm]                       = useState<ClientForm>(emptyForm);
+  const [formDocFiles, setFormDocFiles]       = useState<Record<string, File>>({});
   const [formErrors, setFormErrors]           = useState<Record<string, string>>({});
   const [successMsg, setSuccessMsg]           = useState('');
+  const [saving, setSaving]                   = useState(false);
 
   const setField = (k: keyof ClientForm, v: string) => {
     setForm(prev => ({ ...prev, [k]: v }));
@@ -97,34 +115,57 @@ const ClientsList: React.FC<ClientsListProps> = ({ onSelectClient }) => {
     return e;
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     const errs = validate();
     if (Object.keys(errs).length) { setFormErrors(errs); return; }
     setFormErrors({});
-
-    const newClient: Client = {
-      id: `cli-${Date.now()}`,
-      name: form.name.trim(),
-      industry: form.industry as Industry,
-      contactPerson: form.contactPerson.trim(),
-      email: form.email.trim(),
-      phone: form.phone.trim(),
-      contractStart: form.contractStart,
-      contractEnd: form.contractEnd,
-      insuranceExpiry: form.insuranceExpiry,
-      address: form.address.trim(),
-      notes: form.notes.trim() || undefined,
-    };
-
-    addedClients.unshift(newClient);
-    setClients(prev => [newClient, ...prev]);
-    setForm(emptyForm);
-    setIsModalOpen(false);
-    flash(`Client "${newClient.name}" added successfully.`);
+    setSaving(true);
+    try {
+      const documents: { key: string; name: string; size: number; type: string; uploadedAt: string; dataUrl: string }[] = [];
+      for (const [formKey, file] of Object.entries(formDocFiles)) {
+        const docKey = FORM_TO_DOC_KEY[formKey];
+        if (!docKey || !file) continue;
+        try {
+          const dataUrl = await fileToDataUrl(file);
+          documents.push({
+            key: docKey,
+            name: file.name,
+            size: file.size,
+            type: file.type,
+            uploadedAt: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+            dataUrl,
+          });
+        } catch {
+          // Skip file if conversion fails
+        }
+      }
+      const newClient = await addClient({
+        name: form.name.trim(),
+        industry: form.industry as Industry,
+        contactPerson: form.contactPerson.trim(),
+        email: form.email.trim(),
+        phone: form.phone.trim(),
+        contractStart: form.contractStart,
+        contractEnd: form.contractEnd,
+        insuranceExpiry: form.insuranceExpiry,
+        address: form.address.trim(),
+        notes: form.notes.trim() || undefined,
+        documents: documents.length ? documents : undefined,
+      });
+      setForm(emptyForm);
+      setFormDocFiles({});
+      setIsModalOpen(false);
+      flash(`Client "${newClient.name}" added successfully.`);
+    } catch {
+      setFormErrors({ submit: 'Failed to save client. Please try again.' });
+    } finally {
+      setSaving(false);
+    }
   };
 
   const openModal = () => {
     setForm(emptyForm);
+    setFormDocFiles({});
     setFormErrors({});
     setIsModalOpen(true);
   };
@@ -132,8 +173,8 @@ const ClientsList: React.FC<ClientsListProps> = ({ onSelectClient }) => {
   const enriched = clients.map(c => ({
     ...c,
     health:      contractHealth(c),
-    siteCount:   MOCK_SITES.filter(s => s.clientId === c.id).length,
-    workerCount: MOCK_ASSIGNMENTS.filter(a => a.clientId === c.id).length,
+    siteCount:   sites.filter(s => s.clientId === c.id).length,
+    workerCount: assignments.filter(a => a.clientId === c.id).length,
     daysLeft:    Math.min(daysUntil(c.contractEnd), daysUntil(c.insuranceExpiry)),
   }));
 
@@ -146,9 +187,9 @@ const ClientsList: React.FC<ClientsListProps> = ({ onSelectClient }) => {
   });
 
   const totalClients  = clients.length;
-  const totalSites    = MOCK_SITES.length;
+  const totalSites    = sites.length;
   const expiringSoon  = enriched.filter(c => c.health === 'Expiring').length;
-  const nonCompliant  = MOCK_ASSIGNMENTS.filter(a => a.complianceStatus === 'Non-Compliant').length;
+  const nonCompliant  = assignments.filter(a => a.complianceStatus === 'Non-Compliant').length;
 
   const docField = (label: string, key: keyof ClientForm, icon: string) => (
     <div className="flex items-center gap-3 p-3 rounded-xl border border-dashed border-[#c7d2e0] bg-[#fafbfd] hover:border-[#2e4150]/40 transition-colors">
@@ -169,14 +210,18 @@ const ClientsList: React.FC<ClientsListProps> = ({ onSelectClient }) => {
           accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
           onChange={e => {
             const file = e.target.files?.[0];
-            if (file) setField(key, file.name);
+            if (file) {
+              setField(key, file.name);
+              setFormDocFiles(prev => ({ ...prev, [key]: file }));
+            }
+            e.target.value = '';
           }}
         />
       </label>
       {form[key] && (
         <button
           type="button"
-          onClick={() => setField(key, '')}
+          onClick={() => { setField(key, ''); setFormDocFiles(prev => { const n = { ...prev }; delete n[key]; return n; }); }}
           className="text-red-400 hover:text-red-600 transition-colors cursor-pointer"
         >
           <span className="material-symbols-outlined text-[18px]">close</span>
@@ -253,7 +298,20 @@ const ClientsList: React.FC<ClientsListProps> = ({ onSelectClient }) => {
           <span className="bg-[#f2f6f9] text-[#4c669a] text-xs font-bold px-2.5 py-1 rounded-full">{filtered.length} records</span>
         </div>
 
-        {/* Table */}
+        {/* Loading / Error */}
+        {loading && (
+          <div className="px-5 py-14 text-center">
+            <span className="material-symbols-outlined text-[#4c669a] text-4xl animate-spin block mb-2">progress_activity</span>
+            <p className="text-[#4c669a] text-sm font-semibold">Loading clients…</p>
+          </div>
+        )}
+        {error && !loading && (
+          <div className="px-5 py-14 text-center">
+            <span className="material-symbols-outlined text-red-500 text-[48px] block mb-2">error</span>
+            <p className="text-red-600 text-sm font-semibold">{error}</p>
+          </div>
+        )}
+        {!loading && !error && (
         <div className="overflow-x-auto">
           <table className="w-full min-w-[820px]">
             <thead>
@@ -306,6 +364,7 @@ const ClientsList: React.FC<ClientsListProps> = ({ onSelectClient }) => {
             </tbody>
           </table>
         </div>
+        )}
 
         {/* Footer */}
         <div className="px-5 py-3 border-t border-[#e7ebf3] bg-[#f8fafc] flex items-center justify-between">
@@ -513,13 +572,15 @@ const ClientsList: React.FC<ClientsListProps> = ({ onSelectClient }) => {
               >
                 Cancel
               </button>
+              {formErrors.submit && <p className="text-red-500 text-xs mr-auto">{formErrors.submit}</p>}
               <button
                 type="button"
                 onClick={handleSubmit}
-                className="flex items-center gap-2 px-6 py-2.5 rounded-full bg-[#2e4150] text-white text-sm font-bold hover:bg-[#2e4150]/90 transition-all cursor-pointer"
+                disabled={saving}
+                className="flex items-center gap-2 px-6 py-2.5 rounded-full bg-[#2e4150] text-white text-sm font-bold hover:bg-[#2e4150]/90 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <span className="material-symbols-outlined text-[18px]">add_circle</span>
-                Add Client
+                {saving ? 'Saving…' : 'Add Client'}
               </button>
             </div>
           </div>

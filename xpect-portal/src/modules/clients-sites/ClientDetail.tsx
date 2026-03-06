@@ -1,7 +1,5 @@
-import React, { useState, useRef } from 'react';
-import { getClientById, getSitesByClient, getAssignmentsByClient, contractHealth, daysUntil } from './mockData';
-import { addedClients } from './ClientsList';
-import { addedSites } from './SitesList';
+import React, { useState, useRef, useEffect } from 'react';
+import { useClientsSites, contractHealth, daysUntil } from '../../context/ClientsSitesContext';
 
 interface ClientDetailProps {
   clientId: string;
@@ -67,19 +65,47 @@ const clientDocStore: Record<string, Record<string, UploadedFile>> = {};
 type Tab = 'overview' | 'sites' | 'workers' | 'documents';
 
 const ClientDetail: React.FC<ClientDetailProps> = ({ clientId, onBack, onSelectSite }) => {
+  const { getClientById, getSitesByClient, getAssignmentsByClient, deleteClient } = useClientsSites();
   const [activeTab, setActiveTab] = useState<Tab>('overview');
-  const [docs, setDocs] = useState<Record<string, UploadedFile>>(() => clientDocStore[clientId] || {});
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [docs, setDocs] = useState<Record<string, UploadedFile>>({});
   const [previewDoc, setPreviewDoc] = useState<{ label: string; file: UploadedFile } | null>(null);
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
-  const client = getClientById(clientId) || addedClients.find(c => c.id === clientId);
+  const client = getClientById(clientId);
+
+  useEffect(() => {
+    const fromApi = (client?.documents || []).reduce<Record<string, UploadedFile>>((acc, d) => {
+      acc[d.key] = {
+        name: d.name,
+        size: d.size,
+        type: d.type,
+        uploadedAt: d.uploadedAt,
+        url: d.dataUrl || '',
+      };
+      return acc;
+    }, {});
+    const fromStore = clientDocStore[clientId] || {};
+    setDocs({ ...fromApi, ...fromStore });
+  }, [clientId, client?.documents]);
+
+  const handleDelete = async () => {
+    try {
+      await deleteClient(clientId);
+      setShowDeleteConfirm(false);
+      onBack();
+    } catch {
+      // Could show error toast
+    }
+  };
+
   if (!client) return (
     <div className="flex-1 flex items-center justify-center p-10">
       <p className="text-[#6b7a99]">Client not found.</p>
     </div>
   );
 
-  const sites       = [...getSitesByClient(clientId), ...addedSites.filter(s => s.clientId === clientId)];
+  const sites       = getSitesByClient(clientId);
   const assignments = getAssignmentsByClient(clientId);
   const health      = contractHealth(client);
   const ss          = STATUS_STYLES[health];
@@ -105,11 +131,35 @@ const ClientDetail: React.FC<ClientDetailProps> = ({ clientId, onBack, onSelectS
             <h1 className="text-[#0d121b] text-xl  sm:text-[30px] font-bold font-black">{client.name}</h1>
             <p className="text-[#6b7a99] text-sm mt-0.5">{client.industry} · {client.contactPerson}</p>
           </div>
-          <span className={`inline-flex items-center px-3 py-1.5 rounded text-sm font-bold uppercase tracking-wide ${ss.badge}`}>
-            {ss.label}
-          </span>
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className={`inline-flex items-center px-3 py-1.5 rounded text-sm font-bold uppercase tracking-wide ${ss.badge}`}>
+              {ss.label}
+            </span>
+            <button
+              onClick={() => setShowDeleteConfirm(true)}
+              className="flex items-center gap-2 px-3 py-1.5 rounded border border-red-200 text-red-600 bg-red-50 hover:bg-red-100 text-sm font-semibold transition-colors cursor-pointer"
+            >
+              <span className="material-symbols-outlined text-[18px]">delete</span>
+              Delete
+            </button>
+          </div>
         </div>
       </div>
+
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setShowDeleteConfirm(false)} role="dialog" aria-modal="true" aria-labelledby="delete-client-title">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full mx-4 p-6" onClick={e => e.stopPropagation()}>
+            <h3 id="delete-client-title" className="text-lg font-bold text-[#0d121b] mb-2">Delete Client</h3>
+            <p className="text-sm text-[#6b7a99] mb-6">
+              Are you sure you want to delete &quot;{client.name}&quot;? This will also delete all associated sites and worker assignments. This action cannot be undone.
+            </p>
+            <div className="flex gap-3">
+              <button onClick={handleDelete} className="flex-1 px-4 py-2.5 rounded-xl bg-red-600 text-white text-sm font-semibold hover:bg-red-700 cursor-pointer">Delete</button>
+              <button onClick={() => setShowDeleteConfirm(false)} className="flex-1 px-4 py-2.5 rounded-xl border border-[#e7ebf3] text-[#2e4150] text-sm font-semibold hover:bg-[#f6f7fb] cursor-pointer">Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="flex-1 px-0 py-6 space-y-5">
 
@@ -289,14 +339,6 @@ const ClientDetail: React.FC<ClientDetailProps> = ({ clientId, onBack, onSelectS
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
-                            <button
-                              onClick={() => setPreviewDoc({ label: doc.label, file: uploaded })}
-                              className="flex items-center gap-1 text-xs font-bold text-blue-600 hover:text-blue-800 transition-colors cursor-pointer"
-                            >
-                              <span className="material-symbols-outlined text-[14px]">visibility</span>
-                              View
-                            </button>
-                            <span className="text-[#e7ebf3]">|</span>
                             <label className="flex items-center gap-1 text-xs font-bold text-amber-600 hover:text-amber-800 transition-colors cursor-pointer">
                               <span className="material-symbols-outlined text-[14px]">upload</span>
                               Re-upload
@@ -376,9 +418,23 @@ const ClientDetail: React.FC<ClientDetailProps> = ({ clientId, onBack, onSelectS
                         </>
                       )}
                     </div>
-                    <span className={`text-xs px-2 py-1 rounded font-medium shrink-0 ${uploaded ? 'text-green-700 bg-green-50 border border-green-200' : 'text-[#9aa5be] bg-[#f8fafc] border border-[#e7ebf3]'}`}>
-                      {uploaded ? 'Uploaded' : 'Not uploaded'}
-                    </span>
+                    <div className="flex flex-col items-end gap-2 shrink-0">
+                      <span className={`text-xs px-2 py-1 rounded font-medium ${uploaded ? 'text-green-700 bg-green-50 border border-green-200' : 'text-[#9aa5be] bg-[#f8fafc] border border-[#e7ebf3]'}`}>
+                        {uploaded ? 'Uploaded' : 'Not uploaded'}
+                      </span>
+                      <button
+                        onClick={() => uploaded && setPreviewDoc({ label: doc.label, file: uploaded })}
+                        disabled={!uploaded}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-bold transition-colors cursor-pointer ${
+                          uploaded
+                            ? 'border-[#2e4150]/30 bg-[#2e4150] text-white hover:bg-[#3a5268]'
+                            : 'border-[#e7ebf3] bg-[#f6f7fb] text-[#9aa5be] cursor-not-allowed opacity-70'
+                        }`}
+                      >
+                        <span className="material-symbols-outlined text-[16px]">visibility</span>
+                        View
+                      </button>
+                    </div>
                   </div>
                 );
               })}

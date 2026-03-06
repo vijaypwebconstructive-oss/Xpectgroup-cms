@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { MOCK_INCIDENTS } from './mockData';
+import { useIncidents } from '../../context/IncidentsContext';
 import { IncidentType, Incident } from './types';
 
 interface Props {
@@ -34,11 +34,9 @@ const StatCard: React.FC<{ label: string; value: number; icon: string; bg: strin
 );
 
 const IncidentsList: React.FC<Props> = ({ onSelectIncident, onCreateIncident }) => {
+  const { incidents } = useIncidents();
   const [search, setSearch]       = useState('');
   const [typeFilter, setType]     = useState<IncidentType | ''>('');
-  const [, refresh]               = useState(0);
-
-  const incidents: Incident[] = [...MOCK_INCIDENTS];
 
   const filtered = useMemo(() => {
     let list = [...incidents].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
@@ -49,24 +47,19 @@ const IncidentsList: React.FC<Props> = ({ onSelectIncident, onCreateIncident }) 
     );
     if (typeFilter) list = list.filter(i => i.type === typeFilter);
     return list;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [search, typeFilter, incidents.length]);
+  }, [search, typeFilter, incidents]);
 
   const stats = useMemo(() => ({
     total:     incidents.length,
     injuries:  incidents.filter(i => i.injuryOccurred).length,
     accidents: incidents.filter(i => i.type === 'Accident').length,
     nearMiss:  incidents.filter(i => i.type === 'Near Miss').length,
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }), [incidents.length]);
+  }), [incidents]);
 
   const clearFilters = () => { setSearch(''); setType(''); };
   const hasFilters = search || typeFilter;
 
-  const handleCreateClick = () => {
-    onCreateIncident();
-    setTimeout(() => refresh(n => n + 1), 100);
-  };
+  const handleCreateClick = () => onCreateIncident();
 
   return (
     <div className="min-h-full bg-[#f6f7fb] w-screen sm:w-full">

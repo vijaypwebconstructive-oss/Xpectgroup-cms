@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
-import { MOCK_DOCUMENTS, daysUntilDate } from './mockData';
+import { usePolicyDocuments } from '../../context/PolicyDocumentsContext';
+import { daysUntilDate } from './mockData';
 import { PolicyDocument } from './types';
 
 interface Props {
@@ -108,9 +109,10 @@ const Section: React.FC<SectionProps> = ({
 // ── Main component ────────────────────────────────────────────────────────────
 
 const ReviewCalendar: React.FC<Props> = ({ onSelectDoc, onBack }) => {
+  const { documents } = usePolicyDocuments();
 
   const { overdue, dueSoon, upToDate } = useMemo(() => {
-    const reviewable = MOCK_DOCUMENTS.filter(
+    const reviewable = documents.filter(
       d => d.status === 'approved' && d.nextReviewDate
     );
 
@@ -130,7 +132,7 @@ const ReviewCalendar: React.FC<Props> = ({ onSelectDoc, onBack }) => {
     upToDate.sort((a, b) => a.daysLeft - b.daysLeft);
 
     return { overdue, dueSoon, upToDate };
-  }, []);
+  }, [documents]);
 
   const totalReviewable = overdue.length + dueSoon.length + upToDate.length;
 

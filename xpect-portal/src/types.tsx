@@ -112,7 +112,7 @@ export enum VerificationStatus {
     updatedAt?: string;
   }
   
-  export type AppView = 'DASHBOARD' | 'CLEANERS_LIST' | 'CLEANER_DETAIL' | 'ONBOARDING' | 'ONBOARDING_AUTH' | 'REPORT' | 'THANK_YOU' | 'STAFF_INVITES' | 'EMPLOYEE_COMPLIANCE' | 'TRAINING_CERTIFICATION' | 'ASSIGN_TRAINING' | 'TRAINING_DETAIL' | 'PPE_LIST' | 'CLIENTS_SITES' | 'DOCUMENT_CONTROL' | 'RISK_COSHH' | 'INCIDENTS' | 'USER_ACCESS';
+  export type AppView = 'DASHBOARD' | 'CLEANERS_LIST' | 'CLEANER_DETAIL' | 'ONBOARDING' | 'ONBOARDING_AUTH' | 'REPORT' | 'THANK_YOU' | 'STAFF_INVITES' | 'EMPLOYEE_COMPLIANCE' | 'TRAINING_CERTIFICATION' | 'TRAINING_DETAIL' | 'PPE_LIST' | 'CLIENTS_SITES' | 'DOCUMENT_CONTROL' | 'RISK_COSHH' | 'INCIDENTS' | 'USER_ACCESS';
 
   // ── PPE Module ──────────────────────────────────────────────
   export type PPEItemType =
@@ -163,4 +163,18 @@ export enum VerificationStatus {
     lastRestocked: string;
     stockStatus: PPEStockStatus;
     unit: string;
+  }
+
+  // ── PPE Invoice Module (invoices to clients) ─────────────────
+  export type PPEInvoiceEmailStatus = 'PENDING' | 'SENT';
+
+  export interface PPEInvoiceRecord {
+    id: string;
+    clientId: string;
+    clientName: string;
+    issueDate: string;
+    invoiceFile: string;
+    invoiceFileData?: string;
+    emailStatus: PPEInvoiceEmailStatus;
+    createdAt: string;
   }
