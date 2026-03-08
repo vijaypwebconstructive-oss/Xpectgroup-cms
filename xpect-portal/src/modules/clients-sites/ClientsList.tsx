@@ -102,7 +102,7 @@ const ClientsList: React.FC<ClientsListProps> = ({ onSelectClient }) => {
   const validate = (): Record<string, string> => {
     const e: Record<string, string> = {};
     if (!form.name.trim()) e.name = 'Company name is required.';
-    if (!form.industry) e.industry = 'Industry is required.';
+    if (!form.industry.trim()) e.industry = 'Type is required.';
     if (!form.contactPerson.trim()) e.contactPerson = 'Contact person is required.';
     if (!form.email.trim()) e.email = 'Email is required.';
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = 'Enter a valid email address.';
@@ -141,7 +141,7 @@ const ClientsList: React.FC<ClientsListProps> = ({ onSelectClient }) => {
       }
       const newClient = await addClient({
         name: form.name.trim(),
-        industry: form.industry as Industry,
+        industry: form.industry.trim(),
         contactPerson: form.contactPerson.trim(),
         email: form.email.trim(),
         phone: form.phone.trim(),
@@ -417,15 +417,14 @@ const ClientsList: React.FC<ClientsListProps> = ({ onSelectClient }) => {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-semibold text-[#0d121b] mb-1">Industry Type <span className="text-red-500">*</span></label>
-                    <select
+                    <label className="block text-sm font-semibold text-[#0d121b] mb-1">Type <span className="text-red-500">*</span></label>
+                    <input
+                      type="text"
+                      placeholder="Enter business type (e.g. Healthcare, Office, Retail)"
                       value={form.industry}
                       onChange={e => setField('industry', e.target.value)}
-                      className={`w-full h-10 rounded-xl border px-3 text-sm text-[#0d121b] bg-white outline-none cursor-pointer ${formErrors.industry ? 'border-red-400' : 'border-[#c7d2e0]'}`}
-                    >
-                      <option value="">Select industry…</option>
-                      {INDUSTRIES.map(i => <option key={i} value={i}>{i}</option>)}
-                    </select>
+                      className={`w-full h-10 rounded-xl border px-3 text-sm text-[#0d121b] bg-white outline-none ${formErrors.industry ? 'border-red-400' : 'border-[#c7d2e0]'}`}
+                    />
                     {formErrors.industry && <p className="text-red-500 text-xs mt-1">{formErrors.industry}</p>}
                   </div>
                   <div>

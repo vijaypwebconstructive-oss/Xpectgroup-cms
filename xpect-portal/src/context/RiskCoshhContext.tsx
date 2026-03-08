@@ -19,6 +19,7 @@ interface RiskCoshhContextType {
   ramsError: string | null;
   refreshRAMS: () => Promise<void>;
   addRAMS: (r: Omit<RAMS, 'id'> & { documentData?: string }) => Promise<RAMS>;
+  updateRAMS: (id: string, updates: { documentData?: string; signedDocumentFileName?: string }) => Promise<RAMS>;
   deleteRAMS: (id: string) => Promise<void>;
   getRAMSById: (id: string) => RAMS | undefined;
 
@@ -150,6 +151,12 @@ export const RiskCoshhProvider: React.FC<RiskCoshhProviderProps> = ({ children }
     return created;
   }, []);
 
+  const updateRAMS = useCallback(async (id: string, updates: { documentData?: string; signedDocumentFileName?: string }): Promise<RAMS> => {
+    const updated = await api.riskCoshh.rams.update(id, updates);
+    setRAMSList(prev => prev.map(r => r.id === id ? { ...r, ...updated, documentData: undefined } : r));
+    return updated;
+  }, []);
+
   const deleteRAMS = useCallback(async (id: string) => {
     await api.riskCoshh.rams.delete(id);
     setRAMSList(prev => prev.filter(r => r.id !== id));
@@ -188,6 +195,7 @@ export const RiskCoshhProvider: React.FC<RiskCoshhProviderProps> = ({ children }
       ramsError,
       refreshRAMS,
       addRAMS,
+      updateRAMS,
       deleteRAMS,
       getRAMSById,
       chemicals,

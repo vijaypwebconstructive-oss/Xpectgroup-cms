@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
-import { Client, Site, WorkerAssignment } from '../modules/clients-sites/types';
+import { Client, Site, SiteComplianceDocument, WorkerAssignment } from '../modules/clients-sites/types';
 import api from '../services/api';
 
 export const daysUntil = (dateStr: string): number => {
@@ -29,6 +29,7 @@ interface ClientsSitesContextType {
   refreshAll: () => Promise<void>;
   addClient: (c: Omit<Client, 'id'>) => Promise<Client>;
   addSite: (s: Omit<Site, 'id'>) => Promise<Site>;
+  updateSiteCompliance: (siteId: string, complianceDocuments: SiteComplianceDocument[]) => Promise<Site>;
   addAssignment: (a: Omit<WorkerAssignment, 'id'>) => Promise<WorkerAssignment>;
   removeAssignment: (workerId: string, siteId: string) => Promise<void>;
   deleteClient: (id: string) => Promise<void>;
@@ -116,6 +117,12 @@ export const ClientsSitesProvider: React.FC<ClientsSitesProviderProps> = ({ chil
     return created;
   }, []);
 
+  const updateSiteCompliance = useCallback(async (siteId: string, complianceDocuments: SiteComplianceDocument[]): Promise<Site> => {
+    const updated = await api.clientsSites.updateSite(siteId, { complianceDocuments });
+    setSites(prev => prev.map(s => s.id === siteId ? updated : s));
+    return updated;
+  }, []);
+
   const addAssignment = useCallback(async (a: Omit<WorkerAssignment, 'id'>): Promise<WorkerAssignment> => {
     const created = await api.clientsSites.createAssignment(a);
     setAssignments(prev => [created, ...prev]);
@@ -163,6 +170,7 @@ export const ClientsSitesProvider: React.FC<ClientsSitesProviderProps> = ({ chil
         refreshAll,
         addClient,
         addSite,
+        updateSiteCompliance,
         addAssignment,
         removeAssignment,
         deleteClient,

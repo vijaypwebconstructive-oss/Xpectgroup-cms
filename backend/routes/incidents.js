@@ -61,6 +61,8 @@ router.post('/', async (req, res) => {
       rootCause: body.rootCause || '',
       witnessNotes: body.witnessNotes || '',
       hasPhotos: body.hasPhotos || false,
+      photoEvidenceName: body.photoEvidenceName || '',
+      photoEvidenceData: body.photoEvidenceData || '',
       closedDate: body.closedDate || '',
       closedBy: body.closedBy || '',
     });

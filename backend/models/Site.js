@@ -18,6 +18,14 @@ const SiteSchema = new mongoose.Schema({
   emergencyPhone: { type: String, default: '' },
   accessInstructions: { type: String, default: '' },
   activeWorkers: { type: Number, default: 0 },
+  complianceDocuments: {
+    type: [{
+      key: { type: String, required: true },
+      name: { type: String, default: '' },
+      dataUrl: { type: String, default: '' },
+    }],
+    default: [],
+  },
 }, {
   timestamps: true,
 });

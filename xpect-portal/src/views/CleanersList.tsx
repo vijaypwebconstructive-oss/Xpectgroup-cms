@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { Cleaner, AppView, VerificationStatus, EmploymentType, DBSStatus } from '../types';
+import { Cleaner, AppView, VerificationStatus, EmploymentType } from '../types';
 import { useCleaners } from '../context/CleanersContext';
 import { api } from '../services/api';
 
@@ -7,110 +7,6 @@ interface CleanersListProps {
   cleaners: Cleaner[];
   onNavigate: (view: AppView, cleaner?: Cleaner) => void;
 }
-
-// ── Mock staff data (shown when no real cleaners are loaded) ─
-const MOCK_CLEANERS: Cleaner[] = [
-  {
-    id: 'mock-s-001',
-    name: 'James Thornton',
-    email: 'james.thornton@xpectgroup.com',
-    phoneNumber: '+44 7700 900123',
-    dob: '1990-05-15',
-    address: '12 Oak Street, Manchester, M1 2AB',
-    gender: 'Male',
-    startDate: '2023-03-10',
-    employmentType: EmploymentType.PERMANENT,
-    verificationStatus: VerificationStatus.VERIFIED,
-    dbsStatus: DBSStatus.CLEARED,
-    location: 'Manchester North',
-    onboardingProgress: 100,
-    citizenshipStatus: 'British',
-    hourlyPayRate: 12.50,
-    contractStatus: 'Active',
-    shiftType: 'Morning',
-    declarations: { accuracy: true, rtw: true, approval: true, gdpr: true },
-  },
-  {
-    id: 'mock-s-002',
-    name: 'Sarah Mitchell',
-    email: 'sarah.mitchell@xpectgroup.com',
-    phoneNumber: '+44 7700 900456',
-    dob: '1994-08-22',
-    address: '47 Birch Lane, Manchester, M14 5GH',
-    gender: 'Female',
-    startDate: '2023-07-01',
-    employmentType: EmploymentType.PERMANENT,
-    verificationStatus: VerificationStatus.VERIFIED,
-    dbsStatus: DBSStatus.CLEARED,
-    location: 'Manchester South',
-    onboardingProgress: 100,
-    citizenshipStatus: 'British',
-    hourlyPayRate: 12.50,
-    contractStatus: 'Active',
-    shiftType: 'Morning',
-    declarations: { accuracy: true, rtw: true, approval: true, gdpr: true },
-  },
-  {
-    id: 'mock-s-003',
-    name: 'David Okafor',
-    email: 'david.okafor@xpectgroup.com',
-    phoneNumber: '+44 7700 900789',
-    dob: '1988-11-30',
-    address: '8 Elm Road, Liverpool, L1 4TY',
-    gender: 'Male',
-    startDate: '2024-01-15',
-    employmentType: EmploymentType.CONTRACTOR,
-    verificationStatus: VerificationStatus.PENDING,
-    dbsStatus: DBSStatus.AWAITING_DOCS,
-    location: 'Liverpool Central',
-    onboardingProgress: 65,
-    citizenshipStatus: 'Nigerian',
-    hourlyPayRate: 11.44,
-    contractStatus: 'Active',
-    shiftType: 'Evening',
-    declarations: { accuracy: true, rtw: true, approval: false, gdpr: true },
-  },
-  {
-    id: 'mock-s-004',
-    name: 'Emma Clarke',
-    email: 'emma.clarke@xpectgroup.com',
-    phoneNumber: '+44 7700 900321',
-    dob: '1992-03-17',
-    address: '23 Cedar Avenue, Leeds, LS1 9PQ',
-    gender: 'Female',
-    startDate: '2022-11-05',
-    employmentType: EmploymentType.PERMANENT,
-    verificationStatus: VerificationStatus.DOCS_REQUIRED,
-    dbsStatus: DBSStatus.CLEARED,
-    location: 'Leeds West',
-    onboardingProgress: 80,
-    citizenshipStatus: 'British',
-    hourlyPayRate: 13.00,
-    contractStatus: 'Active',
-    shiftType: 'Morning',
-    declarations: { accuracy: true, rtw: true, approval: true, gdpr: true },
-  },
-  {
-    id: 'mock-s-005',
-    name: 'Ryan Patel',
-    email: 'ryan.patel@xpectgroup.com',
-    phoneNumber: '+44 7700 900654',
-    dob: '1996-06-09',
-    address: '5 Maple Close, Bristol, BS1 6RT',
-    gender: 'Male',
-    startDate: '2023-09-18',
-    employmentType: EmploymentType.TEMPORARY,
-    verificationStatus: VerificationStatus.VERIFIED,
-    dbsStatus: DBSStatus.EXPIRED,
-    location: 'Bristol East',
-    onboardingProgress: 100,
-    citizenshipStatus: 'British',
-    hourlyPayRate: 11.44,
-    contractStatus: 'Active',
-    shiftType: 'Any',
-    declarations: { accuracy: true, rtw: true, approval: true, gdpr: true },
-  },
-];
 
 // Avatar colour palette for initials fallback
 const AVATAR_COLORS = [
@@ -127,9 +23,8 @@ const CleanersList: React.FC<CleanersListProps> = ({ cleaners, onNavigate }) => 
   const { refreshCleaners } = useCleaners();
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Use mock data when no real cleaners loaded
-  const isMockMode = cleaners.length === 0;
-  const allCleaners = isMockMode ? MOCK_CLEANERS : cleaners;
+  // Only show employees who have completed onboarding (onboardingProgress === 100)
+  const completedCleaners = cleaners.filter(c => (c.onboardingProgress ?? 0) === 100);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [selectedBulkAction, setSelectedBulkAction] = useState<string>('');
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
@@ -162,8 +57,8 @@ const CleanersList: React.FC<CleanersListProps> = ({ cleaners, onNavigate }) => 
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [invitations, setInvitations] = useState<any[]>([]);
 
-  const pendingCount = allCleaners.filter(c => c.verificationStatus === VerificationStatus.PENDING).length;
-  const verifiedCount = allCleaners.filter(c => c.verificationStatus === VerificationStatus.VERIFIED).length;
+  const pendingCount = completedCleaners.filter(c => c.verificationStatus === VerificationStatus.PENDING).length;
+  const verifiedCount = completedCleaners.filter(c => c.verificationStatus === VerificationStatus.VERIFIED).length;
 
   useEffect(() => {
     const fetchInvitations = async () => {
@@ -185,7 +80,7 @@ const CleanersList: React.FC<CleanersListProps> = ({ cleaners, onNavigate }) => 
   const invitationsCount = invitations.length;
 
   const stats = [
-    { label: 'Total Staff', value: allCleaners.length.toLocaleString(), trend: 'Real-time', icon: 'group', color: 'blue', bgColor:"#eff6ff" , borderColor:"#2563eb" },
+    { label: 'Total Staff', value: completedCleaners.length.toLocaleString(), trend: 'Real-time', icon: 'group', color: 'blue', bgColor:"#eff6ff" , borderColor:"#2563eb" },
     { label: 'Pending Verification', value: pendingCount.toString(), trend: 'Actionable', icon: 'pending_actions', color: 'amber', bgColor:"#fffbeb", borderColor:"#f59e0b" },
     { label: 'Verified Employees', value: verifiedCount.toString(), trend: 'Compliant', icon: 'verified_user', color: 'green', bgColor:"#f0fdf4", borderColor:"#22c55e" },
     { label: 'Invitations Sent', value: invitationsCount.toString(), trend: 'Active', icon: 'mail', color: 'purple', bgColor:"#f3e8ff", borderColor:"#9333ea" },
@@ -215,7 +110,7 @@ const CleanersList: React.FC<CleanersListProps> = ({ cleaners, onNavigate }) => 
     { value: 'Pending', label: 'Pending' },
   ];
 
-  const filteredCleaners = allCleaners.filter(c =>
+  const filteredCleaners = completedCleaners.filter(c =>
     c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     c.email.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -576,7 +471,7 @@ const CleanersList: React.FC<CleanersListProps> = ({ cleaners, onNavigate }) => 
           </div>
         </div>
 
-        {filteredCleaners.length > 0 || isMockMode ? (
+        {filteredCleaners.length > 0 ? (
           <div className="bg-white rounded-2xl border border-[#e7ebf3] shadow-sm overflow-hidden employee-list">
             {/* WordPress-style bulk actions bar: dropdown + Apply (always visible above table) */}
             <div className="flex flex-wrap items-center gap-3 px-4 py-3 border-b border-[#e7ebf3] bg-gray-50/50">
@@ -697,18 +592,18 @@ const CleanersList: React.FC<CleanersListProps> = ({ cleaners, onNavigate }) => 
         ) : (
           <div className="bg-white rounded-2xl border border-[#e7ebf3] p-20 flex flex-col items-center justify-center text-center shadow-sm">
             <div className="size-20 bg-gray-50 rounded-full flex items-center justify-center mb-6">
-              <span className="material-symbols-outlined text-black text-4xl">person_off</span>
+              <span className="material-symbols-outlined text-black text-4xl">group</span>
             </div>
-            <h3 className="text-xl font-bold font-black text-gray-900">No staff members found</h3>
+            <h3 className="text-xl font-bold font-black text-gray-900">No staff available</h3>
             <p className="text-[#4c669a] max-w-sm mt-2">
-              Start by inviting your first staff member to join Xpect Group.
+              Employees will appear here after completing onboarding.
             </p>
             <button 
               onClick={() => onNavigate('STAFF_INVITES')}
               className="mt-4 bg-[#2e4150] text-white font-bold px-[30px] py-[15px] h-12 rounded-full hover:bg-[#2e4150]/90 transition-all flex items-center gap-2"
             >
               <span className="material-symbols-outlined">add_circle</span>
-              Add New Staff
+              Add Staff
             </button>
           </div>
         )}

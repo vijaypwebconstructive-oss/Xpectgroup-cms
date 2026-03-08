@@ -5,6 +5,8 @@ import { useClientsSites } from '../../context/ClientsSitesContext';
 import { usePolicyDocuments } from '../../context/PolicyDocumentsContext';
 import { usePPERecords } from '../../context/PPERecordsContext';
 import { useTraining } from '../../context/TrainingContext';
+import { useCleaners } from '../../context/CleanersContext';
+import type { TrainingRecord } from '../../views/trainingMockData';
 import AlertsPanel from './AlertsPanel';
 import TrainingExpiryWidget from './TrainingExpiryWidget';
 import DocumentStatusWidget from './DocumentStatusWidget';
@@ -61,13 +63,25 @@ const LoadingSkeleton: React.FC = () => (
   </div>
 );
 
+const staffStillExists = (record: TrainingRecord, cleanerIds: Set<string>, cleanerNames: Set<string>): boolean => {
+  if (record.cleanerId?.trim()) return cleanerIds.has(record.cleanerId);
+  return cleanerNames.has((record.name || '').trim().toLowerCase());
+};
+
 const ComplianceDashboard: React.FC<ComplianceDashboardProps> = ({ onNavigate }) => {
   const { riskAssessments, ramsList } = useRiskCoshh();
   const { clients, assignments } = useClientsSites();
   const { documents } = usePolicyDocuments();
   const { records: ppeRecords, inventory: ppeInventory } = usePPERecords();
   const { trainingRecords } = useTraining();
+  const { cleaners } = useCleaners();
   const [loading, setLoading] = useState(true);
+
+  const recordsForExistingStaff = useMemo(() => {
+    const ids = new Set(cleaners.map(c => c.id));
+    const names = new Set(cleaners.map(c => c.name.trim().toLowerCase()));
+    return trainingRecords.filter(r => staffStillExists(r, ids, names));
+  }, [trainingRecords, cleaners]);
 
   useEffect(() => {
     const timer = setTimeout(() => setLoading(false), 600);
@@ -78,12 +92,12 @@ const ComplianceDashboard: React.FC<ComplianceDashboardProps> = ({ onNavigate })
   const clientsSitesData = useMemo(() => ({ clients, assignments }), [clients, assignments]);
   const policyDocsData = useMemo(() => ({ documents }), [documents]);
   const ppeData = useMemo(() => ({ records: ppeRecords, inventory: ppeInventory }), [ppeRecords, ppeInventory]);
-  const trainingData = useMemo(() => ({ trainingRecords }), [trainingRecords]);
+  const trainingData = useMemo(() => ({ trainingRecords: recordsForExistingStaff }), [recordsForExistingStaff]);
   const alerts = useMemo(() => buildComplianceAlerts(riskCoshhData, clientsSitesData, policyDocsData, ppeData, trainingData), [riskCoshhData, clientsSitesData, policyDocsData, ppeData, trainingData]);
   const siteIssues = useMemo(() => buildSiteIssues(riskCoshhData, clientsSitesData), [riskCoshhData, clientsSitesData]);
   const documentSummary = useMemo(() => buildDocumentSummary(documents), [documents]);
   const staffSummary = useMemo(() => buildStaffSummary(assignments), [assignments]);
-  const trainingExpiry = useMemo(() => buildTrainingExpiry(trainingRecords), [trainingRecords]);
+  const trainingExpiry = useMemo(() => buildTrainingExpiry(recordsForExistingStaff), [recordsForExistingStaff]);
 
   const criticalAlerts = alerts.filter(a => a.severity === 'critical').length;
   const lastUpdated = new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });

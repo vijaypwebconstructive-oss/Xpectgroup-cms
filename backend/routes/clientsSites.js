@@ -126,6 +126,11 @@ router.get('/sites', async (req, res) => {
       emergencyPhone: d.emergencyPhone || '',
       accessInstructions: d.accessInstructions || '',
       activeWorkers: d.activeWorkers ?? 0,
+      complianceDocuments: (d.complianceDocuments || []).map(cd => ({
+        key: cd.key,
+        name: cd.name || '',
+        dataUrl: cd.dataUrl || '',
+      })),
     }));
     res.json(list);
   } catch (err) {
@@ -164,10 +169,60 @@ router.post('/sites', async (req, res) => {
       emergencyPhone: doc.emergencyPhone || '',
       accessInstructions: doc.accessInstructions || '',
       activeWorkers: doc.activeWorkers ?? 0,
+      complianceDocuments: (doc.complianceDocuments || []).map(cd => ({
+        key: cd.key,
+        name: cd.name || '',
+        dataUrl: cd.dataUrl || '',
+      })),
     });
   } catch (err) {
     console.error('Error creating site:', err);
     res.status(500).json({ error: 'Failed to create site', message: err.message });
+  }
+});
+
+router.patch('/sites/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { complianceDocuments } = req.body;
+    const site = await Site.findOne({ id });
+    if (!site) return res.status(404).json({ error: 'Site not found' });
+    const updates = {};
+    if (Array.isArray(complianceDocuments)) {
+      updates.complianceDocuments = complianceDocuments
+        .filter(cd => cd && cd.key)
+        .map(cd => ({
+          key: cd.key,
+          name: cd.name || '',
+          dataUrl: cd.dataUrl || '',
+        }));
+    }
+    const doc = await Site.findOneAndUpdate(
+      { id },
+      { $set: updates },
+      { new: true }
+    ).lean();
+    res.json({
+      id: doc.id,
+      clientId: doc.clientId,
+      name: doc.name,
+      address: doc.address || '',
+      postcode: doc.postcode || '',
+      riskLevel: doc.riskLevel || 'Low',
+      requiredTrainings: doc.requiredTrainings || [],
+      emergencyContact: doc.emergencyContact || '',
+      emergencyPhone: doc.emergencyPhone || '',
+      accessInstructions: doc.accessInstructions || '',
+      activeWorkers: doc.activeWorkers ?? 0,
+      complianceDocuments: (doc.complianceDocuments || []).map(cd => ({
+        key: cd.key,
+        name: cd.name || '',
+        dataUrl: cd.dataUrl || '',
+      })),
+    });
+  } catch (err) {
+    console.error('Error updating site:', err);
+    res.status(500).json({ error: 'Failed to update site', message: err.message });
   }
 });
 

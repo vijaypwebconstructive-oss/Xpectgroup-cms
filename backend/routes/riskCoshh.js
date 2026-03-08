@@ -165,6 +165,7 @@ router.post('/rams', async (req, res) => {
       linkedRiskAssessmentIds: body.linkedRiskAssessmentIds || [],
       signedCopyAvailable: !!body.documentData,
       signedDocumentFileName: body.signedDocumentFileName,
+      signedDocumentUploadedAt: body.documentData ? new Date().toISOString() : undefined,
       documentAvailable: !!body.documentData,
       documentData: body.documentData,
     });
@@ -172,6 +173,30 @@ router.post('/rams', async (req, res) => {
   } catch (error) {
     console.error('Error creating RAMS:', error);
     res.status(500).json({ error: 'Failed to create RAMS', message: error.message });
+  }
+});
+
+router.patch('/rams/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { documentData, signedDocumentFileName } = req.body;
+    const doc = await RAMS.findOne({ id });
+    if (!doc) return res.status(404).json({ error: 'RAMS not found' });
+    const updates = {};
+    if (documentData !== undefined) {
+      updates.documentData = documentData;
+      updates.documentAvailable = !!documentData;
+      updates.signedCopyAvailable = !!documentData;
+      updates.signedDocumentUploadedAt = new Date().toISOString();
+    }
+    if (signedDocumentFileName !== undefined) updates.signedDocumentFileName = signedDocumentFileName;
+    const updated = await RAMS.findOneAndUpdate({ id }, { $set: updates }, { new: true }).lean();
+    const record = toRAMSRecord(updated);
+    if (updated.documentData) record.documentData = updated.documentData;
+    res.json(record);
+  } catch (error) {
+    console.error('Error updating RAMS:', error);
+    res.status(500).json({ error: 'Failed to update RAMS', message: error.message });
   }
 });
 
@@ -201,6 +226,7 @@ function toRAMSRecord(doc) {
     linkedRiskAssessmentIds: doc.linkedRiskAssessmentIds || [],
     signedCopyAvailable: doc.signedCopyAvailable,
     signedDocumentFileName: doc.signedDocumentFileName,
+    signedDocumentUploadedAt: doc.signedDocumentUploadedAt,
     documentAvailable: !!doc.documentData,
   };
   return record;

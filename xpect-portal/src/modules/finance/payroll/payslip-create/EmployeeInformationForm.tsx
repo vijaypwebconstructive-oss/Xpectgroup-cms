@@ -5,6 +5,8 @@ interface EmployeeInfo {
   employeeName: string;
   department: string;
   jobTitle: string;
+  employmentType: string;
+  payRateDisplay: string;
   niNumber: string;
   taxCode: string;
 }
@@ -16,6 +18,8 @@ export interface CleanerOption {
   hourlyPayRate?: number;
   monthlySalary?: number;
   payType?: 'Hourly' | 'Weekly' | 'Monthly';
+  employmentType?: string;
+  location?: string;
 }
 
 interface Props {
@@ -25,15 +29,15 @@ interface Props {
   onCleanerSelect?: (cleaner: CleanerOption) => void;
 }
 
-const EmployeeInformationForm: React.FC<Props> = ({ value, onChange, cleaners = [], onCleanerSelect }) => {
-  const inputCls = 'w-full px-3 py-2 bg-[#f6f7fb] border border-[#e7ebf3] rounded-lg text-sm text-[#0d121b] placeholder:text-[#6b7a99] focus:outline-none focus:ring-2 focus:ring-[#2e4150]/20';
+const inputCls = 'w-full px-3 py-2 bg-[#f6f7fb] border border-[#e7ebf3] rounded-lg text-sm text-[#0d121b] placeholder:text-[#6b7a99] focus:outline-none focus:ring-2 focus:ring-[#2e4150]/20';
 
+const EmployeeInformationForm: React.FC<Props> = ({ value, onChange, cleaners = [], onCleanerSelect }) => {
   return (
     <div className="space-y-4">
       <h2 className="text-sm font-bold text-[#6b7a99] uppercase tracking-wide">Employee Information</h2>
-      {cleaners.length > 0 && (
-        <div>
-          <label className="block text-xs font-semibold text-[#6b7a99] uppercase tracking-wide mb-1.5">Select Employee</label>
+      <div>
+        <label className="block text-xs font-semibold text-[#6b7a99] uppercase tracking-wide mb-1.5">Employee Name <span className="text-red-500">*</span></label>
+        {cleaners.length > 0 ? (
           <select
             value={value.employeeId || ''}
             onChange={e => {
@@ -41,19 +45,28 @@ const EmployeeInformationForm: React.FC<Props> = ({ value, onChange, cleaners = 
               const cleaner = cleaners.find(c => c.id === id);
               if (cleaner && onCleanerSelect) {
                 onCleanerSelect(cleaner);
-              } else if (id) {
-                onChange({ employeeId: id });
+              } else if (!id) {
+                onChange({
+                  employeeId: '',
+                  employeeName: '',
+                  department: '',
+                  jobTitle: '',
+                  employmentType: '',
+                  payRateDisplay: '',
+                });
               }
             }}
             className={inputCls}
           >
-            <option value="">-- Select a cleaner --</option>
+            <option value="">-- Select employee --</option>
             {cleaners.map(c => (
-              <option key={c.id} value={c.id}>{c.name} {c.email ? `(${c.email})` : ''}</option>
+              <option key={c.id} value={c.id}>{c.name}</option>
             ))}
           </select>
-        </div>
-      )}
+        ) : (
+          <p className="text-sm text-[#6b7a99] py-2">No staff available. Add employees in the Staff module first.</p>
+        )}
+      </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className="block text-xs font-semibold text-[#6b7a99] uppercase tracking-wide mb-1.5">Employee ID</label>
@@ -62,17 +75,7 @@ const EmployeeInformationForm: React.FC<Props> = ({ value, onChange, cleaners = 
             value={value.employeeId}
             onChange={e => onChange({ employeeId: e.target.value })}
             className={inputCls}
-            placeholder="EMP-001"
-          />
-        </div>
-        <div>
-          <label className="block text-xs font-semibold text-[#6b7a99] uppercase tracking-wide mb-1.5">Employee Name</label>
-          <input
-            type="text"
-            value={value.employeeName}
-            onChange={e => onChange({ employeeName: e.target.value })}
-            className={inputCls}
-            placeholder="John Smith"
+            placeholder="Auto-filled when employee selected"
           />
         </div>
         <div>
@@ -82,7 +85,7 @@ const EmployeeInformationForm: React.FC<Props> = ({ value, onChange, cleaners = 
             value={value.department}
             onChange={e => onChange({ department: e.target.value })}
             className={inputCls}
-            placeholder="Operations"
+            placeholder="Cleaning Operations"
           />
         </div>
         <div>
@@ -95,6 +98,27 @@ const EmployeeInformationForm: React.FC<Props> = ({ value, onChange, cleaners = 
             placeholder="Cleaner"
           />
         </div>
+        <div>
+          <label className="block text-xs font-semibold text-[#6b7a99] uppercase tracking-wide mb-1.5">Employment Type</label>
+          <input
+            type="text"
+            value={value.employmentType}
+            onChange={e => onChange({ employmentType: e.target.value })}
+            className={inputCls}
+            placeholder="Permanent / Contractor"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-semibold text-[#6b7a99] uppercase tracking-wide mb-1.5">Pay Rate</label>
+          <input
+            type="text"
+            value={value.payRateDisplay}
+            onChange={e => onChange({ payRateDisplay: e.target.value })}
+            className={inputCls}
+            placeholder="£12.50/hr or £2000/month"
+          />
+        </div>
+        <div />
         <div>
           <label className="block text-xs font-semibold text-[#6b7a99] uppercase tracking-wide mb-1.5">National Insurance Number</label>
           <input

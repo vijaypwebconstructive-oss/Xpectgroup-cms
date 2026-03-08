@@ -18,11 +18,27 @@ const formatDate = (d: string) => {
   catch { return d || '—'; }
 };
 
+const PREVIEWABLE_EXT = /\.(pdf|png|jpg|jpeg)$/i;
+const PREVIEWABLE_MIME = /^(application\/pdf|image\/(png|jpeg|jpg))/i;
+const isPreviewable = (record: PPEInvoiceRecord): boolean => {
+  if (!record.invoiceFileData) return false;
+  const ext = record.invoiceFile ? PREVIEWABLE_EXT.test(record.invoiceFile) : false;
+  const mime = record.invoiceFileData.startsWith('data:') && PREVIEWABLE_MIME.test(record.invoiceFileData.split(';')[0]);
+  return ext || mime;
+};
+const isPdf = (record: PPEInvoiceRecord): boolean => {
+  if (!record.invoiceFileData) return false;
+  const lower = record.invoiceFile?.toLowerCase() ?? '';
+  return lower.endsWith('.pdf') || record.invoiceFileData.startsWith('data:application/pdf');
+};
+
 const PPEInvoiceList: React.FC<PPEInvoiceListProps> = ({ onAddRecord }) => {
   const { ppeInvoiceRecords, updatePPEInvoiceRecord, loading, error } = usePPEInvoice();
   const { clients } = useClientsSites();
   const [sendingId, setSendingId] = useState<string | null>(null);
   const [sendMessage, setSendMessage] = useState<string | null>(null);
+  const [viewRecord, setViewRecord] = useState<PPEInvoiceRecord | null>(null);
+  const [viewError, setViewError] = useState(false);
 
   const getClientEmail = (clientName: string): string | null => {
     const client = clients.find(c => c.name.trim().toLowerCase() === clientName.trim().toLowerCase());
@@ -125,10 +141,21 @@ const PPEInvoiceList: React.FC<PPEInvoiceListProps> = ({ onAddRecord }) => {
                         {formatDate(record.issueDate)}
                       </td>
                       <td className="px-4 py-4">
-                        <span className="inline-flex items-center gap-1.5 text-sm text-[#0d121b]">
-                          <span className="material-symbols-outlined text-[18px] text-[#4c669a]">description</span>
-                          {record.invoiceFile || '—'}
-                        </span>
+                        {record.invoiceFileData ? (
+                          <button
+                            onClick={() => { setViewRecord(record); setViewError(false); }}
+                            className="inline-flex items-center gap-1.5 text-sm text-[#0d121b] hover:text-[#2e4150] transition-colors cursor-pointer group"
+                          >
+                            <span className="material-symbols-outlined text-[18px] text-[#4c669a]">description</span>
+                            <span className="truncate max-w-[180px]">{record.invoiceFile || '—'}</span>
+                            <span className="material-symbols-outlined text-[16px] text-[#4c669a] group-hover:text-[#2e4150]" title="View">visibility</span>
+                          </button>
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5 text-sm text-[#4c669a]">
+                            <span className="material-symbols-outlined text-[18px]">description</span>
+                            {record.invoiceFile || '—'}
+                          </span>
+                        )}
                       </td>
                       <td className="px-4 py-4">
                         <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold ${statusStyle.badge}`}>
@@ -170,6 +197,80 @@ const PPEInvoiceList: React.FC<PPEInvoiceListProps> = ({ onAddRecord }) => {
           </div>
         )}
       </div>
+
+      {/* PPE Invoice Document Viewer Modal */}
+      {viewRecord && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          onClick={() => setViewRecord(null)}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="ppe-invoice-viewer-title"
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-6 py-4 border-b border-[#e7ebf3] shrink-0">
+              <h3 id="ppe-invoice-viewer-title" className="text-lg font-bold text-[#0d121b] truncate pr-4">
+                {viewRecord.invoiceFile || 'PPE Invoice'}
+              </h3>
+              <button
+                onClick={() => setViewRecord(null)}
+                className="p-1.5 rounded-lg hover:bg-[#f6f7fb] transition-colors cursor-pointer shrink-0"
+                aria-label="Close"
+              >
+                <span className="material-symbols-outlined text-[24px] text-[#6b7a99]">close</span>
+              </button>
+            </div>
+            <div className="flex-1 overflow-auto p-6 flex items-center justify-center bg-[#f8fafc] min-h-[400px]">
+              {!viewRecord.invoiceFileData ? (
+                <div className="text-center py-12">
+                  <span className="material-symbols-outlined text-[48px] text-[#c7c7c7] block mb-3">description</span>
+                  <p className="text-[#4c669a] font-semibold">Unable to preview document. Please download the file.</p>
+                </div>
+              ) : viewError || !isPreviewable(viewRecord) ? (
+                <div className="text-center py-12">
+                  <span className="material-symbols-outlined text-[48px] text-[#c7c7c7] block mb-3">description</span>
+                  <p className="text-[#4c669a] font-semibold">Unable to preview document. Please download the file.</p>
+                </div>
+              ) : isPdf(viewRecord) ? (
+                <iframe
+                  src={viewRecord.invoiceFileData}
+                  title={viewRecord.invoiceFile || 'Invoice'}
+                  className="w-full min-h-[500px] border border-[#e7ebf3] rounded-lg bg-white"
+                  style={{ minHeight: '60vh' }}
+                />
+              ) : (
+                <img
+                  src={viewRecord.invoiceFileData}
+                  alt={viewRecord.invoiceFile || 'Invoice'}
+                  className="max-w-full max-h-[70vh] object-contain rounded-lg shadow"
+                  onError={() => setViewError(true)}
+                />
+              )}
+            </div>
+            <div className="px-6 py-4 border-t border-[#e7ebf3] flex items-center justify-between gap-3 flex-wrap">
+              {viewRecord.invoiceFileData && (
+                <a
+                  href={viewRecord.invoiceFileData}
+                  download={viewRecord.invoiceFile || 'invoice'}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#2e4150] text-white text-sm font-bold hover:bg-[#2e4150]/90 transition-colors"
+                >
+                  <span className="material-symbols-outlined text-[18px]">download</span>
+                  Download
+                </a>
+              )}
+              <button
+                onClick={() => setViewRecord(null)}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-[#e7ebf3] text-[#0d121b] text-sm font-bold hover:bg-[#f6f7fb] transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

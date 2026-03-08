@@ -1,10 +1,18 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useIncidents } from '../../context/IncidentsContext';
 
 interface Props {
   incidentId: string;
   onBack: () => void;
 }
+
+const fileToDataUrl = (file: File): Promise<string> =>
+  new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result));
+    r.onerror = () => reject(new Error('Failed to read file'));
+    r.readAsDataURL(file);
+  });
 
 const fmt = (d: string) => d ? new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
 const fmtDt = (d: string) => {
@@ -28,9 +36,33 @@ const InfoRow: React.FC<{ label: string; value: React.ReactNode }> = ({ label, v
 );
 
 const IncidentDetail: React.FC<Props> = ({ incidentId, onBack }) => {
-  const { getIncidentById, deleteIncident } = useIncidents();
+  const { getIncidentById, deleteIncident, updateIncident } = useIncidents();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [viewPhoto, setViewPhoto] = useState(false);
+  const [replacing, setReplacing] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const incident = getIncidentById(incidentId);
+
+  const hasPhoto = !!(incident?.photoEvidenceData);
+  const photoData = incident?.photoEvidenceData;
+  const photoName = incident?.photoEvidenceName || 'Photo';
+
+  const handleReplacePhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !incidentId) return;
+    setReplacing(true);
+    try {
+      const dataUrl = await fileToDataUrl(file);
+      await updateIncident(incidentId, {
+        photoEvidenceName: file.name,
+        photoEvidenceData: dataUrl,
+        hasPhotos: true,
+      });
+    } catch { /* ignore */ } finally {
+      setReplacing(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
 
   const handleDelete = async () => {
     try {
@@ -189,15 +221,59 @@ const IncidentDetail: React.FC<Props> = ({ incidentId, onBack }) => {
                 <span className="material-symbols-outlined text-[18px] text-[#6b7a99]">photo_camera</span>
                 Photo Evidence
               </h3>
-              {incident.hasPhotos ? (
-                <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-xl">
-                  <span className="material-symbols-outlined text-green-500 text-[18px]">check_circle</span>
-                  <p className="text-sm font-semibold text-[#0d121b]">Photos attached</p>
+              {hasPhoto ? (
+                <div className="space-y-3">
+                  <div className="aspect-video bg-[#f8fafc] rounded-lg border border-[#e7ebf3] overflow-hidden flex items-center justify-center">
+                    {photoData && /^data:image\//.test(photoData) ? (
+                      <img
+                        src={photoData}
+                        alt={photoName}
+                        className="max-w-full max-h-full object-contain cursor-pointer hover:opacity-95 transition-opacity"
+                        onClick={() => setViewPhoto(true)}
+                      />
+                    ) : (
+                      <span className="material-symbols-outlined text-[48px] text-[#c7c7c7]">image</span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => setViewPhoto(true)}
+                      className="inline-flex items-center gap-1.5 text-sm font-semibold text-blue-600 hover:text-blue-800 transition-colors"
+                    >
+                      <span className="material-symbols-outlined text-[18px]">visibility</span>
+                      View Photo
+                    </button>
+                    <span className="text-[#c7d2e0]">|</span>
+                    <label className="inline-flex items-center gap-1.5 text-sm font-semibold text-blue-600 hover:text-blue-800 transition-colors cursor-pointer">
+                      <span className="material-symbols-outlined text-[18px]">swap_horiz</span>
+                      {replacing ? 'Uploading…' : 'Replace Photo'}
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept=".jpg,.jpeg,.png"
+                        className="hidden"
+                        onChange={handleReplacePhoto}
+                      />
+                    </label>
+                  </div>
                 </div>
               ) : (
-                <div className="p-6 border-2 border-dashed border-[#e7ebf3] rounded-xl text-center">
-                  <span className="material-symbols-outlined text-[28px] text-[#e7ebf3] block mb-1">photo_camera</span>
-                  <p className="text-xs text-[#6b7a99]">No photos attached</p>
+                <div className="space-y-3">
+                  <div className="p-6 border-2 border-dashed border-[#e7ebf3] rounded-xl text-center">
+                    <span className="material-symbols-outlined text-[28px] text-[#e7ebf3] block mb-1">photo_camera</span>
+                    <p className="text-xs text-[#6b7a99]">No photo attached</p>
+                  </div>
+                  <label className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl border border-[#2e4150] text-[#2e4150] text-sm font-semibold hover:bg-[#2e4150]/5 transition-colors cursor-pointer">
+                    <span className="material-symbols-outlined text-[18px]">upload</span>
+                    {replacing ? 'Uploading…' : 'Upload Photo'}
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept=".jpg,.jpeg,.png"
+                      className="hidden"
+                      onChange={handleReplacePhoto}
+                    />
+                  </label>
                 </div>
               )}
             </div>
@@ -218,6 +294,62 @@ const IncidentDetail: React.FC<Props> = ({ incidentId, onBack }) => {
           </div>
         </div>
       </div>
+
+      {/* Photo Viewer Modal */}
+      {viewPhoto && photoData && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          onClick={() => setViewPhoto(false)}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="photo-viewer-title"
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-6 py-4 border-b border-[#e7ebf3] shrink-0">
+              <h3 id="photo-viewer-title" className="text-lg font-bold text-[#0d121b] truncate pr-4">{photoName}</h3>
+              <button
+                onClick={() => setViewPhoto(false)}
+                className="p-1.5 rounded-lg hover:bg-[#f6f7fb] transition-colors cursor-pointer shrink-0"
+                aria-label="Close"
+              >
+                <span className="material-symbols-outlined text-[24px] text-[#6b7a99]">close</span>
+              </button>
+            </div>
+            <div className="flex-1 overflow-auto p-6 flex items-center justify-center bg-[#f8fafc] min-h-[300px]">
+              {/^data:image\//.test(photoData) ? (
+                <img
+                  src={photoData}
+                  alt={photoName}
+                  className="max-w-full max-h-[70vh] object-contain rounded-lg shadow"
+                />
+              ) : (
+                <p className="text-[#4c669a] font-semibold">Unable to preview image.</p>
+              )}
+            </div>
+            <div className="px-6 py-4 border-t border-[#e7ebf3] flex items-center justify-end gap-3">
+              {photoData && (
+                <a
+                  href={photoData}
+                  download={photoName}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#2e4150] text-white text-sm font-bold hover:bg-[#2e4150]/90 transition-colors"
+                >
+                  <span className="material-symbols-outlined text-[18px]">download</span>
+                  Download
+                </a>
+              )}
+              <button
+                onClick={() => setViewPhoto(false)}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-[#e7ebf3] text-[#0d121b] text-sm font-bold hover:bg-[#f6f7fb] transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

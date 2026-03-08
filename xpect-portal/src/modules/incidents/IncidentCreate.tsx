@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useIncidents } from '../../context/IncidentsContext';
+import { useClientsSites } from '../../context/ClientsSitesContext';
 import { IncidentType } from './types';
 
 interface Props {
@@ -7,20 +8,13 @@ interface Props {
   onCreated: (id: string) => void;
 }
 
-const SITES = [
-  'St. Mary\'s Hospital — Ward B',
-  'Meridian Tower — Floors 12-18',
-  'Westside Primary School',
-  'Hartley & Co Headquarters',
-  'Greenfield Industrial Unit 7',
-  'NHS Trust East — Main Reception',
-];
-
-const WORKERS = [
-  'James Okafor', 'Sandra Osei', 'Amanda Foster', 'Marcus Obi',
-  'Tom Briggs', 'Claire Ashton', 'David Nwosu', 'Patricia Nwachukwu',
-  'Richard Hammond', 'Kwame Asante',
-];
+const fileToDataUrl = (file: File): Promise<string> =>
+  new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result));
+    r.onerror = () => reject(new Error('Failed to read file'));
+    r.readAsDataURL(file);
+  });
 
 const INCIDENT_TYPES: IncidentType[] = ['Accident', 'Near Miss', 'Property Damage', 'Client Complaint', 'Environmental Incident'];
 
@@ -42,9 +36,10 @@ interface FormData {
   medicalTreatmentRequired: boolean;
   propertyDamage: string;
   immediateActionTaken: string;
-  supervisorNotified: boolean;
   witnessNotes: string;
   hasPhotos: boolean;
+  photoEvidenceName: string;
+  photoEvidenceData: string;
 }
 
 const today = () => new Date().toISOString().split('T')[0];
@@ -52,16 +47,26 @@ const nowTime = () => new Date().toTimeString().slice(0, 5);
 
 const IncidentCreate: React.FC<Props> = ({ onBack, onCreated }) => {
   const { addIncident } = useIncidents();
+  const { sites, getClientById } = useClientsSites();
   const [step, setStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const siteOptions = useMemo(() =>
+    sites.map(s => {
+      const client = getClientById(s.clientId);
+      const label = client ? `${s.name} — ${client.name}` : s.name;
+      return { value: label, label };
+    }),
+    [sites, getClientById]
+  );
 
   const [form, setForm] = useState<FormData>({
     type: '', date: today(), time: nowTime(), site: '', worker: '',
     description: '',
     injuryOccurred: false, injuryDescription: '', medicalTreatmentRequired: false, propertyDamage: '',
-    immediateActionTaken: '', supervisorNotified: false,
-    witnessNotes: '', hasPhotos: false,
+    immediateActionTaken: '',
+    witnessNotes: '', hasPhotos: false, photoEvidenceName: '', photoEvidenceData: '',
   });
 
   const set = (key: keyof FormData, val: string | boolean) => {
@@ -75,7 +80,7 @@ const IncidentCreate: React.FC<Props> = ({ onBack, onCreated }) => {
       if (!form.type)               e.type        = 'Incident type is required.';
       if (!form.date)               e.date        = 'Date is required.';
       if (!form.site)               e.site        = 'Site is required.';
-      if (!form.worker)             e.worker      = 'Reporter name is required.';
+      if (!form.worker.trim())      e.worker      = 'Reporter name is required.';
       if (!form.description.trim()) e.description = 'Description is required.';
     }
     if (s === 2 && form.injuryOccurred && !form.injuryDescription.trim()) {
@@ -117,9 +122,11 @@ const IncidentCreate: React.FC<Props> = ({ onBack, onCreated }) => {
         medicalTreatmentRequired: form.medicalTreatmentRequired,
         propertyDamage: form.propertyDamage.trim() || undefined,
         immediateActionTaken: form.immediateActionTaken.trim(),
-        supervisorNotified: form.supervisorNotified,
+        supervisorNotified: false,
         witnessNotes: form.witnessNotes.trim() || undefined,
         hasPhotos: form.hasPhotos,
+        photoEvidenceName: form.photoEvidenceName || undefined,
+        photoEvidenceData: form.photoEvidenceData || undefined,
       });
       onCreated(created.id);
     } finally {
@@ -208,16 +215,19 @@ const IncidentCreate: React.FC<Props> = ({ onBack, onCreated }) => {
                   <label className="block text-xs font-semibold text-[#6b7a99] uppercase tracking-wide mb-1.5">Site <span className="text-red-500">*</span></label>
                   <select value={form.site} onChange={e => set('site', e.target.value)} className={fieldCls('site')}>
                     <option value="">Select site…</option>
-                    {SITES.map(s => <option key={s} value={s}>{s}</option>)}
+                    {siteOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                   </select>
                   {errors.site && <p className="text-xs text-red-500 mt-1">{errors.site}</p>}
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-[#6b7a99] uppercase tracking-wide mb-1.5">Reporter Name <span className="text-red-500">*</span></label>
-                  <select value={form.worker} onChange={e => set('worker', e.target.value)} className={fieldCls('worker')}>
-                    <option value="">Select reporter…</option>
-                    {WORKERS.map(w => <option key={w} value={w}>{w}</option>)}
-                  </select>
+                  <input
+                    type="text"
+                    placeholder="Enter reporter name"
+                    value={form.worker}
+                    onChange={e => set('worker', e.target.value)}
+                    className={fieldCls('worker')}
+                  />
                   {errors.worker && <p className="text-xs text-red-500 mt-1">{errors.worker}</p>}
                 </div>
               </div>
@@ -305,23 +315,6 @@ const IncidentCreate: React.FC<Props> = ({ onBack, onCreated }) => {
                   className={`${fieldCls('immediateActionTaken')} resize-none`} />
               </div>
 
-              <label className="flex items-start gap-3 cursor-pointer p-4 bg-[#f6f7fb] rounded-xl border border-[#e7ebf3]">
-                <input type="checkbox" checked={form.supervisorNotified}
-                  onChange={e => set('supervisorNotified', e.target.checked)}
-                  className="w-4 h-4 rounded accent-[#2e4150] mt-0.5 shrink-0" />
-                <div>
-                  <p className="text-sm font-semibold text-[#0d121b]">Supervisor has been notified</p>
-                  <p className="text-xs text-[#6b7a99] mt-0.5">The direct line manager or on-site supervisor is aware of this incident.</p>
-                </div>
-              </label>
-
-              {!form.supervisorNotified && (
-                <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
-                  <span className="material-symbols-outlined text-amber-500 text-[18px] shrink-0 mt-0.5">warning</span>
-                  <p className="text-xs text-amber-700 font-medium">Supervisors must be notified of all incidents as soon as practicable.</p>
-                </div>
-              )}
-
               <div>
                 <label className="block text-xs font-semibold text-[#6b7a99] uppercase tracking-wide mb-1.5">Witness Statements / Notes</label>
                 <textarea rows={3} placeholder="Include witness name and what they observed…"
@@ -335,8 +328,8 @@ const IncidentCreate: React.FC<Props> = ({ onBack, onCreated }) => {
                 {form.hasPhotos ? (
                   <div className="flex items-center gap-3 p-4 bg-green-50 border border-green-200 rounded-xl">
                     <span className="material-symbols-outlined text-green-500 text-[22px]">check_circle</span>
-                    <p className="text-sm font-semibold text-[#0d121b]">Photos attached</p>
-                    <button type="button" onClick={() => set('hasPhotos', false)}
+                    <p className="text-sm font-semibold text-[#0d121b]">{form.photoEvidenceName || 'Photo attached'}</p>
+                    <button type="button" onClick={() => setForm(f => ({ ...f, hasPhotos: false, photoEvidenceName: '', photoEvidenceData: '' }))}
                       className="ml-auto text-[#6b7a99] hover:text-red-500">
                       <span className="material-symbols-outlined text-[18px]">close</span>
                     </button>
@@ -348,8 +341,20 @@ const IncidentCreate: React.FC<Props> = ({ onBack, onCreated }) => {
                       <p className="text-sm font-semibold text-[#0d121b]">Click to attach photos</p>
                       <p className="text-xs text-[#6b7a99] mt-1">JPEG, PNG — scene photos, injuries (if consented)</p>
                     </div>
-                    <input type="file" accept="image/*" multiple className="hidden"
-                      onChange={e => { if (e.target.files?.length) set('hasPhotos', true); }} />
+                    <input
+                      type="file"
+                      accept=".jpg,.jpeg,.png"
+                      className="hidden"
+                      onChange={async e => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          try {
+                            const dataUrl = await fileToDataUrl(file);
+                            setForm(f => ({ ...f, hasPhotos: true, photoEvidenceName: file.name, photoEvidenceData: dataUrl }));
+                          } catch { /* ignore */ }
+                        }
+                      }}
+                    />
                   </label>
                 )}
               </div>
@@ -363,7 +368,6 @@ const IncidentCreate: React.FC<Props> = ({ onBack, onCreated }) => {
                   ['Site', form.site || '—'],
                   ['Reporter', form.worker || '—'],
                   ['Injury', form.injuryOccurred ? 'Yes' : 'No'],
-                  ['Supervisor Notified', form.supervisorNotified ? 'Yes' : 'No'],
                 ].map(([k, v]) => (
                   <div key={k} className="flex items-center justify-between text-sm">
                     <span className="text-[#6b7a99]">{k}</span>

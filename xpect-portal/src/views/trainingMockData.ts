@@ -5,6 +5,7 @@
 
 export interface TrainingRecord {
   id: string;
+  cleanerId?: string;
   name: string;
   location: string;
   initials: string;

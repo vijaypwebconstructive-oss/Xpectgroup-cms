@@ -40,8 +40,25 @@ const PayslipForm: React.FC<Props> = ({ mode, payslipId, initialData }) => {
   const [notes, setNotes] = useState(defaults.notes ?? '');
 
   useEffect(() => {
-    api.cleaners.getAll().then((list: CleanerOption[]) => {
-      setCleaners(Array.isArray(list) ? list : []);
+    api.cleaners.getAll().then((list: unknown[]) => {
+      if (!Array.isArray(list)) {
+        setCleaners([]);
+        return;
+      }
+      const mapped: CleanerOption[] = list
+        .filter((c: Record<string, unknown>) => (c.onboardingProgress ?? 0) === 100)
+        .map((c: Record<string, unknown>) => ({
+          id: String(c.id ?? ''),
+          name: String(c.name ?? ''),
+          email: c.email ? String(c.email) : undefined,
+          hourlyPayRate: typeof c.hourlyPayRate === 'number' ? c.hourlyPayRate : undefined,
+          monthlySalary: typeof c.monthlySalary === 'number' ? c.monthlySalary : undefined,
+          payType: (c.payType as CleanerOption['payType']) || undefined,
+          employmentType: c.employmentType ? String(c.employmentType) : undefined,
+          location: c.location ? String(c.location) : undefined,
+        }))
+        .filter(c => c.id && c.name);
+      setCleaners(mapped);
     }).catch(() => setCleaners([]));
   }, []);
 
@@ -61,10 +78,24 @@ const PayslipForm: React.FC<Props> = ({ mode, payslipId, initialData }) => {
   }, [payType]);
 
   const handleCleanerSelect = useCallback((cleaner: CleanerOption) => {
+    const department = cleaner.location && String(cleaner.location).trim() && cleaner.location !== 'TBD'
+      ? cleaner.location
+      : 'Cleaning Operations';
+    const jobTitle = 'Cleaner';
+    let payRateDisplay = '';
+    if (cleaner.payType === 'Monthly' && cleaner.monthlySalary != null && cleaner.monthlySalary > 0) {
+      payRateDisplay = `£${cleaner.monthlySalary.toFixed(2)}/month`;
+    } else if (cleaner.hourlyPayRate != null && cleaner.hourlyPayRate > 0) {
+      payRateDisplay = `£${cleaner.hourlyPayRate.toFixed(2)}/hr`;
+    }
     setEmployee(prev => ({
       ...prev,
       employeeId: cleaner.id,
       employeeName: cleaner.name || prev.employeeName,
+      department,
+      jobTitle,
+      employmentType: cleaner.employmentType || '',
+      payRateDisplay,
     }));
     const pt = cleaner.payType === 'Monthly' ? 'Monthly' : 'Hourly';
     setPayType(pt);

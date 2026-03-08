@@ -29,6 +29,8 @@ export interface PayslipFormData {
     employeeName: string;
     department: string;
     jobTitle: string;
+    employmentType: string;
+    payRateDisplay: string;
     niNumber: string;
     taxCode: string;
   };
@@ -54,10 +56,12 @@ export const DEFAULT_PAYSLIP_FORM_DATA: PayslipFormData = {
     year: new Date().getFullYear(),
   },
   employee: {
-    employeeId: 'EMP-001',
+    employeeId: '',
     employeeName: '',
-    department: 'Operations',
-    jobTitle: 'Cleaner',
+    department: '',
+    jobTitle: '',
+    employmentType: '',
+    payRateDisplay: '',
     niNumber: '',
     taxCode: '',
   },

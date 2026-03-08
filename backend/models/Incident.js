@@ -26,6 +26,8 @@ const IncidentSchema = new mongoose.Schema({
   rootCause: { type: String, default: '' },
   witnessNotes: { type: String, default: '' },
   hasPhotos: { type: Boolean, default: false },
+  photoEvidenceName: { type: String, default: '' },
+  photoEvidenceData: { type: String, default: '' },
   closedDate: { type: String, default: '' },
   closedBy: { type: String, default: '' },
 }, { timestamps: true });

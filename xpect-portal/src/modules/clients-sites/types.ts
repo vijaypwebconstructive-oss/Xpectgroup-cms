@@ -22,7 +22,7 @@ export interface ClientDocument {
 export interface Client {
   id: string;
   name: string;
-  industry: Industry;
+  industry: string;  // Business type, e.g. Healthcare, Office, Retail
   contactPerson: string;
   email: string;
   phone: string;
@@ -32,6 +32,12 @@ export interface Client {
   address: string;
   notes?: string;
   documents?: ClientDocument[];
+}
+
+export interface SiteComplianceDocument {
+  key: string;
+  name: string;
+  dataUrl: string;
 }
 
 export interface Site {
@@ -46,6 +52,7 @@ export interface Site {
   emergencyPhone: string;
   accessInstructions: string;
   activeWorkers: number;
+  complianceDocuments?: SiteComplianceDocument[];
 }
 
 export interface WorkerAssignment {

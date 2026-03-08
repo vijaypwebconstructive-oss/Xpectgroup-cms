@@ -48,12 +48,28 @@ const isExpiringWithinDays = (expiryDateStr: string, days: number = 30): boolean
   return diffDays >= 0 && diffDays <= days;
 };
 
+/** True if the training record's staff still exists in the cleaners list (not deleted) */
+const staffStillExists = (record: TrainingRecord, cleaners: Cleaner[]): boolean => {
+  if (record.cleanerId?.trim()) {
+    return cleaners.some(c => c.id === record.cleanerId);
+  }
+  return cleaners.some(
+    c => c.name.trim().toLowerCase() === (record.name || '').trim().toLowerCase()
+  );
+};
+
 const TrainingCertification: React.FC<TrainingCertificationProps> = ({ onNavigate }) => {
   const { cleaners } = useCleaners();
   const { trainingRecords, addTrainingRecord } = useTraining();
   const [activeFilter, setActiveFilter] = useState<StatusFilter>('ALL');
   const [searchTerm, setSearchTerm] = useState('');
   const hasRunAutoReminder = useRef(false);
+
+  // Only show training records for staff who still exist (not deleted from Staff module)
+  const recordsForExistingStaff = useMemo(
+    () => trainingRecords.filter(r => staffStillExists(r, cleaners)),
+    [trainingRecords, cleaners]
+  );
 
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -69,15 +85,15 @@ const TrainingCertification: React.FC<TrainingCertificationProps> = ({ onNavigat
   // Verified employees who are not in the training list (no training record)
   const assignableEmployees = useMemo(() => {
     const verified = cleaners.filter(c => c.verificationStatus === VerificationStatus.VERIFIED);
-    const namesInTraining = new Set(trainingRecords.map(r => r.name.trim().toLowerCase()));
+    const namesInTraining = new Set(recordsForExistingStaff.map(r => r.name.trim().toLowerCase()));
     return verified.filter(c => !namesInTraining.has(c.name.trim().toLowerCase()));
-  }, [cleaners, trainingRecords]);
+  }, [cleaners, recordsForExistingStaff]);
 
   useEffect(() => {
     if (hasRunAutoReminder.current || cleaners.length === 0) return;
     hasRunAutoReminder.current = true;
     const run = async () => {
-      const expiring = trainingRecords.filter(r => isExpiringWithinDays(r.expiryDate || '', 30));
+      const expiring = recordsForExistingStaff.filter(r => isExpiringWithinDays(r.expiryDate || '', 30));
       if (expiring.length === 0) return;
       const recordsWithEmail: Array<{ id: string; name: string; course: string; expiryDate: string; email: string }> = [];
       for (const rec of expiring) {
@@ -113,6 +129,7 @@ const TrainingCertification: React.FC<TrainingCertificationProps> = ({ onNavigat
     const expiryDate = modalExpiryDate || (endDate ? addOneYear(endDate) : addOneYear(modalStartDate));
     try {
       await addTrainingRecord({
+        cleanerId: emp.id,
         name: emp.name,
         location: emp.location || 'Unassigned',
         initials: getInitials(emp.name),
@@ -141,11 +158,11 @@ const TrainingCertification: React.FC<TrainingCertificationProps> = ({ onNavigat
     setIsModalOpen(false);
   };
 
-  const totalCount = trainingRecords.length;
-  const trainedCount = trainingRecords.filter(t => t.status === 'Trained').length;
-  const notTrainedCount = trainingRecords.filter(t => t.status === 'Not Trained').length;
+  const totalCount = recordsForExistingStaff.length;
+  const trainedCount = recordsForExistingStaff.filter(t => t.status === 'Trained').length;
+  const notTrainedCount = recordsForExistingStaff.filter(t => t.status === 'Not Trained').length;
 
-  const filteredRecords = trainingRecords.filter(t => {
+  const filteredRecords = recordsForExistingStaff.filter(t => {
     const matchesFilter =
       activeFilter === 'ALL' ? true :
       activeFilter === 'TRAINED' ? t.status === 'Trained' :
@@ -309,7 +326,7 @@ const TrainingCertification: React.FC<TrainingCertificationProps> = ({ onNavigat
           </div>
 
           <div className="px-5 py-3 border-t border-[#e7ebf3] bg-[#f8fafc] flex items-center justify-between">
-            <p className="text-xs text-[#4c669a]">Showing <span className="font-bold text-[#0d121b]">{filteredRecords.length}</span> of <span className="font-bold text-[#0d121b]">{trainingRecords.length}</span> records</p>
+            <p className="text-xs text-[#4c669a]">Showing <span className="font-bold text-[#0d121b]">{filteredRecords.length}</span> of <span className="font-bold text-[#0d121b]">{recordsForExistingStaff.length}</span> records</p>
             <p className="text-xs text-[#4c669a]">Last updated: <span className="font-bold text-[#0d121b]">Today</span></p>
           </div>
         </div>

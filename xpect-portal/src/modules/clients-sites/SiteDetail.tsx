@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useClientsSites } from '../../context/ClientsSitesContext';
+import type { SiteComplianceDocument } from './types';
 
 interface SiteDetailProps {
   siteId: string;
@@ -18,12 +19,46 @@ const COMPLIANCE_STYLES = {
   'Non-Compliant':  { badge: 'bg-red-100 text-red-700 border border-red-200',        dot: 'bg-red-500',    label: 'Not Eligible for Site' },
 };
 
+const COMPLIANCE_DOCS = [
+  { key: 'rams',   label: 'RAMS Document',        icon: 'health_and_safety' },
+  { key: 'emergency', label: 'Emergency Procedures', icon: 'emergency' },
+  { key: 'siteInstructions', label: 'Site Instructions', icon: 'list_alt' },
+] as const;
+
+const PREVIEWABLE_EXT = /\.(pdf|png|jpg|jpeg)$/i;
+const PREVIEWABLE_MIME = /^(application\/pdf|image\/(png|jpeg|jpg))/i;
+const isPreviewable = (name: string, dataUrl: string): boolean => {
+  const ext = name ? PREVIEWABLE_EXT.test(name) : false;
+  const mime = dataUrl.startsWith('data:') && PREVIEWABLE_MIME.test(dataUrl.split(';')[0]);
+  return ext || mime;
+};
+const isPdf = (name: string, dataUrl: string): boolean => {
+  const lower = name?.toLowerCase() ?? '';
+  return lower.endsWith('.pdf') || dataUrl.startsWith('data:application/pdf');
+};
+
+const fileToDataUrl = (file: File): Promise<string> =>
+  new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result));
+    r.onerror = () => reject(new Error('Failed to read file'));
+    r.readAsDataURL(file);
+  });
+
 const SiteDetail: React.FC<SiteDetailProps> = ({ siteId, onBack }) => {
-  const { getSiteById, getClientById, getAssignmentsBySite, deleteSite } = useClientsSites();
+  const { getSiteById, getClientById, getAssignmentsBySite, deleteSite, updateSiteCompliance } = useClientsSites();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [viewDoc, setViewDoc] = useState<{ name: string; dataUrl: string } | null>(null);
+  const [viewError, setViewError] = useState(false);
+  const [uploadingKey, setUploadingKey] = useState<string | null>(null);
+  const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+
   const site        = getSiteById(siteId);
   const client      = site ? getClientById(site.clientId) : undefined;
   const assignments = site ? getAssignmentsBySite(siteId) : [];
+
+  const complianceDocs = site?.complianceDocuments ?? [];
+  const getDocByKey = (key: string) => complianceDocs.find(d => d.key === key);
 
   const handleDelete = async () => {
     try {
@@ -33,6 +68,27 @@ const SiteDetail: React.FC<SiteDetailProps> = ({ siteId, onBack }) => {
     } catch {
       // Could show error toast
     }
+  };
+
+  const handleUpload = async (key: string, file: File) => {
+    if (!site) return;
+    setUploadingKey(key);
+    try {
+      const dataUrl = await fileToDataUrl(file);
+      const existing = complianceDocs.filter(d => d.key !== key);
+      const updated = [...existing, { key, name: file.name, dataUrl }];
+      await updateSiteCompliance(siteId, updated);
+    } catch {
+      // Could show error
+    } finally {
+      setUploadingKey(null);
+      if (fileInputRefs.current[key]) (fileInputRefs.current[key] as HTMLInputElement).value = '';
+    }
+  };
+
+  const openViewer = (doc: SiteComplianceDocument) => {
+    setViewDoc({ name: doc.name, dataUrl: doc.dataUrl });
+    setViewError(false);
   };
 
   if (!site) return (
@@ -128,22 +184,55 @@ const SiteDetail: React.FC<SiteDetailProps> = ({ siteId, onBack }) => {
             <div className="bg-white rounded-xl border border-[#e7ebf3] shadow-sm p-5">
               <h3 className="text-[#0d121b] font-black text-sm uppercase tracking-wide mb-4">Compliance Documents</h3>
               <div className="space-y-2">
-                {[
-                  { label: 'RAMS Document',        icon: 'health_and_safety' },
-                  { label: 'Emergency Procedures', icon: 'emergency' },
-                  { label: 'Site Instructions',    icon: 'list_alt' },
-                ].map(doc => (
-                  <div key={doc.label} className="flex items-center justify-between p-3 bg-[#f8fafc] rounded-lg border border-[#e7ebf3]">
-                    <div className="flex items-center gap-2">
-                      <span className="material-symbols-outlined text-[#6b7a99] text-[17px]">{doc.icon}</span>
-                      <p className="text-sm font-medium text-[#0d121b]">{doc.label}</p>
+                {COMPLIANCE_DOCS.map(docDef => {
+                  const doc = getDocByKey(docDef.key);
+                  const hasDoc = !!doc?.dataUrl;
+                  return (
+                    <div key={docDef.key} className="flex items-center justify-between p-3 bg-[#f8fafc] rounded-lg border border-[#e7ebf3] gap-2 flex-wrap">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="material-symbols-outlined text-[#6b7a99] text-[17px] shrink-0">{docDef.icon}</span>
+                        <p className="text-sm font-medium text-[#0d121b]">{docDef.label}</p>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        {hasDoc ? (
+                          <>
+                            <button
+                              onClick={() => openViewer(doc!)}
+                              className="text-xs font-bold text-blue-600 hover:text-blue-800 transition-colors cursor-pointer flex items-center gap-1"
+                            >
+                              <span className="material-symbols-outlined text-[14px]">visibility</span>
+                              View
+                            </button>
+                            <span className="text-[#c7d2e0]">|</span>
+                            <label className="text-xs font-bold text-blue-600 hover:text-blue-800 transition-colors cursor-pointer flex items-center gap-1">
+                              <span className="material-symbols-outlined text-[14px]">swap_horiz</span>
+                              {uploadingKey === docDef.key ? 'Uploading…' : 'Replace'}
+                              <input
+                                ref={el => { fileInputRefs.current[docDef.key] = el; }}
+                                type="file"
+                                className="hidden"
+                                accept=".pdf,.jpg,.jpeg,.png"
+                                onChange={e => { const f = e.target.files?.[0]; if (f) handleUpload(docDef.key, f); }}
+                              />
+                            </label>
+                          </>
+                        ) : (
+                          <label className="text-xs font-bold text-blue-600 hover:text-blue-800 transition-colors cursor-pointer flex items-center gap-1">
+                            <span className="material-symbols-outlined text-[14px]">upload</span>
+                            {uploadingKey === docDef.key ? 'Uploading…' : 'Upload'}
+                            <input
+                              ref={el => { fileInputRefs.current[docDef.key] = el; }}
+                              type="file"
+                              className="hidden"
+                              accept=".pdf,.jpg,.jpeg,.png"
+                              onChange={e => { const f = e.target.files?.[0]; if (f) handleUpload(docDef.key, f); }}
+                            />
+                          </label>
+                        )}
+                      </div>
                     </div>
-                    <button className="text-xs font-bold text-blue-600 hover:text-blue-800 transition-colors cursor-pointer flex items-center gap-1">
-                      <span className="material-symbols-outlined text-[14px]">upload</span>
-                      Upload
-                    </button>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -213,6 +302,80 @@ const SiteDetail: React.FC<SiteDetailProps> = ({ siteId, onBack }) => {
           </div>
         </div>
       </div>
+
+      {/* Document Viewer Modal */}
+      {viewDoc && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          onClick={() => setViewDoc(null)}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="site-doc-viewer-title"
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-6 py-4 border-b border-[#e7ebf3] shrink-0">
+              <h3 id="site-doc-viewer-title" className="text-lg font-bold text-[#0d121b] truncate pr-4">
+                {viewDoc.name}
+              </h3>
+              <button
+                onClick={() => setViewDoc(null)}
+                className="p-1.5 rounded-lg hover:bg-[#f6f7fb] transition-colors cursor-pointer shrink-0"
+                aria-label="Close"
+              >
+                <span className="material-symbols-outlined text-[24px] text-[#6b7a99]">close</span>
+              </button>
+            </div>
+            <div className="flex-1 overflow-auto p-6 flex items-center justify-center bg-[#f8fafc] min-h-[400px]">
+              {!viewDoc.dataUrl ? (
+                <div className="text-center py-12">
+                  <span className="material-symbols-outlined text-[48px] text-[#c7c7c7] block mb-3">description</span>
+                  <p className="text-[#4c669a] font-semibold">Unable to preview document. Please download the file.</p>
+                </div>
+              ) : viewError || !isPreviewable(viewDoc.name, viewDoc.dataUrl) ? (
+                <div className="text-center py-12">
+                  <span className="material-symbols-outlined text-[48px] text-[#c7c7c7] block mb-3">description</span>
+                  <p className="text-[#4c669a] font-semibold">Unable to preview document. Please download the file.</p>
+                </div>
+              ) : isPdf(viewDoc.name, viewDoc.dataUrl) ? (
+                <iframe
+                  src={viewDoc.dataUrl}
+                  title={viewDoc.name}
+                  className="w-full min-h-[500px] border border-[#e7ebf3] rounded-lg bg-white"
+                  style={{ minHeight: '60vh' }}
+                />
+              ) : (
+                <img
+                  src={viewDoc.dataUrl}
+                  alt={viewDoc.name}
+                  className="max-w-full max-h-[70vh] object-contain rounded-lg shadow"
+                  onError={() => setViewError(true)}
+                />
+              )}
+            </div>
+            <div className="px-6 py-4 border-t border-[#e7ebf3] flex items-center justify-between gap-3 flex-wrap">
+              {viewDoc.dataUrl && (
+                <a
+                  href={viewDoc.dataUrl}
+                  download={viewDoc.name}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#2e4150] text-white text-sm font-bold hover:bg-[#2e4150]/90 transition-colors"
+                >
+                  <span className="material-symbols-outlined text-[18px]">download</span>
+                  Download
+                </a>
+              )}
+              <button
+                onClick={() => setViewDoc(null)}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-[#e7ebf3] text-[#0d121b] text-sm font-bold hover:bg-[#f6f7fb] transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

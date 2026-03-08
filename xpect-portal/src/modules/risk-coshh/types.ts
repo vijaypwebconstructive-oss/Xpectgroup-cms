@@ -53,6 +53,7 @@ export interface RAMS {
   linkedRiskAssessmentIds: string[];
   signedCopyAvailable: boolean;
   signedDocumentFileName?: string;
+  signedDocumentUploadedAt?: string; // ISO date when document was uploaded
   /** When true, the document is stored and can be viewed. False/undefined = dummy data or unavailable. */
   documentAvailable?: boolean;
 }

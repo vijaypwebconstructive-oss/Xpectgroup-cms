@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useRiskCoshh } from '../../context/RiskCoshhContext';
 import api from '../../services/api';
 
@@ -7,14 +7,34 @@ interface Props {
   onBack: () => void;
 }
 
+const MAX_FILE_SIZE_MB = 10;
+const ALLOWED_EXT = /\.(pdf|png|jpg|jpeg)$/i;
+const ALLOWED_MIME = /^(application\/pdf|image\/(png|jpeg|jpg))/i;
+
 const fmt = (d: string) => d ? new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
 
+const fileToDataUrl = (file: File): Promise<string> =>
+  new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result));
+    r.onerror = () => reject(new Error('Failed to read file'));
+    r.readAsDataURL(file);
+  });
+
+const isPdf = (name: string, dataUrl: string): boolean => {
+  const lower = name?.toLowerCase() ?? '';
+  return lower.endsWith('.pdf') || dataUrl.startsWith('data:application/pdf');
+};
+
 const RAMSDetail: React.FC<Props> = ({ ramsId, onBack }) => {
-  const { getRAMSById, deleteRAMS } = useRiskCoshh();
+  const { getRAMSById, deleteRAMS, updateRAMS, refreshRAMS } = useRiskCoshh();
   const rams = getRAMSById(ramsId);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showDocViewer, setShowDocViewer] = useState(false);
   const [docData, setDocData] = useState<string | null>(null);
+  const [replaceError, setReplaceError] = useState<string | null>(null);
+  const [replacing, setReplacing] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const handleDelete = async () => {
     try {
@@ -38,6 +58,34 @@ const RAMSDetail: React.FC<Props> = ({ ramsId, onBack }) => {
       setDocData(null);
     }
     setShowDocViewer(true);
+  };
+
+  const handleReplaceDoc = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !ramsId) return;
+    setReplaceError(null);
+    if (!ALLOWED_EXT.test(file.name) && !ALLOWED_MIME.test(file.type)) {
+      setReplaceError('Only PDF, PNG, JPG, JPEG are allowed.');
+      return;
+    }
+    if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
+      setReplaceError(`File size must be under ${MAX_FILE_SIZE_MB}MB.`);
+      return;
+    }
+    setReplacing(true);
+    try {
+      const dataUrl = await fileToDataUrl(file);
+      await updateRAMS(ramsId, {
+        documentData: dataUrl,
+        signedDocumentFileName: file.name,
+      });
+      await refreshRAMS();
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    } catch {
+      setReplaceError('Failed to replace document. Please try again.');
+    } finally {
+      setReplacing(false);
+    }
   };
 
   if (!rams) {
@@ -195,37 +243,79 @@ const RAMSDetail: React.FC<Props> = ({ ramsId, onBack }) => {
               <div className="flex flex-col gap-3">
                 <div className="flex items-center gap-3 p-3 bg-green-50 border border-green-200 rounded-xl">
                   <span className="material-symbols-outlined text-green-500 text-[22px]">check_circle</span>
-                  <div>
+                  <div className="min-w-0 flex-1">
                     <p className="text-sm font-semibold text-[#0d121b]">Signed copy available</p>
-                    <p className="text-xs text-[#6b7a99]">{rams.signedDocumentFileName || `RAMS-${rams.id}.pdf`}</p>
+                    {rams.signedDocumentFileName && (
+                      <p className="text-xs text-[#6b7a99] mt-0.5">File: {rams.signedDocumentFileName}</p>
+                    )}
+                    {rams.signedDocumentUploadedAt && (
+                      <p className="text-xs text-[#6b7a99]">Uploaded: {fmt(rams.signedDocumentUploadedAt)}</p>
+                    )}
                   </div>
                 </div>
-                {rams.documentAvailable !== false ? (
-                  <button
-                    type="button"
-                    onClick={handleViewDoc}
-                    className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#2e4150] text-white text-sm font-semibold hover:bg-[#3a5268] transition-colors w-full"
-                  >
-                    <span className="material-symbols-outlined text-[18px]">visibility</span>
-                    View
-                  </button>
-                ) : (
-                  <button
-                    disabled
-                    title="Document not available"
-                    className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-[#e7ebf3] text-[#6b7a99] text-sm font-semibold cursor-not-allowed w-full"
-                  >
-                    <span className="material-symbols-outlined text-[18px]">visibility</span>
-                    View
-                  </button>
+                <div className="flex items-center gap-3">
+                  {rams.documentAvailable !== false ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={handleViewDoc}
+                        className="inline-flex items-center gap-1.5 text-sm font-semibold text-blue-600 hover:text-blue-800 transition-colors"
+                      >
+                        <span className="material-symbols-outlined text-[18px]">visibility</span>
+                        View
+                      </button>
+                      <span className="text-[#c7d2e0]">|</span>
+                      <label className="inline-flex items-center gap-1.5 text-sm font-semibold text-blue-600 hover:text-blue-800 transition-colors cursor-pointer">
+                        <span className="material-symbols-outlined text-[18px]">swap_horiz</span>
+                        {replacing ? 'Uploading…' : 'Replace'}
+                        <input
+                          ref={fileInputRef}
+                          type="file"
+                          accept=".pdf,.png,.jpg,.jpeg"
+                          className="hidden"
+                          onChange={handleReplaceDoc}
+                        />
+                      </label>
+                    </>
+                  ) : (
+                    <label className="inline-flex items-center gap-1.5 text-sm font-semibold text-blue-600 hover:text-blue-800 transition-colors cursor-pointer">
+                      <span className="material-symbols-outlined text-[18px]">upload</span>
+                      {replacing ? 'Uploading…' : 'Upload'}
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept=".pdf,.png,.jpg,.jpeg"
+                        className="hidden"
+                        onChange={handleReplaceDoc}
+                      />
+                    </label>
+                  )}
+                </div>
+                {replaceError && (
+                  <p className="text-xs text-red-600 font-medium">{replaceError}</p>
                 )}
               </div>
             ) : (
-              <div className="p-6 border-2 border-dashed border-[#e7ebf3] rounded-xl text-center">
-                <span className="material-symbols-outlined text-[32px] text-[#e7ebf3] block mb-2">upload_file</span>
-                <p className="text-sm font-semibold text-[#0d121b]">No signed copy</p>
-                <p className="text-xs text-[#6b7a99] mt-1">Upload signed RAMS PDF</p>
-                <button className="mt-3 text-sm font-semibold text-[#2e4150] hover:underline">Upload File</button>
+              <div className="space-y-3">
+                <div className="p-6 border-2 border-dashed border-[#e7ebf3] rounded-xl text-center">
+                  <span className="material-symbols-outlined text-[32px] text-[#e7ebf3] block mb-2">upload_file</span>
+                  <p className="text-sm font-semibold text-[#0d121b]">No signed copy</p>
+                  <p className="text-xs text-[#6b7a99] mt-1">Upload signed RAMS document (PDF, PNG, JPG, JPEG)</p>
+                </div>
+                <label className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl border border-[#2e4150] text-[#2e4150] text-sm font-semibold hover:bg-[#2e4150]/5 transition-colors cursor-pointer">
+                  <span className="material-symbols-outlined text-[18px]">upload</span>
+                  {replacing ? 'Uploading…' : 'Upload File'}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".pdf,.png,.jpg,.jpeg"
+                    className="hidden"
+                    onChange={handleReplaceDoc}
+                  />
+                </label>
+                {replaceError && (
+                  <p className="text-xs text-red-600 font-medium text-center">{replaceError}</p>
+                )}
               </div>
             )}
           </div>
@@ -235,20 +325,30 @@ const RAMSDetail: React.FC<Props> = ({ ramsId, onBack }) => {
       {/* Document viewer modal - shows on screen, no redirect */}
       {showDocViewer && rams && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setShowDocViewer(false)}>
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between px-6 py-4 border-b border-[#e7ebf3] shrink-0">
-              <h3 className="text-lg font-bold text-[#0d121b]">Signed RAMS Document — {rams.siteName}</h3>
-              <button onClick={() => setShowDocViewer(false)} className="p-1.5 rounded-lg hover:bg-[#f6f7fb] transition-colors">
+              <h3 className="text-lg font-bold text-[#0d121b] truncate pr-4">
+                {rams.signedDocumentFileName || `Signed RAMS — ${rams.siteName}`}
+              </h3>
+              <button onClick={() => setShowDocViewer(false)} className="p-1.5 rounded-lg hover:bg-[#f6f7fb] transition-colors shrink-0">
                 <span className="material-symbols-outlined text-[24px] text-[#6b7a99]">close</span>
               </button>
             </div>
-            <div className="flex-1 overflow-y-auto p-6">
+            <div className="flex-1 overflow-y-auto p-6 flex items-center justify-center bg-[#f8fafc] min-h-[300px]">
               {docData ? (
-                <iframe
-                  src={docData}
-                  title="RAMS Document"
-                  className="w-full h-[70vh] border border-[#e7ebf3] rounded-lg"
-                />
+                isPdf(rams.signedDocumentFileName || '', docData) ? (
+                  <iframe
+                    src={docData}
+                    title="RAMS Document"
+                    className="w-full min-h-[70vh] border border-[#e7ebf3] rounded-lg bg-white"
+                  />
+                ) : (
+                  <img
+                    src={docData}
+                    alt={rams.signedDocumentFileName || 'RAMS Document'}
+                    className="max-w-full max-h-[70vh] object-contain rounded-lg shadow"
+                  />
+                )
               ) : rams.documentAvailable ? (
                 <div className="text-center py-12 text-[#6b7a99]">
                   <span className="material-symbols-outlined text-[48px] block mb-3">description</span>
@@ -293,6 +393,24 @@ const RAMSDetail: React.FC<Props> = ({ ramsId, onBack }) => {
                 </div>
               )}
             </div>
+            {docData && (
+              <div className="px-6 py-4 border-t border-[#e7ebf3] flex items-center justify-end gap-3">
+                <a
+                  href={docData}
+                  download={rams.signedDocumentFileName || 'rams-document'}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#2e4150] text-white text-sm font-bold hover:bg-[#2e4150]/90 transition-colors"
+                >
+                  <span className="material-symbols-outlined text-[18px]">download</span>
+                  Download
+                </a>
+                <button
+                  onClick={() => setShowDocViewer(false)}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-[#e7ebf3] text-[#0d121b] text-sm font-bold hover:bg-[#f6f7fb] transition-colors"
+                >
+                  Close
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}

@@ -24,8 +24,9 @@ const RAMSSchema = new mongoose.Schema({
   linkedRiskAssessmentIds: { type: [String], default: [] },
   signedCopyAvailable: { type: Boolean, default: false },
   signedDocumentFileName: { type: String },
+  signedDocumentUploadedAt: { type: String }, // ISO date when document was uploaded/replaced
   documentAvailable: { type: Boolean, default: false },
-  documentData: { type: String }, // base64 data URL for uploaded PDF
+  documentData: { type: String }, // base64 data URL for uploaded PDF/image
 }, {
   timestamps: true,
 });

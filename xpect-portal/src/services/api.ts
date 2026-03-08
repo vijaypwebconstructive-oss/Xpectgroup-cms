@@ -352,6 +352,12 @@ export const api = {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(data),
         }),
+      update: (id: string, updates: { documentData?: string; signedDocumentFileName?: string }) =>
+        fetchWithErrorHandling<import('../modules/risk-coshh/types').RAMS & { documentData?: string }>(`${API_BASE_URL}/risk-coshh/rams/${id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(updates),
+        }),
       delete: (id: string) =>
         fetch(`${API_BASE_URL}/risk-coshh/rams/${id}`, { method: 'DELETE' }).then(r => {
           if (!r.ok) return r.json().then((err: { error?: string; message?: string }) => { throw new ApiError(r.status, err.message || err.error || 'Failed'); });
@@ -395,6 +401,12 @@ export const api = {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
+      }),
+    updateSite: (id: string, updates: { complianceDocuments?: import('../modules/clients-sites/types').SiteComplianceDocument[] }) =>
+      fetchWithErrorHandling<import('../modules/clients-sites/types').Site>(`${API_BASE_URL}/clients-sites/sites/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
       }),
     getAssignments: () => fetchWithErrorHandling<import('../modules/clients-sites/types').WorkerAssignment[]>(`${API_BASE_URL}/clients-sites/assignments`),
     createAssignment: (data: Omit<import('../modules/clients-sites/types').WorkerAssignment, 'id'>) =>

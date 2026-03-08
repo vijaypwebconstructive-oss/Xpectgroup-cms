@@ -63,6 +63,8 @@ export interface Incident {
   // Evidence
   witnessNotes?: string;
   hasPhotos: boolean;
+  photoEvidenceName?: string;
+  photoEvidenceData?: string;
 
   // Closure
   closedDate?: string;
