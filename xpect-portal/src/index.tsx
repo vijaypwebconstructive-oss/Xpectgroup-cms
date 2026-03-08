@@ -10,7 +10,9 @@ import { RiskCoshhProvider } from './context/RiskCoshhContext';
 import { ClientsSitesProvider } from './context/ClientsSitesContext';
 import { PolicyDocumentsProvider } from './context/PolicyDocumentsContext';
 import { IncidentsProvider } from './context/IncidentsContext';
+import { ProspectsProvider } from './context/ProspectContext';
 import { UserAccessProvider } from './context/UserAccessContext';
+import { FinanceProvider } from './context/FinanceContext';
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
@@ -28,9 +30,13 @@ root.render(
               <ClientsSitesProvider>
                 <PolicyDocumentsProvider>
                   <IncidentsProvider>
-                    <UserAccessProvider>
-                      <App />
-                    </UserAccessProvider>
+                    <ProspectsProvider>
+                      <FinanceProvider>
+                      <UserAccessProvider>
+                        <App />
+                      </UserAccessProvider>
+                      </FinanceProvider>
+                    </ProspectsProvider>
                   </IncidentsProvider>
                 </PolicyDocumentsProvider>
               </ClientsSitesProvider>

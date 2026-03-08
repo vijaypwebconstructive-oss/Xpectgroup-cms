@@ -67,6 +67,7 @@ const CleanerSchema = new mongoose.Schema({
   
   // Employment Allocation Details
   hourlyPayRate: { type: Number },
+  monthlySalary: { type: Number },
   payType: { type: String, enum: ['Hourly', 'Weekly', 'Monthly'] },
   shiftType: { type: String, enum: ['Morning', 'Evening', 'Night', 'Any'] },
   contractStatus: { type: String, enum: ['Active', 'Paused', 'Ended'] },

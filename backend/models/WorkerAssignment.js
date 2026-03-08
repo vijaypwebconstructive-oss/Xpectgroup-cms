@@ -19,6 +19,7 @@ const WorkerAssignmentSchema = new mongoose.Schema({
   complianceStatus: { type: String, enum: ['Compliant', 'Expiring', 'Non-Compliant'], default: 'Compliant' },
   assignedSince: { type: String, required: true },
   role: { type: String, default: 'Cleaner' },
+  hoursPerWeek: { type: Number, default: null },
 }, {
   timestamps: true,
 });

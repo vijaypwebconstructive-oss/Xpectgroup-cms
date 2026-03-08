@@ -1,6 +1,8 @@
 import express from 'express';
 import Cleaner from '../models/Cleaner.js';
+import PayrollRecord from '../models/PayrollRecord.js';
 import { logCleanerActivity, logVerificationActivity, logActivity, logDocumentActivity } from '../services/activityLogger.js';
+import { createPayrollForVerifiedCleaner, createPayrollForVerifiedCleaners } from '../services/payrollOnVerification.js';
 
 const router = express.Router();
 
@@ -57,6 +59,14 @@ router.patch('/bulk-action', async (req, res) => {
       console.error('Failed to log bulk action activity:', logErr);
     }
 
+    if (status === 'Verified') {
+      try {
+        await createPayrollForVerifiedCleaners(validIds);
+      } catch (payrollErr) {
+        console.warn('Auto payroll creation failed for bulk action:', payrollErr.message);
+      }
+    }
+
     res.json({ updatedCount: result.modifiedCount, status });
   } catch (error) {
     res.status(500).json({
@@ -109,6 +119,14 @@ router.patch('/bulk-status', async (req, res) => {
       );
     } catch (logErr) {
       console.error('Failed to log bulk status activity:', logErr);
+    }
+
+    if (status === 'Verified') {
+      try {
+        await createPayrollForVerifiedCleaners(validIds);
+      } catch (payrollErr) {
+        console.warn('Auto payroll creation failed for bulk status:', payrollErr.message);
+      }
     }
 
     res.json({
@@ -334,6 +352,11 @@ router.patch('/:id', async (req, res) => {
         
         if (newStatus === 'Verified') {
           await logVerificationActivity.verified('admin-001', 'Admin', cleaner.id, cleaner.name);
+          try {
+            await createPayrollForVerifiedCleaner(cleaner.id);
+          } catch (payrollErr) {
+            console.warn('Auto payroll creation failed:', payrollErr.message);
+          }
         } else if (newStatus === 'Rejected') {
           await logVerificationActivity.rejected('admin-001', 'Admin', cleaner.id, cleaner.name);
         } else {
@@ -420,6 +443,39 @@ router.patch('/:id', async (req, res) => {
           changedFields,
           changedFieldNames: changedFields.join(', ')
         });
+      }
+
+      // Sync staff updates to unpaid payroll records
+      const nameChanged = req.body.name !== undefined && req.body.name !== oldCleaner.name;
+      const hourlyPayRateChanged = req.body.hourlyPayRate !== undefined && req.body.hourlyPayRate !== oldCleaner.hourlyPayRate;
+      const monthlySalaryChanged = req.body.monthlySalary !== undefined && req.body.monthlySalary !== oldCleaner.monthlySalary;
+      const payTypeChanged = req.body.payType !== undefined && req.body.payType !== oldCleaner.payType;
+      if (nameChanged || hourlyPayRateChanged || monthlySalaryChanged || payTypeChanged) {
+        try {
+          const unpaid = await PayrollRecord.find({ workerId: cleaner.id, paymentStatus: 'Pending' });
+          for (const p of unpaid) {
+            if (nameChanged) p.workerName = cleaner.name;
+            if (payTypeChanged) p.payType = req.body.payType === 'Monthly' ? 'Monthly' : 'Hourly';
+            if (p.payType === 'Monthly') {
+              if (monthlySalaryChanged) {
+                const ms = Number(req.body.monthlySalary);
+                if (!Number.isNaN(ms) && ms >= 0) {
+                  p.monthlySalary = ms;
+                  p.totalSalary = Math.round(ms * 100) / 100;
+                }
+              }
+            } else if (hourlyPayRateChanged) {
+              const rate = Number(req.body.hourlyPayRate);
+              if (!Number.isNaN(rate) && rate >= 0) {
+                p.hourlyRate = rate;
+                p.totalSalary = Math.round(p.hoursWorked * rate * 100) / 100;
+              }
+            }
+            await p.save();
+          }
+        } catch (syncErr) {
+          console.warn('Failed to sync staff updates to payroll:', syncErr.message);
+        }
       }
     } catch (logError) {
       console.error('Failed to log cleaner update activity:', logError);

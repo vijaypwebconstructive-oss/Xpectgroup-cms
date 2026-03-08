@@ -2,6 +2,9 @@
 import React, { useState, useEffect } from 'react';
 import { Cleaner, AppView, VerificationStatus, Document, DocumentStatus } from '../types';
 import { useCleaners } from '../context/CleanersContext';
+import { useFinance } from '../context/FinanceContext';
+import { navigateToUrl } from '../utils/routing';
+import api from '../services/api';
 import EmploymentAllocationCard, { PayType, ShiftType, ContractStatus, EmploymentDetails } from '../components/EmploymentAllocationCard';
 
 interface CleanerDetailProps {
@@ -11,6 +14,7 @@ interface CleanerDetailProps {
 
 const CleanerDetail: React.FC<CleanerDetailProps> = ({ cleaner, onNavigate }) => {
   const { cleaners, updateCleaner, deleteCleaner } = useCleaners();
+  const { payrollRecords, salarySlips } = useFinance();
   
   // Early return if cleaner is not provided
   if (!cleaner) {
@@ -707,6 +711,63 @@ const CleanerDetail: React.FC<CleanerDetailProps> = ({ cleaner, onNavigate }) =>
                 </button>
               </div>
             )}
+          </div>
+
+          {/* SALARY SLIPS SECTION */}
+          <div className="bg-white border border-[#e7ebf3] rounded-2xl overflow-hidden shadow-sm">
+            <div className="px-4 sm:px-6 py-4 border-b border-[#e7ebf3] bg-gray-50/30 flex items-center gap-2">
+              <span className="material-symbols-outlined text-[#000] text-xl">receipt_long</span>
+              <h2 className="text-[14px] font-bold font-black uppercase tracking-widest text-gray-900">Salary Slips</h2>
+            </div>
+            <div className="p-4 sm:p-6">
+              {(() => {
+                const slips = salarySlips.filter(s => s.cleanerId === currentCleaner.id)
+                  .sort((a, b) => (b.year - a.year) || (b.month - a.month));
+                if (slips.length === 0) {
+                  return (
+                    <p className="text-sm text-[#6b7a99]">No salary slips yet. Mark payroll as Paid to generate slips.</p>
+                  );
+                }
+                return (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-[#e7ebf3] text-left">
+                          <th className="pb-2 pr-4 text-xs font-semibold text-[#6b7a99] uppercase">Pay Period</th>
+                          <th className="pb-2 pr-4 text-xs font-semibold text-[#6b7a99] uppercase">Salary</th>
+                          <th className="pb-2 text-xs font-semibold text-[#6b7a99] uppercase"></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {slips.map(s => (
+                          <tr key={s.id} className="border-b border-[#e7ebf3] last:border-0">
+                            <td className="py-3 pr-4 font-medium text-[#0d121b]">{s.payPeriod}</td>
+                            <td className="py-3 pr-4 font-semibold text-[#0d121b]">£{s.salaryAmount?.toFixed(2)}</td>
+                            <td className="py-3 flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => navigateToUrl('/finance-management/payroll')}
+                                className="text-[#2e4150] hover:text-[#3a5268] font-semibold text-sm flex items-center gap-1"
+                              >
+                                View All <span className="material-symbols-outlined text-[16px]">open_in_new</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => window.open(api.finance.salarySlips.getDownloadUrl(s.id), '_blank')}
+                                className="flex items-center gap-1 px-2 py-1 rounded-lg bg-[#2e4150] text-white text-xs font-semibold hover:bg-[#3a5268]"
+                              >
+                                <span className="material-symbols-outlined text-[14px]">download</span>
+                                Download
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                );
+              })()}
+            </div>
           </div>
 
           {/* DECLARATIONS SECTION */}

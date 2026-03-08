@@ -16,6 +16,7 @@ import ClientSitesModule from './modules/clients-sites/ClientSitesModule';
 import DocumentControlModule from './modules/document-control/DocumentControlModule';
 import RiskCoshhModule from './modules/risk-coshh/RiskCoshhModule';
 import IncidentsModule from './modules/incidents/IncidentsModule';
+import FinanceModule from './modules/finance/FinanceModule';
 import UserAccessModule from './modules/user-access/UserAccessModule';
 import AdminLayout from './components/AdminLayout';
 import EmployeeLayout from './components/EmployeeLayout';
@@ -146,6 +147,8 @@ const App: React.FC = () => {
     if (currentView === 'DOCUMENT_CONTROL') return;
     if (currentView === 'RISK_COSHH') return;
     if (currentView === 'INCIDENTS') return;
+    if (currentView === 'PROSPECT') return;
+    if (currentView === 'FINANCE') return;
     if (currentView === 'TRAINING_DETAIL') return;
     if (currentView === 'USER_ACCESS') return;
     if (currentView === 'PPE_LIST') return;
@@ -201,6 +204,7 @@ const App: React.FC = () => {
     if (view === 'DOCUMENT_CONTROL') return;
     if (view === 'RISK_COSHH') return;
     if (view === 'INCIDENTS') return;
+    if (view === 'FINANCE') return;
     if (view === 'TRAINING_DETAIL') return;
     if (view === 'USER_ACCESS') return;
     if (view === 'PPE_LIST') return;
@@ -369,6 +373,8 @@ const App: React.FC = () => {
               return <RiskCoshhModule />;
             case 'INCIDENTS':
               return <IncidentsModule />;
+            case 'FINANCE':
+              return <FinanceModule />;
             case 'USER_ACCESS':
               return <UserAccessModule />;
             default:

@@ -1,4 +1,5 @@
 import nodemailer from 'nodemailer';
+import fs from 'fs';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -374,5 +375,228 @@ Xpect Group
   } catch (error) {
     console.error('❌ Error sending PPE invoice:', error);
     throw new Error(`Failed to send PPE invoice: ${error.message}`);
+  }
+};
+
+/**
+ * Send finance invoice email to client (HTML body with details)
+ * @param {string} email - Client email
+ * @param {string} clientName - Client name
+ * @param {object} invoice - Invoice document with billBy, billTo, serviceItems, amounts, etc.
+ */
+export const sendFinanceInvoice = async (email, clientName, invoice) => {
+  try {
+    if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) {
+      console.error('❌ Gmail credentials not configured');
+      throw new Error('Email service not configured');
+    }
+
+    const transporter = createTransporter();
+    const inv = invoice || {};
+    const billTo = inv.billTo || {};
+    const billBy = inv.billBy || {};
+    const items = Array.isArray(inv.serviceItems) ? inv.serviceItems : [];
+    const subtotal = parseFloat(inv.subtotal) || 0;
+    const discount = parseFloat(inv.discount) || 0;
+    const vat = parseFloat(inv.vat) || 0;
+    const serviceCharges = parseFloat(inv.serviceCharges) || 0;
+    const totalAmount = parseFloat(inv.totalAmount) || 0;
+    const payableAmount = parseFloat(inv.payableAmount) || totalAmount;
+
+    const itemsRows = items.map((item) => {
+      const desc = (item.serviceDescription || '').replace(/</g, '&lt;');
+      const amt = parseFloat(item.amount) || 0;
+      return `<tr><td style="padding: 8px; border-bottom: 1px solid #e7ebf3;">${desc}</td><td style="padding: 8px; border-bottom: 1px solid #e7ebf3; text-align: right;">£${amt.toFixed(2)}</td></tr>`;
+    }).join('');
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background-color: #f2f6f9; padding: 30px; border-radius: 10px;">
+          <h2 style="color: #2e4150; margin-top: 0;">Invoice ${inv.invoiceNumber || ''} – Xpect Group</h2>
+          <p>Dear ${(clientName || billTo.clientName || 'Client').replace(/</g, '&lt;')},</p>
+          <p>Please find below the invoice details for your records.</p>
+          <p><strong>Issue Date:</strong> ${inv.issueDate || '—'} &nbsp; <strong>Due Date:</strong> ${inv.dueDate || '—'}</p>
+          <p><strong>Service Period:</strong> ${inv.servicePeriod || '—'}</p>
+          <table style="width: 100%; border-collapse: collapse; margin: 16px 0;">
+            <thead><tr style="background: #2e4150; color: white;"><th style="padding: 10px; text-align: left;">Description</th><th style="padding: 10px; text-align: right;">Amount</th></tr></thead>
+            <tbody>${itemsRows || '<tr><td colspan="2" style="padding: 8px;">No items</td></tr>'}</tbody>
+          </table>
+          <table style="width: 100%; margin-top: 8px;">
+            <tr><td style="padding: 4px;">Subtotal</td><td style="text-align: right;">£${subtotal.toFixed(2)}</td></tr>
+            ${discount ? `<tr><td style="padding: 4px;">Discount</td><td style="text-align: right;">-£${discount.toFixed(2)}</td></tr>` : ''}
+            ${vat ? `<tr><td style="padding: 4px;">VAT</td><td style="text-align: right;">£${vat.toFixed(2)}</td></tr>` : ''}
+            ${serviceCharges ? `<tr><td style="padding: 4px;">Service Charges</td><td style="text-align: right;">£${serviceCharges.toFixed(2)}</td></tr>` : ''}
+            <tr><td style="padding: 8px; font-weight: bold;">Total Amount</td><td style="text-align: right; font-weight: bold;">£${payableAmount.toFixed(2)}</td></tr>
+          </table>
+          <p style="margin-top: 24px;">Please contact us if you have any questions.</p>
+          <p>Regards,<br><strong>${(billBy.companyName || 'Xpect Group').replace(/</g, '&lt;')}</strong></p>
+          <p style="margin-top: 30px; font-size: 12px; color: #999; border-top: 1px solid #e7ebf3; padding-top: 20px;">This is an automated message from Xpect Group.</p>
+        </div>
+      </body>
+      </html>
+    `;
+
+    const mailOptions = {
+      from: `"Xpect Group" <${process.env.GMAIL_USER}>`,
+      to: email,
+      subject: `Invoice ${inv.invoiceNumber || ''} – Xpect Group`,
+      html,
+      text: `Dear ${clientName || 'Client'},\n\nPlease find the invoice ${inv.invoiceNumber || ''} attached. Total: £${payableAmount.toFixed(2)}.\n\nRegards,\nXpect Group`,
+    };
+
+    const info = await transporter.sendMail(mailOptions);
+    console.log('✅ Finance invoice sent:', { messageId: info.messageId, to: email, invoiceNumber: inv.invoiceNumber });
+    return { success: true, messageId: info.messageId, to: email };
+  } catch (error) {
+    console.error('❌ Error sending finance invoice:', error);
+    throw new Error(`Failed to send invoice: ${error.message}`);
+  }
+};
+
+/**
+ * Send salary slip email to cleaner
+ * @param {string} email - Cleaner email
+ * @param {string} cleanerName - Cleaner/employee name
+ * @param {object} record - Payroll record { workerName, month, year, hoursWorked, hourlyRate, totalSalary, paymentStatus, paymentDate }
+ */
+export const sendSalarySlip = async (email, cleanerName, record) => {
+  try {
+    if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) {
+      console.warn('⚠️ Gmail credentials not configured – skipping salary slip email');
+      return { success: false, skipped: true, reason: 'Email not configured' };
+    }
+
+    const transporter = createTransporter();
+    const months = ['', 'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    const monthLabel = months[record.month] || record.month;
+    const year = record.year || '';
+    const hours = record.hoursWorked ?? 0;
+    const rate = record.hourlyRate ?? 0;
+    const salary = record.totalSalary ?? 0;
+    const status = record.paymentStatus || 'Paid';
+    const paidDate = record.paymentDate || '';
+
+    const mailOptions = {
+      from: `"Xpect Group" <${process.env.GMAIL_USER}>`,
+      to: email,
+      subject: `Salary Slip – ${monthLabel} ${year} – Xpect Group`,
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        </head>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <div style="background-color: #f2f6f9; padding: 30px; border-radius: 10px;">
+            <h2 style="color: #2e4150; margin-top: 0;">Salary Slip – Xpect Group</h2>
+            <p>Dear ${cleanerName},</p>
+            <p>Please find your salary slip details for <strong>${monthLabel} ${year}</strong>.</p>
+            <table style="width: 100%; border-collapse: collapse; margin: 20px 0; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+              <tr><td style="padding: 12px 16px; border-bottom: 1px solid #e7ebf3; font-weight: bold;">Employee Name</td><td style="padding: 12px 16px; border-bottom: 1px solid #e7ebf3;">${record.workerName || cleanerName}</td></tr>
+              <tr><td style="padding: 12px 16px; border-bottom: 1px solid #e7ebf3; font-weight: bold;">Payroll Month</td><td style="padding: 12px 16px; border-bottom: 1px solid #e7ebf3;">${monthLabel}</td></tr>
+              <tr><td style="padding: 12px 16px; border-bottom: 1px solid #e7ebf3; font-weight: bold;">Payroll Year</td><td style="padding: 12px 16px; border-bottom: 1px solid #e7ebf3;">${year}</td></tr>
+              <tr><td style="padding: 12px 16px; border-bottom: 1px solid #e7ebf3; font-weight: bold;">Hours Worked</td><td style="padding: 12px 16px; border-bottom: 1px solid #e7ebf3;">${hours}</td></tr>
+              <tr><td style="padding: 12px 16px; border-bottom: 1px solid #e7ebf3; font-weight: bold;">Pay Rate per Hour</td><td style="padding: 12px 16px; border-bottom: 1px solid #e7ebf3;">£${Number(rate).toFixed(2)}</td></tr>
+              <tr><td style="padding: 12px 16px; border-bottom: 1px solid #e7ebf3; font-weight: bold;">Gross Salary</td><td style="padding: 12px 16px; border-bottom: 1px solid #e7ebf3;">£${Number(salary).toFixed(2)}</td></tr>
+              <tr><td style="padding: 12px 16px; border-bottom: 1px solid #e7ebf3; font-weight: bold;">Payment Status</td><td style="padding: 12px 16px; border-bottom: 1px solid #e7ebf3;">${status}</td></tr>
+              <tr><td style="padding: 12px 16px; font-weight: bold;">Date Salary Was Paid</td><td style="padding: 12px 16px;">${paidDate || '—'}</td></tr>
+            </table>
+            <p style="margin-top: 30px; font-size: 12px; color: #999; border-top: 1px solid #e7ebf3; padding-top: 20px;">
+              This is an automated message from Xpect Group.
+            </p>
+          </div>
+        </body>
+        </html>
+      `,
+      text: `Salary Slip – ${monthLabel} ${year}\n\nEmployee: ${record.workerName || cleanerName}\nHours: ${hours}\nRate: £${Number(rate).toFixed(2)}\nGross Salary: £${Number(salary).toFixed(2)}\nPayment Status: ${status}\nDate Paid: ${paidDate || '—'}\n\nXpect Group`,
+    };
+
+    const info = await transporter.sendMail(mailOptions);
+    console.log('✅ Salary slip sent:', { messageId: info.messageId, to: email, cleanerName });
+    return { success: true, messageId: info.messageId, to: email };
+  } catch (error) {
+    console.error('❌ Error sending salary slip:', error);
+    throw new Error(`Failed to send salary slip: ${error.message}`);
+  }
+};
+
+/**
+ * Send salary slip email with PDF attachment
+ * @param {string} email - Cleaner email
+ * @param {string} cleanerName - Cleaner/employee name
+ * @param {object} record - Payroll record
+ * @param {string} pdfFullPath - Absolute path to PDF file on disk
+ * @param {string} pdfFilename - Filename for attachment (e.g. salary-slip-jan-2026.pdf)
+ */
+export const sendSalarySlipWithPdf = async (email, cleanerName, record, pdfFullPath, pdfFilename) => {
+  try {
+    if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) {
+      console.warn('⚠️ Gmail credentials not configured – skipping salary slip email');
+      return { success: false, skipped: true, reason: 'Email not configured' };
+    }
+
+    if (!fs.existsSync(pdfFullPath)) {
+      throw new Error(`PDF file not found: ${pdfFullPath}`);
+    }
+
+    const transporter = createTransporter();
+    const months = ['', 'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    const monthLabel = months[record.month] || record.month;
+    const year = record.year || '';
+    const hours = record.hoursWorked ?? 0;
+    const rate = record.hourlyRate ?? 0;
+    const salary = record.totalSalary ?? 0;
+    const status = record.paymentStatus || 'Paid';
+    const paidDate = record.paymentDate || '';
+
+    const mailOptions = {
+      from: `"Xpect Group" <${process.env.GMAIL_USER}>`,
+      to: email,
+      subject: `Salary Slip – ${monthLabel} ${year} – Xpect Group`,
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        </head>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <div style="background-color: #f2f6f9; padding: 30px; border-radius: 10px;">
+            <h2 style="color: #2e4150; margin-top: 0;">Salary Slip – Xpect Group</h2>
+            <p>Dear ${cleanerName},</p>
+            <p>Please find your salary slip details for <strong>${monthLabel} ${year}</strong> attached as a PDF.</p>
+            <table style="width: 100%; border-collapse: collapse; margin: 20px 0; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+              <tr><td style="padding: 12px 16px; border-bottom: 1px solid #e7ebf3; font-weight: bold;">Employee Name</td><td style="padding: 12px 16px; border-bottom: 1px solid #e7ebf3;">${record.workerName || cleanerName}</td></tr>
+              <tr><td style="padding: 12px 16px; border-bottom: 1px solid #e7ebf3; font-weight: bold;">Pay Period</td><td style="padding: 12px 16px; border-bottom: 1px solid #e7ebf3;">${monthLabel} ${year}</td></tr>
+              <tr><td style="padding: 12px 16px; border-bottom: 1px solid #e7ebf3; font-weight: bold;">Gross Salary</td><td style="padding: 12px 16px; border-bottom: 1px solid #e7ebf3;">£${Number(salary).toFixed(2)}</td></tr>
+              <tr><td style="padding: 12px 16px; font-weight: bold;">Payment Date</td><td style="padding: 12px 16px;">${paidDate || '—'}</td></tr>
+            </table>
+            <p style="margin-top: 20px;">Your salary slip PDF is attached to this email.</p>
+            <p style="margin-top: 30px; font-size: 12px; color: #999; border-top: 1px solid #e7ebf3; padding-top: 20px;">
+              This is an automated message from Xpect Group.
+            </p>
+          </div>
+        </body>
+        </html>
+      `,
+      text: `Salary Slip – ${monthLabel} ${year}\n\nEmployee: ${record.workerName || cleanerName}\nGross Salary: £${Number(salary).toFixed(2)}\nPayment Date: ${paidDate || '—'}\n\nYour salary slip PDF is attached.\n\nXpect Group`,
+      attachments: [
+        {
+          filename: pdfFilename || `salary-slip-${monthLabel}-${year}.pdf`,
+          content: fs.readFileSync(pdfFullPath),
+        },
+      ],
+    };
+
+    const info = await transporter.sendMail(mailOptions);
+    console.log('✅ Salary slip sent with PDF:', { messageId: info.messageId, to: email, cleanerName });
+    return { success: true, messageId: info.messageId, to: email };
+  } catch (error) {
+    console.error('❌ Error sending salary slip with PDF:', error);
+    throw new Error(`Failed to send salary slip: ${error.message}`);
   }
 };

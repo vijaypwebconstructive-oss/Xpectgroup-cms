@@ -33,6 +33,7 @@ const VIEW_TO_URL: Record<AppView, string> = {
   'DOCUMENT_CONTROL': '/documents',
   'RISK_COSHH': '/risk',
   'INCIDENTS': '/incidents',
+  'FINANCE': '/finance-management',
   'USER_ACCESS': '/users',
   'CLEANERS_LIST': '/staff',
   'CLEANER_DETAIL': '/staff', // Will be appended with firstName
@@ -101,6 +102,16 @@ export const getViewFromUrl = (pathname: string): { view: AppView; params?: { to
   // (internal routing handled by IncidentsModule + incidentNavStore)
   if (pathname.startsWith('/incidents')) {
     return { view: 'INCIDENTS' };
+  }
+
+  // Prospect routes resolve to FINANCE (Prospect lives in Finance secondary sidebar)
+  if (pathname.startsWith('/prospects')) {
+    return { view: 'FINANCE' };
+  }
+
+  // Finance module - /finance-management and /finance (legacy) both resolve to FINANCE
+  if (pathname.startsWith('/finance-management') || pathname.startsWith('/finance')) {
+    return { view: 'FINANCE' };
   }
 
   // Dashboard (also supports legacy /audit)

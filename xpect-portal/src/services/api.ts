@@ -13,6 +13,7 @@ async function handleResponse<T>(response: Response): Promise<T> {
     const error = await response.json().catch(() => ({ error: 'Unknown error' }));
     throw new ApiError(response.status, error.message || error.error || 'Request failed');
   }
+  if (response.status === 204) return undefined as T;
   return response.json();
 }
 
@@ -430,6 +431,28 @@ export const api = {
       }),
   },
 
+  // Prospects API
+  prospects: {
+    getAll: () => fetchWithErrorHandling<import('../modules/prospect/types').Prospect[]>(`${API_BASE_URL}/prospects`),
+    getById: (id: string) => fetchWithErrorHandling<import('../modules/prospect/types').Prospect>(`${API_BASE_URL}/prospects/${id}`),
+    create: (data: Omit<import('../modules/prospect/types').Prospect, 'id' | 'createdAt'>) =>
+      fetchWithErrorHandling<import('../modules/prospect/types').Prospect>(`${API_BASE_URL}/prospects`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      }),
+    update: (id: string, updates: Partial<Omit<import('../modules/prospect/types').Prospect, 'id' | 'createdAt'>>) =>
+      fetchWithErrorHandling<import('../modules/prospect/types').Prospect>(`${API_BASE_URL}/prospects/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
+      }),
+    delete: (id: string) =>
+      fetch(`${API_BASE_URL}/prospects/${id}`, { method: 'DELETE' }).then(r => {
+        if (!r.ok) return r.json().then((err: { error?: string; message?: string }) => { throw new ApiError(r.status, err.message || err.error || 'Failed'); });
+      }),
+  },
+
   // Incidents API
   incidents: {
     getAll: () => fetchWithErrorHandling(`${API_BASE_URL}/incidents`),
@@ -558,6 +581,232 @@ export const api = {
       }),
     deleteInventoryItem: (id: string) =>
       fetchWithErrorHandling(`${API_BASE_URL}/ppe/inventory/${id}`, { method: 'DELETE' }),
+  },
+
+  payslipSettings: {
+    get: () =>
+      fetchWithErrorHandling<{
+        id: string;
+        payType: 'Hourly' | 'Monthly';
+        company: Record<string, unknown>;
+        earningsRows: Array<{ description: string; hours: string; rate: string; amount: string }>;
+        deductionsRows: Array<{ description: string; amount: string }>;
+        leaveRows: Array<{ leaveType: string; entitled: string; used: string; balance: string }>;
+        ytdSummary: Record<string, string>;
+        notes: string;
+      }>(`${API_BASE_URL}/payslip-settings`),
+    update: (data: {
+      payType?: 'Hourly' | 'Monthly';
+      company?: Record<string, unknown>;
+      earningsRows?: Array<{ description: string; hours: string; rate: string; amount: string }>;
+      deductionsRows?: Array<{ description: string; amount: string }>;
+      leaveRows?: Array<{ leaveType: string; entitled: string; used: string; balance: string }>;
+      ytdSummary?: Record<string, string>;
+      notes?: string;
+    }) =>
+      fetchWithErrorHandling<Record<string, unknown>>(`${API_BASE_URL}/payslip-settings`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      }),
+  },
+
+  invoiceSettings: {
+    get: () =>
+      fetchWithErrorHandling<{
+        id: string;
+        billBy: Record<string, unknown>;
+        invoicePrefix: string;
+        defaultVatPercent: number;
+        defaultServiceCharges: number;
+        defaultPaymentTermsDays: number;
+        defaultNotes: string;
+        defaultFooter: string;
+        defaultServiceItems: Array<{
+          serviceDescription: string;
+          siteLocation: string;
+          quantity: string;
+          rate: string;
+          discount: string;
+          amount: string;
+        }>;
+        defaultServiceDetails: Record<string, string>;
+      }>(`${API_BASE_URL}/invoice-settings`),
+    update: (data: {
+      billBy?: Record<string, unknown>;
+      invoicePrefix?: string;
+      defaultVatPercent?: number;
+      defaultServiceCharges?: number;
+      defaultPaymentTermsDays?: number;
+      defaultNotes?: string;
+      defaultFooter?: string;
+      defaultServiceItems?: Array<{
+        serviceDescription: string;
+        siteLocation: string;
+        quantity: string;
+        rate: string;
+        discount: string;
+        amount: string;
+      }>;
+      defaultServiceDetails?: Record<string, string>;
+    }) =>
+      fetchWithErrorHandling<Record<string, unknown>>(`${API_BASE_URL}/invoice-settings`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      }),
+  },
+
+  // Finance & Payroll API
+  finance: {
+    payroll: {
+      getAll: (params?: { month?: number; year?: number; workerId?: string }) => {
+        const q = new URLSearchParams();
+        if (params?.month != null) q.append('month', params.month.toString());
+        if (params?.year != null) q.append('year', params.year.toString());
+        if (params?.workerId) q.append('workerId', params.workerId);
+        const query = q.toString();
+        return fetchWithErrorHandling<import('../modules/finance-payroll/types').PayrollRecord[]>(
+          `${API_BASE_URL}/finance/payroll${query ? `?${query}` : ''}`
+        );
+      },
+      getById: (id: string) =>
+        fetchWithErrorHandling<import('../modules/finance-payroll/types').PayrollRecord>(`${API_BASE_URL}/finance/payroll/${id}`),
+      create: (record: {
+        workerId: string;
+        workerName: string;
+        month: number;
+        year: number;
+        payType?: 'Hourly' | 'Monthly';
+        hoursWorked?: number;
+        hourlyRate?: number;
+        monthlySalary?: number | null;
+        totalSalary: number;
+        siteId?: string;
+        siteName?: string;
+        role?: string;
+        paymentStatus?: 'Pending' | 'Paid';
+        paymentDate?: string;
+      }) =>
+        fetchWithErrorHandling<import('../modules/finance-payroll/types').PayrollRecord>(`${API_BASE_URL}/finance/payroll`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(record),
+        }),
+      generate: (data: { month?: number; year?: number; workerOverrides?: Record<string, { hoursWorked?: number }> }) =>
+        fetchWithErrorHandling<import('../modules/finance-payroll/types').PayrollRecord[]>(`${API_BASE_URL}/finance/payroll`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+        }),
+      update: (id: string, updates: {
+        payType?: 'Hourly' | 'Monthly';
+        hoursWorked?: number;
+        hourlyRate?: number;
+        monthlySalary?: number | null;
+        totalSalary?: number;
+        month?: number;
+        year?: number;
+        paymentStatus?: 'Pending' | 'Paid';
+        paymentDate?: string;
+      }) =>
+        fetchWithErrorHandling<import('../modules/finance-payroll/types').PayrollRecord>(`${API_BASE_URL}/finance/payroll/${id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(updates),
+        }),
+      delete: (id: string) =>
+        fetchWithErrorHandling<void>(`${API_BASE_URL}/finance/payroll/${id}`, { method: 'DELETE' }),
+    },
+    salarySlips: {
+      getAll: (params?: { cleanerId?: string }) => {
+        const q = new URLSearchParams();
+        if (params?.cleanerId) q.append('cleanerId', params.cleanerId);
+        const query = q.toString();
+        return fetchWithErrorHandling<import('../modules/finance-payroll/types').SalarySlip[]>(
+          `${API_BASE_URL}/finance/salary-slips${query ? `?${query}` : ''}`
+        );
+      },
+      getById: (id: string) =>
+        fetchWithErrorHandling<import('../modules/finance-payroll/types').SalarySlip>(`${API_BASE_URL}/finance/salary-slips/${id}`),
+      getDownloadUrl: (id: string) => `${API_BASE_URL}/finance/salary-slips/${id}/download`,
+      send: (id: string) =>
+        fetchWithErrorHandling<{ success: boolean; message: string; to: string }>(
+          `${API_BASE_URL}/finance/salary-slips/${id}/send`,
+          { method: 'POST' }
+        ),
+    },
+    invoices: {
+      getAll: (params?: { status?: string; clientName?: string; year?: number }) => {
+        const q = new URLSearchParams();
+        if (params?.status) q.append('status', params.status);
+        if (params?.clientName) q.append('clientName', params.clientName);
+        if (params?.year != null) q.append('year', params.year.toString());
+        const query = q.toString();
+        return fetchWithErrorHandling<import('../modules/finance-payroll/types').Invoice[]>(
+          `${API_BASE_URL}/finance/invoices${query ? `?${query}` : ''}`
+        );
+      },
+      getById: (id: string) =>
+        fetchWithErrorHandling<import('../modules/finance-payroll/types').Invoice>(`${API_BASE_URL}/finance/invoices/${id}`),
+      create: (data: Omit<import('../modules/finance-payroll/types').Invoice, 'id'>) =>
+        fetchWithErrorHandling<import('../modules/finance-payroll/types').Invoice>(`${API_BASE_URL}/finance/invoices`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+        }),
+      update: (id: string, updates: Partial<import('../modules/finance-payroll/types').Invoice>) =>
+        fetchWithErrorHandling<import('../modules/finance-payroll/types').Invoice>(`${API_BASE_URL}/finance/invoices/${id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(updates),
+        }),
+      delete: (id: string) =>
+        fetchWithErrorHandling<void>(`${API_BASE_URL}/finance/invoices/${id}`, { method: 'DELETE' }),
+      send: (id: string) =>
+        fetchWithErrorHandling<import('../modules/finance-payroll/types').Invoice>(
+          `${API_BASE_URL}/finance/invoices/${id}/send`,
+          { method: 'POST' }
+        ),
+    },
+    siteContracts: {
+      getAll: () =>
+        fetchWithErrorHandling<import('../modules/finance-payroll/types').SiteContract[]>(`${API_BASE_URL}/finance/site-contracts`),
+      getById: (id: string) =>
+        fetchWithErrorHandling<import('../modules/finance-payroll/types').SiteContract>(`${API_BASE_URL}/finance/site-contracts/${id}`),
+      create: (data: Omit<import('../modules/finance-payroll/types').SiteContract, 'id'>) =>
+        fetchWithErrorHandling<import('../modules/finance-payroll/types').SiteContract>(`${API_BASE_URL}/finance/site-contracts`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+        }),
+      update: (id: string, updates: Partial<Pick<import('../modules/finance-payroll/types').SiteContract, 'contractValue' | 'billingPeriod' | 'paymentStatus' | 'lastBillingDate' | 'paymentDate' | 'paymentDocuments'>>) =>
+        fetchWithErrorHandling<import('../modules/finance-payroll/types').SiteContract>(`${API_BASE_URL}/finance/site-contracts/${id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(updates),
+        }),
+    },
+    quotations: {
+      getAll: () =>
+        fetchWithErrorHandling<import('../modules/finance-payroll/types').Quotation[]>(`${API_BASE_URL}/finance/quotations`),
+      getById: (id: string) =>
+        fetchWithErrorHandling<import('../modules/finance-payroll/types').Quotation>(`${API_BASE_URL}/finance/quotations/${id}`),
+      create: (data: Omit<import('../modules/finance-payroll/types').Quotation, 'id'> & { quotationNumber?: string }) =>
+        fetchWithErrorHandling<import('../modules/finance-payroll/types').Quotation>(`${API_BASE_URL}/finance/quotations`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+        }),
+      update: (id: string, updates: Partial<Omit<import('../modules/finance-payroll/types').Quotation, 'id'>>) =>
+        fetchWithErrorHandling<import('../modules/finance-payroll/types').Quotation>(`${API_BASE_URL}/finance/quotations/${id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(updates),
+        }),
+      delete: (id: string) =>
+        fetchWithErrorHandling<void>(`${API_BASE_URL}/finance/quotations/${id}`, { method: 'DELETE' }),
+    },
   },
 };
 

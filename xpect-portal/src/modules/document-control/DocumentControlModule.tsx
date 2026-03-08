@@ -5,6 +5,7 @@ import {
   getDocState,
   subscribeDoc,
   syncDocFromPathname,
+  syncDocFromPathnameSilent,
 } from './docNavStore';
 import DocumentsLibrary   from './DocumentsLibrary';
 import DocumentDetail     from './DocumentDetail';
@@ -13,13 +14,15 @@ import ReviewCalendar     from './ReviewCalendar';
 
 const DocumentControlModule: React.FC = () => {
   const [navState, setNavState] = useState<DocNavState>(() => {
-    syncDocFromPathname(window.location.pathname);
+    syncDocFromPathnameSilent(window.location.pathname);
     return getDocState();
   });
 
   useEffect(() => {
     // Subscribe to store changes (triggered by docNavigate)
     const unsub = subscribeDoc(setNavState);
+    // Notify subscribers of current path so AdminLayout sidebar stays in sync (safe after commit)
+    syncDocFromPathname(window.location.pathname);
 
     // Keep in sync with browser back/forward
     const handlePopState = () => {

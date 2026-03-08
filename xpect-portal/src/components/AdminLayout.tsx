@@ -28,6 +28,7 @@ const CLIENT_SITES_VIEWS: AppView[] = ['CLIENTS_SITES'];
 const DOC_CONTROL_VIEWS: AppView[] = ['DOCUMENT_CONTROL'];
 const RISK_COSHH_VIEWS: AppView[]  = ['RISK_COSHH'];
 const INCIDENTS_VIEWS: AppView[]   = ['INCIDENTS'];
+const FINANCE_VIEWS: AppView[] = ['FINANCE'];
 
 const AdminLayout: React.FC<AdminLayoutProps> = ({ children, currentView, onNavigate }) => {
   const [profile, setProfile]                             = useState<AdminProfile>({});
@@ -429,6 +430,25 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, currentView, onNavi
             </div>
           </div>
         </div>
+
+        {/* Finance — new module, last in nav */}
+        <div>
+          <button
+            type="button"
+            onClick={() => {
+              onNavigate('FINANCE');
+              setIsSidebarOpen(false);
+            }}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all cursor-pointer ${
+              FINANCE_VIEWS.includes(currentView)
+                ? 'bg-white/20 text-white'
+                : 'text-white/70 hover:bg-white/10 hover:text-white'
+            }`}
+          >
+            <span className="material-symbols-outlined text-[20px]">account_balance</span>
+            <span className="flex-1 text-left">Finance</span>
+          </button>
+        </div>
       </nav>
 
       {/* User Access — fixed bottom */}
@@ -453,15 +473,19 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, currentView, onNavi
     </div>
   );
 
+  const isFinanceRoute = currentView === 'FINANCE';
+
   return (
     <div className="flex min-h-screen bg-[#f2f6f9]">
-      {/* Desktop sidebar — fixed, full height */}
-      <div className="hidden lg:flex flex-col fixed left-0 top-0 h-screen w-64 z-40 shadow-xl">
-        {sidebarContent}
-      </div>
+      {/* Desktop sidebar — hidden for Finance module */}
+      {!isFinanceRoute && (
+        <div className="hidden lg:flex flex-col fixed left-0 top-0 h-screen w-64 z-40 shadow-xl">
+          {sidebarContent}
+        </div>
+      )}
 
-      {/* Mobile sidebar overlay */}
-      {isSidebarOpen && (
+      {/* Mobile sidebar overlay — hidden for Finance module */}
+      {!isFinanceRoute && isSidebarOpen && (
         <div className="fixed inset-0 z-50 lg:hidden">
           <div
             className="absolute inset-0 bg-black/50 backdrop-blur-sm"
@@ -473,25 +497,46 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, currentView, onNavi
         </div>
       )}
 
-      {/* Content area */}
-      <div className="flex flex-col flex-1 lg:ml-64 min-h-screen content-area">
-        {/* Mobile top bar */}
-        <div className="lg:hidden flex items-center justify-between px-4 py-3 bg-[#f5f5f5] sticky top-0 z-30 shadow-[1px_1px_20px_10px_rgba(0,0,0,0.1)]">
-          <button
-            type="button"
-            onClick={() => setIsSidebarOpen(true)}
-            className="p-2 rounded-lg bg-[#2e4150] transition-colors flex items-center justify-center"
-          >
-            <span className="material-symbols-outlined text-white">menu</span>
-          </button>
-          <img
-            src="/logo.webp"
-            alt="Xpect Group"
-            className="h-[50px] w-auto cursor-pointer"
-            onClick={() => handleNav('DASHBOARD')}
-          />
-          {/* <div className="w-10" /> */}
-        </div>
+      {/* Content area — no left margin when sidebar hidden */}
+      <div className={`flex flex-col flex-1 min-h-screen content-area ${!isFinanceRoute ? 'lg:ml-64' : ''}`}>
+        {/* Finance route: Back button bar at top (replaces sidebar and mobile menu) */}
+        {isFinanceRoute && (
+          <div className="flex items-center justify-between px-4 py-3 bg-white border-b border-[#e7ebf3] sticky top-0 z-30 shadow-sm">
+            <button
+              type="button"
+              onClick={() => handleNav('DASHBOARD')}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-[#4c669a] hover:bg-[#f2f6f9] transition-colors"
+            >
+              <span className="material-symbols-outlined text-[20px]">arrow_back</span>
+              Back
+            </button>
+            <img
+              src="/logo.webp"
+              alt="Xpect Group"
+              className="h-[40px] w-auto cursor-pointer"
+              onClick={() => handleNav('DASHBOARD')}
+            />
+          </div>
+        )}
+
+        {/* Mobile top bar — only when NOT on Finance (Finance has its own top bar above) */}
+        {!isFinanceRoute && (
+          <div className="lg:hidden flex items-center justify-between px-4 py-3 bg-[#f5f5f5] sticky top-0 z-30 shadow-[1px_1px_20px_10px_rgba(0,0,0,0.1)]">
+            <button
+              type="button"
+              onClick={() => setIsSidebarOpen(true)}
+              className="p-2 rounded-lg bg-[#2e4150] transition-colors flex items-center justify-center"
+            >
+              <span className="material-symbols-outlined text-white">menu</span>
+            </button>
+            <img
+              src="/logo.webp"
+              alt="Xpect Group"
+              className="h-[50px] w-auto cursor-pointer"
+              onClick={() => handleNav('DASHBOARD')}
+            />
+          </div>
+        )}
 
         <main className="flex-1 bg-[#f2f6f9]">
           {children}

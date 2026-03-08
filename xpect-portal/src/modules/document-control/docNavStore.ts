@@ -94,6 +94,14 @@ export const docNavigate = (view: DocView, id?: string, replace = false): void =
 };
 
 /**
+ * Sync state from pathname without notifying subscribers.
+ * Use during render (e.g. useState initializer) to avoid updating other components.
+ */
+export const syncDocFromPathnameSilent = (pathname: string): void => {
+  _state = parseDocPathname(pathname);
+};
+
+/**
  * Sync state from a pathname WITHOUT pushing to history.
  * Called on initial mount and when browser popstate fires.
  */

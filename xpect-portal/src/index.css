@@ -135,4 +135,34 @@ p{
   @page {
     margin: 1cm;
   }
+
+  /* Invoice print isolation: when #invoice-print-container exists, print only the invoice */
+  body:has(#invoice-print-container) * {
+    visibility: hidden;
+  }
+  body:has(#invoice-print-container) #invoice-print-container,
+  body:has(#invoice-print-container) #invoice-print-container * {
+    visibility: visible;
+  }
+  body:has(#invoice-print-container) #invoice-print-container {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
+
+  /* Quotation print isolation */
+  body:has(#quotation-print-container) * {
+    visibility: hidden;
+  }
+  body:has(#quotation-print-container) #quotation-print-container,
+  body:has(#quotation-print-container) #quotation-print-container * {
+    visibility: visible;
+  }
+  body:has(#quotation-print-container) #quotation-print-container {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
 }

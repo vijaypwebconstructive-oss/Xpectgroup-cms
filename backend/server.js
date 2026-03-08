@@ -1,5 +1,9 @@
 import express from 'express';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import mongoose from 'mongoose';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 import cors from 'cors';
 import dotenv from 'dotenv';
 import cleanerRoutes from './routes/cleaners.js';
@@ -15,6 +19,10 @@ import policyDocumentsRoutes from './routes/policyDocuments.js';
 import incidentsRoutes from './routes/incidents.js';
 import systemUsersRoutes from './routes/systemUsers.js';
 import trainingRecordsRoutes from './routes/trainingRecords.js';
+import financeRoutes from './routes/finance.js';
+import payslipSettingsRoutes from './routes/payslipSettings.js';
+import invoiceSettingsRoutes from './routes/invoiceSettings.js';
+import prospectsRoutes from './routes/prospects.js';
 
 dotenv.config();
 
@@ -40,6 +48,8 @@ app.use(cors({
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
+app.use('/api/uploads', express.static(path.join(__dirname, 'uploads')));
+
 // Routes
 app.use('/api/cleaners', cleanerRoutes);
 app.use('/api/documents', documentRoutes);
@@ -54,6 +64,10 @@ app.use('/api/policy-documents', policyDocumentsRoutes);
 app.use('/api/incidents', incidentsRoutes);
 app.use('/api/users', systemUsersRoutes);
 app.use('/api/training-records', trainingRecordsRoutes);
+app.use('/api/finance', financeRoutes);
+app.use('/api/payslip-settings', payslipSettingsRoutes);
+app.use('/api/invoice-settings', invoiceSettingsRoutes);
+app.use('/api/prospects', prospectsRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
