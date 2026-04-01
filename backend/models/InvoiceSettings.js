@@ -6,6 +6,7 @@ const BillBySchema = new mongoose.Schema({
   companyAddress: { type: String, default: '' },
   email: { type: String, default: '' },
   phone: { type: String, default: '' },
+  CRN:{type:String, default:""},
 }, { _id: false });
 
 const ServiceItemSchema = new mongoose.Schema({

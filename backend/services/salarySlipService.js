@@ -72,3 +72,51 @@ export async function regenerateSalarySlipPdf(payrollDoc) {
 
   return true;
 }
+
+export const uploadPayslipService = async ({ employeeId, date, file }) => {
+
+  const [year, month] = date.split("-");
+
+  // 🔹 Get cleaner
+  const cleaner = await Cleaner.findById(employeeId);
+  if (!cleaner) throw new Error("Cleaner not found");
+
+  // 🔹 Prevent duplicate
+  const exists = await PayrollRecord.findOne({
+    workerId: employeeId,
+    month: Number(month),
+    year: Number(year)
+  });
+
+  if (exists) {
+    throw new Error("Payroll already exists for this period");
+  }
+
+  // 🔥 Create Payroll
+  const payroll = await PayrollRecord.create({
+    workerId: employeeId,
+    workerName: cleaner.name,
+    month: Number(month),
+    year: Number(year),
+
+    payType: cleaner.payType || "Hourly",
+
+    // REQUIRED FIELD FIX
+    totalSalary: 0,
+
+    hoursWorked: 0,
+    hourlyRate: cleaner.hourlyRate || 0,
+
+    paymentStatus: "Pending",
+    role: "Cleaner"
+  });
+
+  // 🔥 Create SalarySlip
+  const slip = await SalarySlip.create({
+    payrollId: payroll._id,
+    type: "uploaded",
+    fileUrl: `/uploads/${file.filename}`
+  });
+
+  return { payroll, slip };
+};

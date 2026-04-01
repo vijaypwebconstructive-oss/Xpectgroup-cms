@@ -77,6 +77,7 @@ export enum VerificationStatus {
     contractStatus?: 'Active' | 'Paused' | 'Ended';
     endDate?: string;
     preferredShiftPattern?: string;
+    auditorNotes?: string;
   }
   
   export enum InvitationStatus {

@@ -79,7 +79,7 @@ const TrainingDetail: React.FC<TrainingDetailProps> = ({ onNavigate }) => {
     return match?.email && match.email.trim() ? match.email : null;
   };
 
-  const isExpiringWithinDays = (expiryDateStr: string, days: number = 30): boolean => {
+  const isExpiringWithinDays = (expiryDateStr: string, days: number = 90): boolean => {
     if (!expiryDateStr) return false;
     const expiry = new Date(expiryDateStr);
     if (isNaN(expiry.getTime())) return false;

@@ -53,6 +53,8 @@ const SiteDetail: React.FC<SiteDetailProps> = ({ siteId, onBack }) => {
   const [uploadingKey, setUploadingKey] = useState<string | null>(null);
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
+  
+
   const site        = getSiteById(siteId);
   const client      = site ? getClientById(site.clientId) : undefined;
   const assignments = site ? getAssignmentsBySite(siteId) : [];
@@ -85,6 +87,10 @@ const SiteDetail: React.FC<SiteDetailProps> = ({ siteId, onBack }) => {
       if (fileInputRefs.current[key]) (fileInputRefs.current[key] as HTMLInputElement).value = '';
     }
   };
+  const inspections = [
+    { id: 1, date: 'Mar 2026', score: 82, issues: 3, inspector: 'John' },
+    { id: 2, date: 'Feb 2026', score: 90, issues: 1, inspector: 'John' },
+  ];
 
   const openViewer = (doc: SiteComplianceDocument) => {
     setViewDoc({ name: doc.name, dataUrl: doc.dataUrl });
@@ -110,6 +116,8 @@ const SiteDetail: React.FC<SiteDetailProps> = ({ siteId, onBack }) => {
           Back to Sites
         </button>
         <div className="flex items-center justify-between gap-4 flex-wrap">
+
+          
           <div>
             <h1 className="text-[#0d121b] text-xl  sm:text-[30px] font-bold   font-black">{site.name}</h1>
             <p className="text-[#6b7a99] text-sm mt-0.5">{client?.name ?? '—'} · {site.postcode}</p>
@@ -299,6 +307,19 @@ const SiteDetail: React.FC<SiteDetailProps> = ({ siteId, onBack }) => {
                 </div>
               )}
             </div>
+
+            {/* Inspections */}
+
+                
+            
+
+            {/* inspection end */}
+
+
+
+
+
+
           </div>
         </div>
       </div>

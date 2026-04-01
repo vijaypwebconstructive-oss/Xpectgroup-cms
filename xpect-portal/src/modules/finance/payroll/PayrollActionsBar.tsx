@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 
 interface PayrollActionsBarProps {
-  onAddPayrollSlip?: () => void;
+  
   onExportCsv?: () => void;
   sortValue?: string;
   onSortChange?: (value: string) => void;
@@ -10,6 +10,7 @@ interface PayrollActionsBarProps {
   onBulkSendPayslip?: () => void;
   onBulkMarkAndSend?: () => void;
   bulkLoading?: boolean;
+  onAddPayrollSlip?: () => void;
 }
 
 const PayrollActionsBar: React.FC<PayrollActionsBarProps> = ({
@@ -39,16 +40,15 @@ const PayrollActionsBar: React.FC<PayrollActionsBarProps> = ({
   return (
     <div className="flex flex-wrap items-center justify-between gap-3">
       <div className="flex flex-wrap items-center gap-2">
-        {onAddPayrollSlip && (
-          <button
-            type="button"
-            onClick={onAddPayrollSlip}
-            className="flex items-center gap-2 px-4 py-2 bg-[#2e4150] text-white rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity"
-          >
-            <span className="material-symbols-outlined text-[18px]">add</span>
-            Add Payroll Slip
-          </button>
-        )}
+      <button
+      type="button"
+      onClick={onAddPayrollSlip}
+      className="flex items-center gap-2 px-4 py-2 bg-[#2e4150] text-white rounded-lg text-sm font-semibold"
+    >
+      <span className="material-symbols-outlined text-[18px]">add</span>
+      Add Payroll Slip
+    </button>
+      
         {onExportCsv && (
           <button
             type="button"

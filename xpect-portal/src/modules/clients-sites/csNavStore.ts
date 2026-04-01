@@ -19,7 +19,11 @@ export type CSView =
   | 'client-detail'
   | 'sites'
   | 'site-detail'
-  | 'allocation';
+  | 'allocation'
+  | 'inspection'
+  | 'inspection-detail'
+  | 'inspection-create'
+  | 'PPE_LIST';
 
 export interface CSState {
   view: CSView;
@@ -32,6 +36,10 @@ type Listener = (state: CSState) => void;
 // ── URL → State parser ────────────────────────────────────────────────────────
 
 export const parsePathname = (pathname: string): CSState => {
+
+// clients
+if (pathname === '/clients') return { view: 'clients', id: null };
+
   // /clients/:id
   const clientDetail = pathname.match(/^\/clients\/([^/]+)$/);
   if (clientDetail) return { view: 'client-detail', id: clientDetail[1] };
@@ -43,8 +51,27 @@ export const parsePathname = (pathname: string): CSState => {
   // /site-allocation
   if (pathname === '/site-allocation') return { view: 'allocation', id: null };
 
+
   // /sites
   if (pathname.startsWith('/sites')) return { view: 'sites', id: null };
+
+  //inspection
+  if(pathname === '/inspection') return {view:"inspection", id:null};
+  console.log(window.location.pathname);
+  //inspection create 
+
+  if(pathname === '/create-inspection') return {view:"inspection-create", id:null};
+//PPE list
+if (pathname === '/PPE') return { view: 'PPE_LIST', id: null };
+
+
+  if (pathname === '/inspectionDetail') {
+    return { view: 'inspection-detail', id: null };
+  }
+
+
+
+
 
   // /clients (default / fallback)
   return { view: 'clients', id: null };
@@ -58,7 +85,12 @@ export const buildPathname = (state: CSState): string => {
     case 'sites':         return '/sites';
     case 'site-detail':   return state.id ? `/sites/${state.id}` : '/sites';
     case 'allocation':    return '/site-allocation';
+    case 'inspection' : return '/inspection';
+    case "inspection-detail":  return '/inspectionDetail';
+    case "inspection-create" : return '/create-inspection';
+    case "PPE_LIST": return '/PPE';
     case 'clients':
+    
     default:              return '/clients';
   }
 };

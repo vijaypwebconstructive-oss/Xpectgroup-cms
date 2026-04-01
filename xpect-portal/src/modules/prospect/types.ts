@@ -1,10 +1,10 @@
 export type ProspectStatus =
-  | 'New'
-  | 'Contacted'
-  | 'Qualified'
-  | 'Quotation Sent'
-  | 'Converted'
-  | 'Lost';
+  | "New"
+  | "Contacted"
+  | "Qualified"
+  | "Quotation Sent"
+  | "Converted"
+  | "Lost";
 
 export interface Prospect {
   id: string;
@@ -16,5 +16,6 @@ export interface Prospect {
   address: string;
   notes: string;
   status: ProspectStatus;
+  value: string;
   createdAt?: string;
 }

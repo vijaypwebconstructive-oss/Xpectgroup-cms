@@ -71,7 +71,7 @@ const ProspectListPage: React.FC<Props> = ({ onView, onEdit, onAdd }) => {
   return (
     <div className="min-h-full bg-[#f6f7fb] w-screen sm:w-full">
       {/* Header */}
-      <div className="sm:px-8 px-4 sm:py-6 py-3">
+      <div className="sm:px-0 px-4 sm:py-6 py-3">
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
             <h1 className="text-lg sm:text-xl font-bold text-[#0d121b]">Prospect List</h1>
@@ -87,7 +87,7 @@ const ProspectListPage: React.FC<Props> = ({ onView, onEdit, onAdd }) => {
         </div>
       </div>
 
-      <div className="sm:px-8 px-4 sm:py-6 py-3 space-y-6">
+      <div className="sm:px-0 px-4 sm:py-6 py-3 space-y-6">
         {error && (
           <div className="p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">
             {error}

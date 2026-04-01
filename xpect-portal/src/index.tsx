@@ -13,6 +13,7 @@ import { IncidentsProvider } from './context/IncidentsContext';
 import { ProspectsProvider } from './context/ProspectContext';
 import { UserAccessProvider } from './context/UserAccessContext';
 import { FinanceProvider } from './context/FinanceContext';
+import {InspectionProvider} from "./context/InspectionContext"
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
@@ -33,7 +34,9 @@ root.render(
                     <ProspectsProvider>
                       <FinanceProvider>
                       <UserAccessProvider>
+                      <InspectionProvider>
                         <App />
+                      </InspectionProvider>
                       </UserAccessProvider>
                       </FinanceProvider>
                     </ProspectsProvider>

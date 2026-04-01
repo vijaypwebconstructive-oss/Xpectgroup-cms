@@ -36,6 +36,8 @@ const InvoiceViewPage: React.FC<InvoiceViewPageProps> = ({ invoiceId }) => {
       .finally(() => setLoading(false));
   }, [invoiceId, isPlaceholder]);
 
+  console.log("invoice",invoice)
+
   useEffect(() => {
     if (isPrintMode && !loading && invoice && !hasAutoPrinted.current) {
       hasAutoPrinted.current = true;

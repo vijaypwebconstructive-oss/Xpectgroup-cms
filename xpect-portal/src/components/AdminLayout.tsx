@@ -23,7 +23,7 @@ interface AdminProfile {
   role?: string;
 }
 
-const COMPLIANCE_VIEWS: AppView[] = ['EMPLOYEE_COMPLIANCE', 'CLEANERS_LIST', 'CLEANER_DETAIL', 'REPORT', 'STAFF_INVITES', 'TRAINING_CERTIFICATION', 'PPE_LIST'];
+const COMPLIANCE_VIEWS: AppView[] = ['EMPLOYEE_COMPLIANCE', 'CLEANERS_LIST', 'CLEANER_DETAIL', 'REPORT', 'STAFF_INVITES', 'TRAINING_CERTIFICATION'];
 const CLIENT_SITES_VIEWS: AppView[] = ['CLIENTS_SITES'];
 const DOC_CONTROL_VIEWS: AppView[] = ['DOCUMENT_CONTROL'];
 const RISK_COSHH_VIEWS: AppView[]  = ['RISK_COSHH'];
@@ -227,7 +227,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, currentView, onNavi
                 <span className="material-symbols-outlined text-[18px]">school</span>
                 Training &amp; Certification
               </button>
-              <button
+              {/* <button
                 onClick={() => handleNav('PPE_LIST')}
                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all cursor-pointer ${
                   currentView === 'PPE_LIST'
@@ -237,7 +237,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, currentView, onNavi
               >
                 <span className="material-symbols-outlined text-[18px]">safety_check</span>
                 PPE Invoices
-              </button>
+              </button> */}
             </div>
           </div>
         </div>
@@ -260,13 +260,15 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, currentView, onNavi
             </span>
           </button>
 
-          <div className={`overflow-hidden transition-all duration-300 ease-in-out ${isClientSitesOpen ? 'max-h-48 opacity-100' : 'max-h-0 opacity-0'}`}>
+          <div className={`overflow-hidden transition-all duration-300 ease-in-out ${isClientSitesOpen ? 'max-h-60 opacity-100' : 'max-h-0 opacity-0'}`}>
             <div className="mt-0.5 ml-3 pl-3 border-l border-white/20 space-y-0.5">
               {(
                 [
                   { csView: 'clients'    as CSView, icon: 'handshake',      label: 'Clients' },
                   { csView: 'sites'      as CSView, icon: 'location_on',    label: 'Sites' },
                   { csView: 'allocation' as CSView, icon: 'assignment_ind', label: 'Site Allocation' },
+                  { csView: 'inspection' as CSView, icon:"fact_check", label: 'Site Inspection' },
+                  { csView: 'PPE_LIST' as CSView, icon:"safety_check", label: 'PPE Invoice' },
                 ] as { csView: CSView; icon: string; label: string }[]
               ).map(({ csView, icon, label }) => (
                 <button
@@ -274,11 +276,20 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, currentView, onNavi
                   onClick={() => {
                     // 1. Navigate the CS store + push URL (csNavigate handles pushState)
                     csNavigate(csView);
+                    // 🔥 force sync immediately
+                    setActiveCSView(csView);
+
                     // 2. Tell App.tsx to render ClientSitesModule if not already
                     onNavigate('CLIENTS_SITES');
                   }}
                   className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all cursor-pointer ${
-                    currentView === 'CLIENTS_SITES' && (activeCSView === csView || (csView === 'clients' && activeCSView === 'client-detail') || (csView === 'sites' && activeCSView === 'site-detail'))
+                    currentView === 'CLIENTS_SITES' && (
+                      activeCSView === csView ||
+                      (csView === 'clients' && activeCSView === 'client-detail') ||
+                      (csView === 'sites' && activeCSView === 'site-detail') ||
+                      (csView === 'inspection' && activeCSView === 'inspection-detail') ||
+                      (csView === 'PPE_LIST' && activeCSView === 'PPE_LIST')
+                    )
                       ? 'bg-white/15 text-white'
                       : 'text-white/60 hover:bg-white/10 hover:text-white'
                   }`}
@@ -287,6 +298,19 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, currentView, onNavi
                   {label}
                 </button>
               ))}
+              {/* <button
+                onClick={() => {handleNav('PPE_LIST')
+                  
+                }}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all cursor-pointer ${
+                  currentView === 'PPE_LIST'
+                    ? 'bg-white/15 text-white'
+                    : 'text-white/60 hover:bg-white/10 hover:text-white'
+                }`}
+              >
+                <span className="material-symbols-outlined text-[18px]">safety_check</span>
+                PPE Invoices
+              </button> */}
             </div>
           </div>
         </div>

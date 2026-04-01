@@ -47,6 +47,7 @@ interface ClientForm {
   email: string;
   phone: string;
   address: string;
+  relation: 'Recurring' | 'Onetime';
   contractStart: string;
   contractEnd: string;
   insuranceExpiry: string;
@@ -66,6 +67,7 @@ const emptyForm: ClientForm = {
   email: '',
   phone: '',
   address: '',
+  relation:'',
   contractStart: today(),
   contractEnd: '',
   insuranceExpiry: '',
@@ -88,6 +90,7 @@ const ClientsList: React.FC<ClientsListProps> = ({ onSelectClient }) => {
   const [formErrors, setFormErrors]           = useState<Record<string, string>>({});
   const [successMsg, setSuccessMsg]           = useState('');
   const [saving, setSaving]                   = useState(false);
+  const [Relation ,setRelation] = useState('')
 
   const setField = (k: keyof ClientForm, v: string) => {
     setForm(prev => ({ ...prev, [k]: v }));
@@ -110,6 +113,7 @@ const ClientsList: React.FC<ClientsListProps> = ({ onSelectClient }) => {
     if (!form.address.trim()) e.address = 'Address is required.';
     if (!form.contractStart) e.contractStart = 'Contract start date is required.';
     if (!form.contractEnd) e.contractEnd = 'Contract end date is required.';
+    if (!form.relation) e.relation = 'Account relationship is required.';
     else if (form.contractStart && form.contractEnd < form.contractStart) e.contractEnd = 'Contract end must be after start date.';
     if (!form.insuranceExpiry) e.insuranceExpiry = 'Insurance expiry is required.';
     return e;
@@ -149,6 +153,7 @@ const ClientsList: React.FC<ClientsListProps> = ({ onSelectClient }) => {
         contractEnd: form.contractEnd,
         insuranceExpiry: form.insuranceExpiry,
         address: form.address.trim(),
+        relation:form.relation,
         notes: form.notes.trim() || undefined,
         documents: documents.length ? documents : undefined,
       });
@@ -162,6 +167,8 @@ const ClientsList: React.FC<ClientsListProps> = ({ onSelectClient }) => {
       setSaving(false);
     }
   };
+
+  
 
   const openModal = () => {
     setForm(emptyForm);
@@ -186,6 +193,7 @@ const ClientsList: React.FC<ClientsListProps> = ({ onSelectClient }) => {
     );
   });
 
+  console.log("relation",form)
   const totalClients  = clients.length;
   const totalSites    = sites.length;
   const expiringSoon  = enriched.filter(c => c.health === 'Expiring').length;
@@ -454,7 +462,44 @@ const ClientsList: React.FC<ClientsListProps> = ({ onSelectClient }) => {
               </div>
 
               <hr className="border-[#e7ebf3]" />
+              {/* relation ship client */}
 
+              <div>
+  <label className="text-sm font-bold text-[#0d121b] uppercase tracking-wide">
+    Account Relationship *
+  </label>
+
+  <div className="grid grid-cols-2 gap-3 mt-2">
+    <button
+    onClick={()=>{
+      setRelation("Recurring")
+      setField("relation", "Recurring")}}
+    className={`px-4 py-3 rounded-xl font-bold text-sm border-2 transition-all ${
+      Relation === "Recurring"
+        ? "border-[#273846fc] bg-[#eef2f7] text-[#273846fc]"
+        : "border-gray-200 bg-white text-gray-500"
+    }`}    >
+      Recurring
+    </button>
+
+    <button
+    onClick={()=>{
+      setRelation("Onetime")
+      setField("relation", "Onetime")}}
+    className={`px-4 py-3 rounded-xl font-bold text-sm border-2 transition-all ${
+      Relation === "Onetime"
+        ? "border-[#273846fc] bg-[#eef2f7] text-[#273846fc]"
+        : "border-gray-200 bg-white text-gray-500"
+    }`}    >
+      One-time
+    </button>
+    {formErrors.relation && (
+  <p className="text-red-500 text-xs mt-1">
+    {formErrors.relation}
+  </p>
+)}
+  </div>
+</div>              <hr className="border-[#e7ebf3]" />
               {/* Section: Contact Person */}
               <div className="space-y-4">
                 <div className="flex items-center gap-2">

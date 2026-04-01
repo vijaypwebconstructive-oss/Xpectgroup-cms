@@ -45,6 +45,7 @@ const severityConfig = {
 };
 
 const AlertsPanel: React.FC<AlertsPanelProps> = ({ alerts }) => {
+  console.log(alerts)
   const sorted = [...alerts].sort((a, b) => {
     const order = { critical: 0, warning: 1, info: 2 };
     return order[a.severity] - order[b.severity];

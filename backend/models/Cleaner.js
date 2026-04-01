@@ -72,7 +72,8 @@ const CleanerSchema = new mongoose.Schema({
   shiftType: { type: String, enum: ['Morning', 'Evening', 'Night', 'Any'] },
   contractStatus: { type: String, enum: ['Active', 'Paused', 'Ended'] },
   endDate: { type: String },
-  preferredShiftPattern: { type: String }
+  preferredShiftPattern: { type: String },
+  auditorNotes: { type: String, default: '' }
 }, {
   timestamps: true
 });

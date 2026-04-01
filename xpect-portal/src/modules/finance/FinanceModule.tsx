@@ -71,9 +71,9 @@ const FinanceModule: React.FC = () => {
 
   const PAYROLL_ITEMS: { view: FinanceView; label: string; icon: string }[] = [
     { view: 'payroll-list', label: 'Payroll List', icon: 'format_list_bulleted' },
-    { view: 'payslip', label: 'Payslip', icon: 'receipt_long' },
-    { view: 'payslip-create', label: 'Payslip Create', icon: 'add_circle' },
-    { view: 'payslip-template', label: 'Payslip Template', icon: 'edit' },
+    // { view: 'payslip', label: 'Payslip', icon: 'receipt_long' },
+    // { view: 'payslip-create', label: 'Payslip Create', icon: 'add_circle' },
+    // { view: 'payslip-template', label: 'Payslip Template', icon: 'edit' },
   ];
 
   const INVOICE_ITEMS: { view: FinanceView; label: string; icon: string; needsId?: boolean }[] = [

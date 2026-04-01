@@ -69,27 +69,31 @@ router.post('/send', async (req, res) => {
       });
     }
 
-    // Check if email already exists in staff list (Cleaner collection)
-    const existingCleaner = await Cleaner.findOne({ 
-      email: email.toLowerCase().trim()
-    });
+    const normalizedEmail = email.toLowerCase().trim();
 
-    if (existingCleaner) {
-      return res.status(400).json({ 
-        error: 'Email exists', 
-        message: `This email (${email}) already exists in the staff list. Cannot send invitation to existing staff members.` 
-      });
-    }
-
-    // Check if invitation already exists for this email (regardless of status)
-    const existingInvitation = await Invitation.findOne({ 
-      email: email.toLowerCase().trim()
+    // Condition 1: Check if email has an active invitation (Pending, Sent, Accepted/Verified, Completed)
+    const ACTIVE_INVITATION_STATUSES = ['PENDING', 'SENT', 'VERIFIED', 'COMPLETED'];
+    const existingInvitation = await Invitation.findOne({
+      email: normalizedEmail,
+      status: { $in: ACTIVE_INVITATION_STATUSES }
     });
 
     if (existingInvitation) {
-      return res.status(400).json({ 
-        error: 'Invitation exists', 
-        message: `An invitation already exists for this email (${email}). Cannot send duplicate invitations.` 
+      return res.status(400).json({
+        error: 'Invitation exists',
+        message: 'Invitation already sent to this email.'
+      });
+    }
+
+    // Condition 2: Check if email already belongs to existing staff
+    const existingCleaner = await Cleaner.findOne({
+      email: normalizedEmail
+    });
+
+    if (existingCleaner) {
+      return res.status(400).json({
+        error: 'Email exists',
+        message: 'This email already belongs to a staff member.'
       });
     }
 
@@ -104,7 +108,7 @@ router.post('/send', async (req, res) => {
     // Create invitation
     const invitation = new Invitation({
       employeeName: employeeName.trim(),
-      email: email.toLowerCase().trim(),
+      email: normalizedEmail,
       otp: hashedOTP, // Store hashed OTP
       otpExpiresAt,
       status: 'SENT'

@@ -3,7 +3,7 @@ import Cleaner from '../models/Cleaner.js';
 import PayrollRecord from '../models/PayrollRecord.js';
 import { logCleanerActivity, logVerificationActivity, logActivity, logDocumentActivity } from '../services/activityLogger.js';
 import { createPayrollForVerifiedCleaner, createPayrollForVerifiedCleaners } from '../services/payrollOnVerification.js';
-
+import { sendVerificationStatusEmail } from '../services/emailService.js';
 const router = express.Router();
 
 const ALLOWED_BULK_STATUSES = ['Verified', 'Rejected', 'Pending'];
@@ -47,6 +47,16 @@ router.patch('/bulk-action', async (req, res) => {
       { id: { $in: validIds } },
       { $set: { verificationStatus: status } }
     );
+
+    // ✅ Send emails (non-blocking, safe)
+const cleaners = await Cleaner.find({ id: { $in: validIds } });
+
+Promise.all(
+  cleaners.map(cleaner =>
+    sendVerificationStatusEmail(cleaner.email, cleaner.name, status)
+      .catch(err => console.error(`Email failed for ${cleaner.email}`, err.message))
+  )
+);
 
     try {
       await logVerificationActivity.bulkStatusUpdate(
@@ -352,6 +362,7 @@ router.patch('/:id', async (req, res) => {
         
         if (newStatus === 'Verified') {
           await logVerificationActivity.verified('admin-001', 'Admin', cleaner.id, cleaner.name);
+          sendVerificationStatusEmail(cleaner.email, cleaner.name, newStatus).catch(console.error);
           try {
             await createPayrollForVerifiedCleaner(cleaner.id);
           } catch (payrollErr) {
@@ -359,6 +370,14 @@ router.patch('/:id', async (req, res) => {
           }
         } else if (newStatus === 'Rejected') {
           await logVerificationActivity.rejected('admin-001', 'Admin', cleaner.id, cleaner.name);
+          const rejectedDocs = Array.isArray(cleaner.documents)
+            ? cleaner.documents
+                .filter(doc => doc?.status === 'Rejected')
+                .map(doc => doc?.name)
+                .filter(Boolean)
+            : [];
+          const auditorNotes = cleaner.auditorNotes || '';
+          sendVerificationStatusEmail(cleaner.email, cleaner.name, newStatus, rejectedDocs, auditorNotes).catch(console.error);
         } else {
           // Log other status changes (Pending, Docs Required, etc.)
           await logActivity({

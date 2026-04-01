@@ -49,12 +49,14 @@ function mapSettingsToFormData(settings: {
       companyAddress: (billBy.companyAddress as string) || '',
       email: (billBy.email as string) || '',
       phone: (billBy.phone as string) || '',
+      CRN:(billBy.CRN as string) || " ",
     },
     billBy: {
       companyName: (billBy.companyName as string) || '',
       companyAddress: (billBy.companyAddress as string) || '',
       email: (billBy.email as string) || '',
       phone: (billBy.phone as string) || '',
+      CRN:(billBy.CRN as string) || " ",
     },
     billTo: {
       clientName: '',
@@ -62,6 +64,7 @@ function mapSettingsToFormData(settings: {
       contactPerson: '',
       email: '',
       phone: '',
+      CRN:"",
     },
     serviceItems: items.length > 0 ? items : [
       { serviceDescription: 'Office Cleaning', siteLocation: 'Main Office', quantity: '20', rate: '120', discount: '0', amount: '2400.00' },

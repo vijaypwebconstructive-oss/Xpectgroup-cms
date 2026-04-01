@@ -4,8 +4,8 @@ import { randomUUID } from 'crypto';
 const PayrollRecordSchema = new mongoose.Schema({
   id: {
     type: String,
-    required: true,
-    unique: true,
+    required: false,
+    unique: false,
     default: () => `pr-${randomUUID().slice(0, 8)}`,
   },
   workerId: { type: String, required: true },

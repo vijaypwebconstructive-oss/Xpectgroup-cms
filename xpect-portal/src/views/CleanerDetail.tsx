@@ -42,7 +42,7 @@ const CleanerDetail: React.FC<CleanerDetailProps> = ({ cleaner, onNavigate }) =>
   const [isEditing, setIsEditing] = useState(false);
   const [editedCleaner, setEditedCleaner] = useState(currentCleaner);
   const [verificationStatus, setVerificationStatus] = useState(currentCleaner.verificationStatus);
-  const [auditorNotes, setAuditorNotes] = useState('');
+  const [auditorNotes, setAuditorNotes] = useState(currentCleaner.auditorNotes || '');
   const [viewingDocument, setViewingDocument] = useState<Document | null>(null);
   const [documentStatusUpdates, setDocumentStatusUpdates] = useState<Record<string, DocumentStatus>>({});
   const [uploadingDocument, setUploadingDocument] = useState<{ docId: string; file: File } | null>(null);
@@ -86,6 +86,7 @@ const CleanerDetail: React.FC<CleanerDetailProps> = ({ cleaner, onNavigate }) =>
     const updated = cleaners.find(c => c.id === cleaner.id) || cleaner;
     setEditedCleaner(updated);
     setVerificationStatus(updated.verificationStatus);
+    setAuditorNotes(updated.auditorNotes || '');
     // Update employment details when cleaner changes
     setEmploymentDetails(getEmploymentDetailsFromCleaner(updated));
   }, [cleaners, cleaner.id]);
@@ -121,7 +122,7 @@ const CleanerDetail: React.FC<CleanerDetailProps> = ({ cleaner, onNavigate }) =>
 
   const handleStatusUpdate = async () => {
     try {
-      await updateCleaner(currentCleaner.id, { verificationStatus });
+      await updateCleaner(currentCleaner.id, { verificationStatus, auditorNotes });
       alert('Verification status updated successfully!');
     } catch (error: any) {
       console.error('Failed to update verification status:', error);
@@ -132,7 +133,7 @@ const CleanerDetail: React.FC<CleanerDetailProps> = ({ cleaner, onNavigate }) =>
   const handleRevokeVerification = async () => {
     if (confirm('Are you sure you want to revoke verification for this staff member?')) {
       try {
-        await updateCleaner(currentCleaner.id, { verificationStatus: VerificationStatus.REJECTED });
+        await updateCleaner(currentCleaner.id, { verificationStatus: VerificationStatus.REJECTED, auditorNotes });
         setVerificationStatus(VerificationStatus.REJECTED);
         alert('Verification revoked.');
       } catch (error: any) {

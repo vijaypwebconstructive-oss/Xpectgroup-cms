@@ -1,10 +1,10 @@
-import React from 'react';
+import React from "react";
 
 const STATUS_BADGE: Record<string, string> = {
-  Paid: 'bg-green-50 text-green-700 border border-green-200',
-  Pending: 'bg-amber-50 text-amber-700 border border-amber-200',
-  Overdue: 'bg-red-50 text-red-700 border border-red-200',
-  Sent: 'bg-blue-50 text-blue-700 border border-blue-200',
+  Paid: "bg-green-50 text-green-700 border border-green-200",
+  Pending: "bg-amber-50 text-amber-700 border border-amber-200",
+  Overdue: "bg-red-50 text-red-700 border border-red-200",
+  Sent: "bg-blue-50 text-blue-700 border border-blue-200",
 };
 
 export interface InvoiceTableRow {
@@ -15,14 +15,14 @@ export interface InvoiceTableRow {
   issuedDate: string;
   dueDate: string;
   amount: number;
-  status: 'Paid' | 'Pending' | 'Overdue' | 'Sent';
+  status: "Paid" | "Pending" | "Overdue" | "Sent";
 }
 
 const getInitials = (name: string) =>
   name
-    .split(' ')
-    .map(w => w[0])
-    .join('')
+    .split(" ")
+    .map((w) => w[0])
+    .join("")
     .slice(0, 2)
     .toUpperCase();
 
@@ -66,36 +66,59 @@ const InvoiceTable: React.FC<InvoiceTableProps> = ({
               <input
                 type="checkbox"
                 checked={allSelected}
-                onChange={e => onToggleSelectAll(e.target.checked)}
+                onChange={(e) => onToggleSelectAll(e.target.checked)}
                 className="rounded border-[#e7ebf3] text-[#2e4150] focus:ring-[#2e4150]/20"
                 aria-label="Select all"
               />
             </th>
-            <th className="text-left text-xs font-semibold text-[#6b7a99] uppercase tracking-wider px-4 py-3">Invoice No</th>
-            <th className="text-left text-xs font-semibold text-[#6b7a99] uppercase tracking-wider px-4 py-3">Client</th>
-            <th className="text-left text-xs font-semibold text-[#6b7a99] uppercase tracking-wider px-4 py-3">Issued Date</th>
-            <th className="text-left text-xs font-semibold text-[#6b7a99] uppercase tracking-wider px-4 py-3">Due Date</th>
-            <th className="text-left text-xs font-semibold text-[#6b7a99] uppercase tracking-wider px-4 py-3">Amount</th>
-            <th className="text-left text-xs font-semibold text-[#6b7a99] uppercase tracking-wider px-4 py-3">Status</th>
-            <th className="text-left text-xs font-semibold text-[#6b7a99] uppercase tracking-wider px-4 py-3">Actions</th>
+            <th className="text-left text-xs font-semibold text-[#6b7a99] uppercase tracking-wider px-4 py-3">
+              Invoice No
+            </th>
+            <th className="text-left text-xs font-semibold text-[#6b7a99] uppercase tracking-wider px-4 py-3">
+              Client
+            </th>
+            <th className="text-left text-xs font-semibold text-[#6b7a99] uppercase tracking-wider px-4 py-3">
+              Issued Date
+            </th>
+            <th className="text-left text-xs font-semibold text-[#6b7a99] uppercase tracking-wider px-4 py-3">
+              Due Date
+            </th>
+            <th className="text-left text-xs font-semibold text-[#6b7a99] uppercase tracking-wider px-4 py-3">
+              Amount
+            </th>
+            <th className="text-left text-xs font-semibold text-[#6b7a99] uppercase tracking-wider px-4 py-3">
+              Status
+            </th>
+            <th className="text-left text-xs font-semibold text-[#6b7a99] uppercase tracking-wider px-4 py-3">
+              Actions
+            </th>
           </tr>
         </thead>
         <tbody>
           {loading ? (
             <tr>
-              <td colSpan={8} className="px-4 py-8 text-center text-[#6b7a99] text-sm">
+              <td
+                colSpan={8}
+                className="px-4 py-8 text-center text-[#6b7a99] text-sm"
+              >
                 Loading…
               </td>
             </tr>
           ) : rows.length === 0 ? (
             <tr>
-              <td colSpan={8} className="px-4 py-8 text-center text-[#6b7a99] text-sm">
+              <td
+                colSpan={8}
+                className="px-4 py-8 text-center text-[#6b7a99] text-sm"
+              >
                 No invoices found.
               </td>
             </tr>
           ) : (
             rows.map((row, idx) => (
-              <tr key={row.id} className="border-b border-[#e7ebf3] hover:bg-[#f8f9fc] transition-colors">
+              <tr
+                key={row.id}
+                className="border-b border-[#e7ebf3] hover:bg-[#f8f9fc] transition-colors"
+              >
                 <td className="px-4 py-3">
                   <input
                     type="checkbox"
@@ -120,18 +143,39 @@ const InvoiceTable: React.FC<InvoiceTableProps> = ({
                       {getInitials(row.clientName)}
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-[#0d121b]">{row.clientName}</p>
-                      <p className="text-xs text-[#6b7a99]">{row.clientPhone}</p>
+                      <p className="text-sm font-medium text-[#0d121b]">
+                        {row.clientName}
+                      </p>
+                      <p className="text-xs text-[#6b7a99]">
+                        {row.clientPhone}
+                      </p>
                     </div>
                   </div>
                 </td>
-                <td className="px-4 py-3 text-sm text-[#4c669a]">{row.issuedDate}</td>
-                <td className="px-4 py-3 text-sm text-[#4c669a]">{row.dueDate}</td>
+                <td className="px-4 py-3 text-sm text-[#4c669a]">
+                  {new Date(row.issuedDate).toLocaleDateString("en-IN", {
+                    day: "2-digit",
+                    month: "short",
+                    year: "numeric",
+                  })}
+                </td>
+                <td className="px-4 py-3 text-sm text-[#4c669a]">
+                  {new Date(row.dueDate).toLocaleDateString("en-IN", {
+                    day: "2-digit",
+                    month: "short",
+                    year: "numeric",
+                  })}
+                </td>
                 <td className="px-4 py-3 text-sm font-semibold text-[#0d121b]">
-                  £{row.amount.toLocaleString('en-GB', { minimumFractionDigits: 2 })}
+                  £
+                  {row.amount.toLocaleString("en-GB", {
+                    minimumFractionDigits: 2,
+                  })}
                 </td>
                 <td className="px-4 py-3">
-                  <span className={`inline-flex px-2 py-0.5 rounded text-xs font-semibold ${STATUS_BADGE[row.status] || ''}`}>
+                  <span
+                    className={`inline-flex px-2 py-0.5 rounded text-xs font-semibold ${STATUS_BADGE[row.status] || ""}`}
+                  >
                     {row.status}
                   </span>
                 </td>
@@ -143,7 +187,9 @@ const InvoiceTable: React.FC<InvoiceTableProps> = ({
                         onClick={() => onView(row.id)}
                         className="flex items-center gap-1 text-[#4c669a] hover:text-[#2e4150] text-sm font-medium"
                       >
-                        <span className="material-symbols-outlined text-[16px]">visibility</span>
+                        <span className="material-symbols-outlined text-[16px]">
+                          visibility
+                        </span>
                         View
                       </button>
                     )}
@@ -153,7 +199,9 @@ const InvoiceTable: React.FC<InvoiceTableProps> = ({
                         onClick={() => onEdit(row.id)}
                         className="flex items-center gap-1 text-[#4c669a] hover:text-[#2e4150] text-sm font-medium"
                       >
-                        <span className="material-symbols-outlined text-[16px]">edit</span>
+                        <span className="material-symbols-outlined text-[16px]">
+                          edit
+                        </span>
                         Edit
                       </button>
                     )}
@@ -163,7 +211,9 @@ const InvoiceTable: React.FC<InvoiceTableProps> = ({
                         onClick={() => onSend(row.id)}
                         className="flex items-center gap-1 text-emerald-600 hover:text-emerald-700 text-sm font-medium"
                       >
-                        <span className="material-symbols-outlined text-[16px]">send</span>
+                        <span className="material-symbols-outlined text-[16px]">
+                          send
+                        </span>
                         Send
                       </button>
                     )}
@@ -173,7 +223,9 @@ const InvoiceTable: React.FC<InvoiceTableProps> = ({
                         onClick={() => onDownload(row.id)}
                         className="flex items-center gap-1 text-[#4c669a] hover:text-[#2e4150] text-sm font-medium"
                       >
-                        <span className="material-symbols-outlined text-[16px]">download</span>
+                        <span className="material-symbols-outlined text-[16px]">
+                          download
+                        </span>
                         Download
                       </button>
                     )}
@@ -183,7 +235,9 @@ const InvoiceTable: React.FC<InvoiceTableProps> = ({
                         onClick={() => onDelete(row.id)}
                         className="flex items-center gap-1 text-red-600 hover:text-red-700 text-sm font-medium"
                       >
-                        <span className="material-symbols-outlined text-[16px]">delete</span>
+                        <span className="material-symbols-outlined text-[16px]">
+                          delete
+                        </span>
                         Delete
                       </button>
                     )}

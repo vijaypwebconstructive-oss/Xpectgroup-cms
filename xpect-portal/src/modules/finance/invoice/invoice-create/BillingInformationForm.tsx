@@ -78,6 +78,16 @@ const BillingInformationForm: React.FC<Props> = ({
                 placeholder="Phone"
               />
             </div>
+            {/* <div>
+              <label className="block text-xs font-semibold text-[#6b7a99] mb-1">Company Registration No.</label>
+              <input
+                type="text"
+                value={billBy.CRN}
+                onChange={e => onBillByChange({ CRN: e.target.value })}
+                className={inputCls}
+                placeholder="Enter Company Registration No."
+              />
+            </div> */}
           </div>
         </div>
         <div>

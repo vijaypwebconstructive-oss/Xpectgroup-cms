@@ -7,6 +7,7 @@ interface InvoiceHeaderProps {
 }
 
 const InvoiceHeader: React.FC<InvoiceHeaderProps> = ({ invoice }) => (
+
   <DocumentHeader
     documentType="invoice"
     documentNumber={invoice?.invoiceNumber}

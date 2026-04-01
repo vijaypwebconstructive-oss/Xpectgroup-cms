@@ -39,8 +39,8 @@ router.get('/clients', async (req, res) => {
 
 router.post('/clients', async (req, res) => {
   try {
-    const { name, industry, contactPerson, email, phone, contractStart, contractEnd, insuranceExpiry, address, notes, documents } = req.body;
-    if (!name || !industry || !contactPerson || !email || !contractStart || !contractEnd || !insuranceExpiry) {
+    const { name, industry, contactPerson, email, phone, contractStart, contractEnd, insuranceExpiry, address, notes, documents, relation } = req.body;
+    if (!name || !industry || !contactPerson || !email || !contractStart || !contractEnd || !insuranceExpiry || !relation) {
       return res.status(400).json({ error: 'Validation error', message: 'name, industry, contactPerson, email, contractStart, contractEnd, insuranceExpiry are required' });
     }
     const docsToStore = Array.isArray(documents)
@@ -64,6 +64,7 @@ router.post('/clients', async (req, res) => {
       insuranceExpiry,
       address: address || '',
       notes: notes || '',
+      relation, 
       documents: docsToStore,
     });
     const created = doc.toObject();
@@ -79,6 +80,7 @@ router.post('/clients', async (req, res) => {
       insuranceExpiry: created.insuranceExpiry,
       address: created.address || '',
       notes: created.notes || '',
+      relation: created.relation,
       documents: (created.documents || []).map(d => ({
         key: d.key,
         name: d.name,
@@ -126,6 +128,7 @@ router.get('/sites', async (req, res) => {
       emergencyPhone: d.emergencyPhone || '',
       accessInstructions: d.accessInstructions || '',
       activeWorkers: d.activeWorkers ?? 0,
+      relation: d.relation,
       complianceDocuments: (d.complianceDocuments || []).map(cd => ({
         key: cd.key,
         name: cd.name || '',

@@ -38,7 +38,35 @@ async function fetchWithErrorHandling<T>(url: string, options?: RequestInit): Pr
   }
 }
 
+
+
 export const api = {
+
+// Inspection API
+inspections: {
+  getAll: () =>
+    fetchWithErrorHandling(`${API_BASE_URL}/inspections`),
+
+  getById: (id: string) =>
+    fetchWithErrorHandling(`${API_BASE_URL}/inspections/${id}`),
+
+  create: (data: any) =>
+    fetchWithErrorHandling(`${API_BASE_URL}/inspections`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    }),
+    delete: (id: string) =>
+      fetchWithErrorHandling(`${API_BASE_URL}/inspections/${id}`, {
+        method: "DELETE",
+      }),
+},
+
+
+
+
+
+
   // Cleaners API
   cleaners: {
     getAll: async () => {
@@ -727,8 +755,10 @@ export const api = {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(updates),
         }),
-      delete: (id: string) =>
-        fetchWithErrorHandling<void>(`${API_BASE_URL}/finance/payroll/${id}`, { method: 'DELETE' }),
+        delete: (id: string) =>
+          fetchWithErrorHandling(`${API_BASE_URL}/finance/payroll/${id}`, {
+            method: 'DELETE',
+          }),
     },
     salarySlips: {
       getAll: (params?: { cleanerId?: string }) => {
@@ -741,12 +771,23 @@ export const api = {
       },
       getById: (id: string) =>
         fetchWithErrorHandling<import('../modules/finance-payroll/types').SalarySlip>(`${API_BASE_URL}/finance/salary-slips/${id}`),
-      getDownloadUrl: (id: string) => `${API_BASE_URL}/finance/salary-slips/${id}/download`,
-      send: (id: string) =>
+      getDownloadUrl: (id: string) => `${API_BASE_URL}${id}`,
+      send: (data: any) =>
         fetchWithErrorHandling<{ success: boolean; message: string; to: string }>(
-          `${API_BASE_URL}/finance/salary-slips/${id}/send`,
-          { method: 'POST' }
+          `${API_BASE_URL}/finance/salary-slips/send`,
+          { method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data) 
+           }
         ),
+
+        upload: (formData: FormData) =>
+          fetchWithErrorHandling(`${API_BASE_URL}/finance/salary-slips/upload`, {
+            method: 'POST',
+            body: formData, // ❗ no JSON.stringify
+          }),
     },
     invoices: {
       getAll: (params?: { status?: string; clientName?: string; year?: number }) => {
@@ -819,6 +860,35 @@ export const api = {
       delete: (id: string) =>
         fetchWithErrorHandling<void>(`${API_BASE_URL}/finance/quotations/${id}`, { method: 'DELETE' }),
     },
+  },
+
+  performance: {
+    getDashboard: (filter = "all") =>
+      fetchWithErrorHandling(`${API_BASE_URL}/performance/dashboard?filter=${filter}`),
+  
+    // 🔥 GET GOALS
+    getGoals: () =>
+      fetchWithErrorHandling(`${API_BASE_URL}/performance/goals`),
+  
+    // 🔥 SAVE / UPDATE GOAL
+    updateGoal: (data: { type: string; targetValue: number }) =>
+      fetchWithErrorHandling(`${API_BASE_URL}/performance/goals`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+      }),
+
+      getCharts: (filter = "all") =>
+        fetchWithErrorHandling(`${API_BASE_URL}/performance/charts?filter=${filter}`),
+
+      getTransaction: (filter = "all") =>
+        fetchWithErrorHandling(`${API_BASE_URL}/performance/transaction?filter=${filter}`),
+
+      getSales: (filter = "all") =>
+        fetchWithErrorHandling(`${API_BASE_URL}/performance/sales?filter=${filter}`),
+
   },
 };
 

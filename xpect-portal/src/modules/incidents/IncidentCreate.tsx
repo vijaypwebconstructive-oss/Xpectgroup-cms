@@ -344,6 +344,7 @@ const IncidentCreate: React.FC<Props> = ({ onBack, onCreated }) => {
                     <input
                       type="file"
                       accept=".jpg,.jpeg,.png"
+                      capture="environment"
                       className="hidden"
                       onChange={async e => {
                         const file = e.target.files?.[0];

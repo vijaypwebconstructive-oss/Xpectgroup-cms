@@ -11,6 +11,7 @@ import AlertsPanel from './AlertsPanel';
 import TrainingExpiryWidget from './TrainingExpiryWidget';
 import DocumentStatusWidget from './DocumentStatusWidget';
 import SiteComplianceWidget from './SiteComplianceWidget';
+import { useInspection } from '../../context/InspectionContext';
 import {
   buildComplianceAlerts,
   buildSiteIssues,
@@ -19,6 +20,8 @@ import {
   buildTrainingExpiry,
   daysUntilDate,
 } from './mockData';
+
+
 
 interface ComplianceDashboardProps {
   onNavigate: (view: AppView) => void;
@@ -76,6 +79,35 @@ const ComplianceDashboard: React.FC<ComplianceDashboardProps> = ({ onNavigate })
   const { trainingRecords } = useTraining();
   const { cleaners } = useCleaners();
   const [loading, setLoading] = useState(true);
+  const { inspections } = useInspection();
+// console.log("inspectionsss" ,inspections)
+
+  const failedInspections = useMemo(() => {
+    
+    return (inspections).filter(i => i.status === 'Fail');
+  }, [inspections]);
+  console.log('failed',failedInspections)
+
+// date chnage
+const formatDate = (dateStr: string) => {
+  const date = new Date(dateStr + 'T00:00:00'); // safe parsing
+  return date.toLocaleDateString('en-GB', {
+    day: '2-digit',
+    month: 'short',
+  });
+};
+
+
+const inspectionAlerts = useMemo(() => {
+  return failedInspections.map(i => ({
+    id: `inspection-${i._id}`, // ✅ FIXED
+    title: `Inspection Failed`,
+    message: `${i.siteName || 'Site'} failed inspection`,
+    severity: 'critical',
+    module: 'inspection',
+    timestamp: i.date ? formatDate(i.date) : 'N/A', // ✅ SAFE
+  }));
+}, [failedInspections]);
 
   const recordsForExistingStaff = useMemo(() => {
     const ids = new Set(cleaners.map(c => c.id));
@@ -93,11 +125,23 @@ const ComplianceDashboard: React.FC<ComplianceDashboardProps> = ({ onNavigate })
   const policyDocsData = useMemo(() => ({ documents }), [documents]);
   const ppeData = useMemo(() => ({ records: ppeRecords, inventory: ppeInventory }), [ppeRecords, ppeInventory]);
   const trainingData = useMemo(() => ({ trainingRecords: recordsForExistingStaff }), [recordsForExistingStaff]);
-  const alerts = useMemo(() => buildComplianceAlerts(riskCoshhData, clientsSitesData, policyDocsData, ppeData, trainingData), [riskCoshhData, clientsSitesData, policyDocsData, ppeData, trainingData]);
+  // const alerts = useMemo(() => buildComplianceAlerts(riskCoshhData, clientsSitesData, policyDocsData, ppeData, trainingData), [riskCoshhData, clientsSitesData, policyDocsData, ppeData, trainingData]);
   const siteIssues = useMemo(() => buildSiteIssues(riskCoshhData, clientsSitesData), [riskCoshhData, clientsSitesData]);
   const documentSummary = useMemo(() => buildDocumentSummary(documents), [documents]);
   const staffSummary = useMemo(() => buildStaffSummary(assignments), [assignments]);
   const trainingExpiry = useMemo(() => buildTrainingExpiry(recordsForExistingStaff), [recordsForExistingStaff]);
+ 
+
+  const baseAlerts = useMemo(() => 
+    buildComplianceAlerts(riskCoshhData, clientsSitesData, policyDocsData, ppeData, trainingData),
+    [riskCoshhData, clientsSitesData, policyDocsData, ppeData, trainingData]
+  );
+  
+  const alerts = useMemo(() => {
+    return [...baseAlerts, ...inspectionAlerts];
+  }, [baseAlerts, inspectionAlerts]);
+
+  // console.log("inspection:",inspectionAlerts)
 
   const criticalAlerts = alerts.filter(a => a.severity === 'critical').length;
   const lastUpdated = new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });

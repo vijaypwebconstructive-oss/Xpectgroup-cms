@@ -22,6 +22,11 @@ const ClientSchema = new mongoose.Schema({
   contactPerson: { type: String, required: true },
   email: { type: String, required: true },
   phone: { type: String, default: '' },
+  relation: {
+    type: String,
+    enum: ['Recurring', 'Onetime'], // optional but recommended
+    required: true,
+  },
   contractStart: { type: String, required: true },
   contractEnd: { type: String, required: true },
   insuranceExpiry: { type: String, required: true },

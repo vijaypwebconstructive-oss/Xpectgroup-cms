@@ -498,12 +498,7 @@ export const sendSalarySlip = async (email, cleanerName, record) => {
             <table style="width: 100%; border-collapse: collapse; margin: 20px 0; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
               <tr><td style="padding: 12px 16px; border-bottom: 1px solid #e7ebf3; font-weight: bold;">Employee Name</td><td style="padding: 12px 16px; border-bottom: 1px solid #e7ebf3;">${record.workerName || cleanerName}</td></tr>
               <tr><td style="padding: 12px 16px; border-bottom: 1px solid #e7ebf3; font-weight: bold;">Payroll Month</td><td style="padding: 12px 16px; border-bottom: 1px solid #e7ebf3;">${monthLabel}</td></tr>
-              <tr><td style="padding: 12px 16px; border-bottom: 1px solid #e7ebf3; font-weight: bold;">Payroll Year</td><td style="padding: 12px 16px; border-bottom: 1px solid #e7ebf3;">${year}</td></tr>
-              <tr><td style="padding: 12px 16px; border-bottom: 1px solid #e7ebf3; font-weight: bold;">Hours Worked</td><td style="padding: 12px 16px; border-bottom: 1px solid #e7ebf3;">${hours}</td></tr>
-              <tr><td style="padding: 12px 16px; border-bottom: 1px solid #e7ebf3; font-weight: bold;">Pay Rate per Hour</td><td style="padding: 12px 16px; border-bottom: 1px solid #e7ebf3;">£${Number(rate).toFixed(2)}</td></tr>
-              <tr><td style="padding: 12px 16px; border-bottom: 1px solid #e7ebf3; font-weight: bold;">Gross Salary</td><td style="padding: 12px 16px; border-bottom: 1px solid #e7ebf3;">£${Number(salary).toFixed(2)}</td></tr>
-              <tr><td style="padding: 12px 16px; border-bottom: 1px solid #e7ebf3; font-weight: bold;">Payment Status</td><td style="padding: 12px 16px; border-bottom: 1px solid #e7ebf3;">${status}</td></tr>
-              <tr><td style="padding: 12px 16px; font-weight: bold;">Date Salary Was Paid</td><td style="padding: 12px 16px;">${paidDate || '—'}</td></tr>
+             
             </table>
             <p style="margin-top: 30px; font-size: 12px; color: #999; border-top: 1px solid #e7ebf3; padding-top: 20px;">
               This is an automated message from Xpect Group.
@@ -599,4 +594,194 @@ export const sendSalarySlipWithPdf = async (email, cleanerName, record, pdfFullP
     console.error('❌ Error sending salary slip with PDF:', error);
     throw new Error(`Failed to send salary slip: ${error.message}`);
   }
+};
+
+
+/**
+ * Send verification status update email to cleaner
+ * @param {string} email
+ * @param {string} cleanerName
+ * @param {string} status
+ * @param {string[]} rejectedDocs
+ * @param {string} auditorNotes
+ */
+export const sendVerificationStatusEmail = async (email, cleanerName, status, rejectedDocs = [], auditorNotes = '') => {
+  try {
+    if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) {
+      console.warn('⚠️ Email not configured – skipping verification email');
+      return { success: false, skipped: true };
+    }
+
+    const transporter = createTransporter();
+
+    let subject = '';
+    let html = '';
+    let text = '';
+
+    if (status === 'Verified') {
+      subject = '🎉 Verification Approved – Xpect Group';
+
+      // html = `
+      //   <div class="verification-email-container" style="font-family: Arial; padding: 20px;">
+      //     <h2 style="color:#2e4150;">Congratulations ${cleanerName}!</h2>
+      //     <p>Your background verification has been <b style="color:green;">approved</b>.</p>
+      //     <p>You are now eligible to start working.</p>
+      //     <br/>
+      //     <p>Regards,<br/><strong>Xpect Group</strong></p>
+      //   </div>
+      // `;
+      html = getVerifiedTemplate(cleanerName);
+
+
+      // text = `Hi ${cleanerName}, your verification is approved. You can now start working.`;
+    }
+
+    if (status === 'Rejected') {
+      subject = '⚠️ Verification Update – Xpect Group';
+
+      const safeRejectedDocs = Array.isArray(rejectedDocs) ? rejectedDocs.filter(Boolean) : [];
+      const rejectedDocsHtml = safeRejectedDocs.length
+        ? `<ul style="margin:8px 0 16px 20px; padding:0;">
+            ${safeRejectedDocs.map(doc => `<li style="margin:4px 0;">${doc}</li>`).join('')}
+          </ul>`
+        : '<p style="margin:8px 0 16px 0;">No rejected documents listed.</p>';
+      const reasonText = String(auditorNotes || '').trim() || 'No additional notes provided.';
+
+      // html = `
+      //   <div style="font-family: Arial, sans-serif; padding: 20px; color: #0d121b;">
+      //     <h2 style="color:#2e4150; margin:0 0 16px 0;">Verification Update</h2>
+      //     <p style="margin:0 0 16px 0;">Hello ${cleanerName}, your background verification was <b style="color:#c62828;">rejected</b>.</p>
+      //     <h3 style="margin:0 0 8px 0; color:#2e4150;">Rejected Documents</h3>
+      //     ${rejectedDocsHtml}
+      //     <h3 style="margin:0 0 8px 0; color:#2e4150;">Reason</h3>
+      //     <p style="margin:0 0 16px 0;">${reasonText}</p>
+      //     <p>Regards,<br/><strong>Xpect Group</strong></p>
+      //   </div>
+      // `;
+
+      html = getRejectedTemplate(cleanerName, safeRejectedDocs, reasonText);
+
+      text = [
+        'Verification Update',
+        '',
+        `Hello ${cleanerName}, your background verification was rejected.`,
+        '',
+        'Rejected Documents:',
+        ...(safeRejectedDocs.length ? safeRejectedDocs.map(doc => `- ${doc}`) : ['- No rejected documents listed.']),
+        '',
+        'Reason:',
+        reasonText,
+        '',
+        'Regards,',
+        'Xpect Group'
+      ].join('\n');
+    }
+
+    if (!subject) return;
+
+    const info = await transporter.sendMail({
+      from: `"Xpect Group" <${process.env.GMAIL_USER}>`,
+      to: email,
+      subject,
+      html,
+      text
+    });
+
+    console.log('✅ Verification email sent:', {
+      to: email,
+      status,
+      messageId: info.messageId
+    });
+
+    return { success: true };
+
+  } catch (error) {
+    console.error('❌ Verification email failed:', error.message);
+    return { success: false };
+  }
+};
+
+
+const getRejectedTemplate = (cleanerName, rejectedDocs, reasonText) => {
+  return `
+  <table width="100%" style="background:#f5f5f5;padding:40px 0;font-family:Arial;">
+    <tr>
+      <td align="center">
+
+        <table width="520" style="background:#fff;border-radius:12px;padding:30px;">
+          
+          <tr>
+            <td align="center">
+             <img alt="Xpect Group" class="h-[50px] w-auto cursor-pointer" src="https://xpectgroup.co.uk/wp-content/uploads/2025/08/Xpect-Group-Logo-1-e1741086813440-300x281-1-1.webp">
+            </td>
+          </tr>
+
+          <tr>
+            <td align="center" style="padding:20px 0;">
+              <h1 style="margin:0;font-size:20px;">Verification Update</h1>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="font-size:14px;color:#555;">
+              Hello <b>${cleanerName}</b>,<br/><br/>
+              Your verification was 
+              <span style="color:#e53935;font-weight:bold;">rejected</span>.
+            </td>
+          </tr>
+
+          ${
+            rejectedDocs.length
+              ? `
+          <tr>
+            <td style="padding-top:20px;">
+              <b>Rejected Documents</b>
+              <ul>
+                ${rejectedDocs.map(doc => `<li>${doc}</li>`).join('')}
+              </ul>
+            </td>
+          </tr>`
+              : ''
+          }
+
+          <tr>
+            <td style="padding-top:10px;">
+              <b>Reason</b>
+              <p>${reasonText}</p>
+            </td>
+          </tr>
+
+        </table>
+
+      </td>
+    </tr>
+  </table>
+  `;
+};
+
+
+const getVerifiedTemplate = (cleanerName) => {
+  return `
+  <table width="100%" style="background:#f5f5f5;padding:40px 0;font-family:Arial;">
+    <tr>
+      <td align="center">
+
+        <table width="520" style="background:#fff;border-radius:12px;padding:30px;text-align:center;">
+          
+          <img alt="Xpect Group" class="h-[30px] w-auto cursor-pointer" src="https://xpectgroup.co">
+
+          <h1 style="color:#2e7d32;">You're Verified 🎉</h1>
+
+          <p style="font-size:14px;color:#555;">
+            Hello <b>${cleanerName}</b>,<br/><br/>
+            Your background verification has been approved.<br/>
+            You can now start working.
+          </p>
+
+        </table>
+
+      </td>
+    </tr>
+  </table>
+  `;
 };

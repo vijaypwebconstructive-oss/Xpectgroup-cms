@@ -4,6 +4,10 @@ import ClientDetail   from './ClientDetail';
 import SitesList      from './SitesList';
 import SiteDetail     from './SiteDetail';
 import SiteAllocation from './SiteAllocation';
+import SiteInspection from './SiteInspection';
+import InspectionDetail from './InspectionDetail';
+import  InspectionCreate from "./InspectionCreate";
+import PPEModule from '../../views/PPEModule';
 import {
   CSState,
   getState,
@@ -12,18 +16,24 @@ import {
   csNavigate,
 } from './csNavStore';
 
-const ClientSitesModule: React.FC = () => {
-  const [csState, setCsState] = useState<CSState>(() => {
-    syncFromPathname(window.location.pathname);
-    return getState();
-  });
 
+
+
+
+const ClientSitesModule: React.FC = () => {
+  const [csState, setCsState] = useState<CSState>(getState());
   useEffect(() => {
+    // 🔥 move sync here
+    syncFromPathname(window.location.pathname);
+  
     const unsub = subscribe(setCsState);
+  
     const handlePopState = () => {
       syncFromPathname(window.location.pathname);
     };
+  
     window.addEventListener('popstate', handlePopState);
+  
     return () => {
       unsub();
       window.removeEventListener('popstate', handlePopState);
@@ -35,16 +45,26 @@ const ClientSitesModule: React.FC = () => {
   const goToSites      = ()           => csNavigate('sites');
   const goToSite       = (id: string) => csNavigate('site-detail', id);
   const goToAllocation = ()           => csNavigate('allocation');
+  const goToInspectionDetail = (id: string) =>
+    csNavigate('inspection-detail', id);
+
+  const goToCreateInspection = () =>
+    csNavigate('inspection-create');
+
 
   const isDetailOrAllocation =
     csState.view === 'client-detail' ||
     csState.view === 'site-detail' ||
-    csState.view === 'allocation';
+    csState.view === 'allocation' ||
+    csState.view === 'inspection-detail' ||
+    csState.view === 'PPE_LIST';
 
   const SUB_NAV: { key: CSState['view']; label: string; icon: string }[] = [
     { key: 'clients',    label: 'Clients',         icon: 'handshake' },
     { key: 'sites',      label: 'Work Sites',      icon: 'location_city' },
     { key: 'allocation', label: 'Site Allocation', icon: 'assignment_ind' },
+    { key: 'inspection', label: 'Site Inspection', icon: 'fact_check' },
+    {key:"PPE_LIST", label:"PPE_LIST", icon:'safety_check'}
   ];
 
   const renderContent = () => {
@@ -85,6 +105,33 @@ const ClientSitesModule: React.FC = () => {
             onBack={goToSites}
           />
         );
+      case 'inspection':
+        return (
+          <SiteInspection
+          onView={goToInspectionDetail}
+          onCreate={goToCreateInspection}/>
+        );
+
+        case 'inspection-detail':
+  return (
+    <InspectionDetail
+      inspectionId={csState.id ?? ''}
+      onBack={() => csNavigate('inspection')}
+    />
+  );
+
+  case 'inspection-create':
+  return (
+    <InspectionCreate
+      onBack={() => csNavigate('inspection')}
+      onSubmit={(id) => csNavigate('inspection-detail', id)}
+    />
+  );
+
+  case 'PPE_LIST':
+  return(
+    <PPEModule />
+  );
       default:
         return (
           <ClientsList

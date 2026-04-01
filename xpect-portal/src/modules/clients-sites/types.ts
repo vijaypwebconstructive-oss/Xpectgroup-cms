@@ -26,6 +26,7 @@ export interface Client {
   contactPerson: string;
   email: string;
   phone: string;
+  relation: 'Recurring' | 'Onetime';
   contractStart: string;   // ISO date
   contractEnd: string;     // ISO date
   insuranceExpiry: string; // ISO date
@@ -73,4 +74,36 @@ export interface WorkerAssignment {
 export interface TrainingRequirement {
   name: string;
   mandatory: boolean;
+}
+
+
+// types.ts
+
+export interface ChecklistItem {
+  label: string;
+  rating: number;
+}
+
+export interface Issue {
+  title: string;
+  severity: 'Low' | 'Medium' | 'High';
+}
+
+export interface Photo {
+  file: File;
+  preview: string;
+}
+
+export interface Inspection {
+  id: string;
+  site: string;
+  siteName: string;
+  inspector: string;
+  date: string;
+  checklist: ChecklistItem[];
+  issues: Issue[];
+  comments: string;
+  photos: Photo[];
+  score: number;
+  createdAt: string;
 }

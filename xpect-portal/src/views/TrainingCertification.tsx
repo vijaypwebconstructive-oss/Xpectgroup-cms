@@ -93,7 +93,7 @@ const TrainingCertification: React.FC<TrainingCertificationProps> = ({ onNavigat
     if (hasRunAutoReminder.current || cleaners.length === 0) return;
     hasRunAutoReminder.current = true;
     const run = async () => {
-      const expiring = recordsForExistingStaff.filter(r => isExpiringWithinDays(r.expiryDate || '', 30));
+      const expiring = recordsForExistingStaff.filter(r => isExpiringWithinDays(r.expiryDate || '', 90));
       if (expiring.length === 0) return;
       const recordsWithEmail: Array<{ id: string; name: string; course: string; expiryDate: string; email: string }> = [];
       for (const rec of expiring) {

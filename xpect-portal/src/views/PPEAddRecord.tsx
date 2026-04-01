@@ -133,6 +133,7 @@ const PPEAddRecord: React.FC<PPEAddRecordProps> = ({ onBack }) => {
   return (
     <div className="bg-white rounded-2xl border border-[#e7ebf3] shadow-sm overflow-hidden">
       <div className="px-6 py-5 border-b border-[#e7ebf3]">
+        {/* <button onClick={onBack}>onback</button> */}
         <h2 className="text-[#0d121b] text-lg font-bold font-black">Add PPE Record</h2>
         <p className="text-[#4c669a] text-sm mt-1">Create a PPE invoice record for a client.</p>
       </div>

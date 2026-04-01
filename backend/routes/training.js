@@ -2,8 +2,9 @@ import express from 'express';
 import { sendTrainingExpiryReminder } from '../services/emailService.js';
 
 const router = express.Router();
+const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || '').trim();
 
-const isExpiringWithinDays = (expiryDateStr, days = 30) => {
+const isExpiringWithinDays = (expiryDateStr, days = 90) => {
   if (!expiryDateStr) return false;
   const expiry = new Date(expiryDateStr);
   if (isNaN(expiry.getTime())) return false;
@@ -13,6 +14,19 @@ const isExpiringWithinDays = (expiryDateStr, days = 30) => {
   const diffMs = expiry - today;
   const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
   return diffDays >= 0 && diffDays <= days;
+};
+
+const sendReminderToCleanerAndAdmin = async ({ email, cleanerName, courseName, expiryDate }) => {
+  await sendTrainingExpiryReminder(email, cleanerName, courseName, expiryDate);
+
+  if (ADMIN_EMAIL) {
+    await sendTrainingExpiryReminder(
+      ADMIN_EMAIL,
+      'Admin',
+      `${courseName} (Cleaner: ${cleanerName})`,
+      expiryDate
+    );
+  }
 };
 
 /**
@@ -38,7 +52,7 @@ router.post('/send-expiry-reminder', async (req, res) => {
       });
     }
 
-    await sendTrainingExpiryReminder(email, cleanerName, courseName, expiryDate);
+    await sendReminderToCleanerAndAdmin({ email, cleanerName, courseName, expiryDate });
 
     res.status(200).json({
       success: true,
@@ -75,10 +89,10 @@ router.post('/check-and-send-expiry-reminders', async (req, res) => {
     for (const rec of recordsWithEmail) {
       const { id, name, course, expiryDate, email } = rec;
       if (!email || !emailRegex.test(email) || !name || !course || !expiryDate) continue;
-      if (!isExpiringWithinDays(expiryDate, 30)) continue;
+      if (!isExpiringWithinDays(expiryDate, 90)) continue;
 
       try {
-        await sendTrainingExpiryReminder(email, name, course, expiryDate);
+        await sendReminderToCleanerAndAdmin({ email, cleanerName: name, courseName: course, expiryDate });
         sent++;
       } catch (err) {
         console.error(`Failed to send reminder for record ${id}:`, err);

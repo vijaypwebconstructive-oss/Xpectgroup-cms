@@ -4,6 +4,7 @@ export interface InvoiceCompanyInfo {
   companyAddress: string;
   email: string;
   phone: string;
+  CRN: string;
 }
 
 export interface InvoiceInfo {
@@ -18,6 +19,7 @@ export interface BillByInfo {
   companyAddress: string;
   email: string;
   phone: string;
+  CRN:string;
 }
 
 export interface BillToInfo {
@@ -26,6 +28,7 @@ export interface BillToInfo {
   contactPerson: string;
   email: string;
   phone: string;
+  CRN:string;
 }
 
 export interface ServiceItemRow {
@@ -75,6 +78,7 @@ export const DEFAULT_INVOICE_FORM_DATA: InvoiceFormData = {
     companyAddress: '24 Kingsway Business Park, London, UK',
     email: 'info@sparkclean.co.uk',
     phone: '+44 20 1234 5678',
+    CRN:'12345678',
   },
   invoiceInfo: {
     invoiceNumber: 'INV-2026-001',
@@ -87,6 +91,7 @@ export const DEFAULT_INVOICE_FORM_DATA: InvoiceFormData = {
     companyAddress: '24 Kingsway Business Park, London, UK',
     email: 'info@sparkclean.co.uk',
     phone: '+44 20 1234 5678',
+    CRN:'12345678',
   },
   billTo: {
     clientName: 'Acme Corp',
@@ -94,6 +99,7 @@ export const DEFAULT_INVOICE_FORM_DATA: InvoiceFormData = {
     contactPerson: 'John Smith',
     email: 'accounts@acmecorp.co.uk',
     phone: '+44 161 123 4567',
+    CRN:'12345678',
   },
   serviceItems: DEFAULT_SERVICE_ITEMS,
   subtotal: '5400.00',

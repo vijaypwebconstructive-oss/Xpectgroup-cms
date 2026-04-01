@@ -23,6 +23,8 @@ import financeRoutes from './routes/finance.js';
 import payslipSettingsRoutes from './routes/payslipSettings.js';
 import invoiceSettingsRoutes from './routes/invoiceSettings.js';
 import prospectsRoutes from './routes/prospects.js';
+import inspectionRoutes from "./routes/inspectionRoutes.js";
+import performanceRoutes from "./routes/performanceRoutes.js";
 
 dotenv.config();
 
@@ -68,7 +70,10 @@ app.use('/api/finance', financeRoutes);
 app.use('/api/payslip-settings', payslipSettingsRoutes);
 app.use('/api/invoice-settings', invoiceSettingsRoutes);
 app.use('/api/prospects', prospectsRoutes);
-
+app.use("/api/inspections", inspectionRoutes);
+app.use("/uploads", express.static("uploads"));
+app.use("/api/performance", performanceRoutes);
+app.use(express.json());
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', message: 'Server is running' });

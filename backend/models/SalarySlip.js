@@ -1,26 +1,38 @@
 import mongoose from 'mongoose';
 import { randomUUID } from 'crypto';
 
-const SalarySlipSchema = new mongoose.Schema({
-  id: {
-    type: String,
-    required: true,
-    unique: true,
-    default: () => `ss-${randomUUID().slice(0, 8)}`,
-  },
-  payrollId: { type: String, required: true, index: true },
-  cleanerId: { type: String, required: true, index: true },
-  workerName: { type: String, required: true },
-  month: { type: Number, required: true },
-  year: { type: Number, required: true },
-  payPeriod: { type: String, required: true }, // e.g. "Jan 2026"
-  salaryAmount: { type: Number, required: true },
-  paymentStatus: { type: String, enum: ['Paid'], default: 'Paid' },
-  slipNumber: { type: String, required: true, unique: true },
-  pdfPath: { type: String, required: true },
-}, {
-  timestamps: true,
-});
 
-const SalarySlip = mongoose.model('SalarySlip', SalarySlipSchema);
+const salarySlipSchema = new mongoose.Schema({
+
+  payrollId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "PayrollRecord",
+    required: true
+  },
+
+  type: {
+    type: String,
+    enum: ["generated", "uploaded"],
+    default: "uploaded"
+  },
+
+  // 🔥 For uploaded slips
+  fileUrl: {
+    type: String
+  },
+
+  // 🔥 For generated slips (make optional)
+  cleanerId: { type: String, required: false },
+  workerName: { type: String, required: false },
+  month: { type: Number, required: false },
+  year: { type: Number, required: false },
+  salaryAmount: { type: Number, required: false },
+  payPeriod: { type: String, required: false },
+  slipNumber: { type: String, unique: true, sparse: true },
+  pdfPath: { type: String, required: false },
+
+}, { timestamps: true });
+
+
+const SalarySlip = mongoose.model('SalarySlip', salarySlipSchema);
 export default SalarySlip;

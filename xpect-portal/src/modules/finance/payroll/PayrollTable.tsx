@@ -13,7 +13,11 @@ export interface PayrollTableRow {
   monthlySalary: string;
   totalPayable: string;
   paymentStatus: 'Pending' | 'Paid';
-  salarySlip: { id: string } | null;
+  salarySlip: {
+    id: string;
+    type: 'generated' | 'uploaded';
+    fileUrl?: string;
+  } | null;
 }
 
 interface PayrollTableProps {
@@ -44,7 +48,7 @@ const PayrollTable: React.FC<PayrollTableProps> = ({
   onDelete,
   onDownloadPayslip,
   onSendPayslip,
-}) => (
+}) =>(
   <div className="bg-white rounded-xl border border-[#e7ebf3] shadow-sm overflow-hidden">
     <div className="overflow-x-auto">
       <table className="w-full min-w-[1100px]">
@@ -64,14 +68,12 @@ const PayrollTable: React.FC<PayrollTableProps> = ({
             <th className="text-left text-xs font-semibold text-[#6b7a99] uppercase tracking-wider px-4 py-3">Cleaner Name</th>
             <th className="text-left text-xs font-semibold text-[#6b7a99] uppercase tracking-wider px-4 py-3">Role</th>
             {/* <th className="text-left text-xs font-semibold text-[#6b7a99] uppercase tracking-wider px-4 py-3">Site</th> */}
-            <th className="text-left text-xs font-semibold text-[#6b7a99] uppercase tracking-wider px-4 py-3">Pay Type</th>
             <th className="text-left text-xs font-semibold text-[#6b7a99] uppercase tracking-wider px-4 py-3">Period</th>
             {/* <th className="text-left text-xs font-semibold text-[#6b7a99] uppercase tracking-wider px-4 py-3">Hours Worked</th> */}
             {/* <th className="text-left text-xs font-semibold text-[#6b7a99] uppercase tracking-wider px-4 py-3">Hourly Rate</th> */}
             {/* <th className="text-left text-xs font-semibold text-[#6b7a99] uppercase tracking-wider px-4 py-3">Monthly Salary</th> */}
             {/* <th className="text-left text-xs font-semibold text-[#6b7a99] uppercase tracking-wider px-4 py-3">Total Payable</th> */}
             <th className="text-left text-xs font-semibold text-[#6b7a99] uppercase tracking-wider px-4 py-3">Payment Status</th>
-            <th className="text-left text-xs font-semibold text-[#6b7a99] uppercase tracking-wider px-4 py-3">Payslip</th>
             <th className="text-left text-xs font-semibold text-[#6b7a99] uppercase tracking-wider px-4 py-3">Actions</th>
           </tr>
         </thead>
@@ -105,7 +107,6 @@ const PayrollTable: React.FC<PayrollTableProps> = ({
                 <td className="px-4 py-3 text-sm font-medium text-[#0d121b]">{row.cleanerName}</td>
                 <td className="px-4 py-3 text-sm text-[#4c669a]">{row.role}</td>
                 {/* <td className="px-4 py-3 text-sm text-[#4c669a]">{row.siteName}</td> */}
-                <td className="px-4 py-3 text-sm text-[#4c669a]">{row.payType}</td>
                 <td className="px-4 py-3 text-sm text-[#4c669a]">{row.period}</td>
                 {/* <td className="px-4 py-3 text-sm text-[#4c669a]">{row.payType === 'Hourly' ? row.hoursWorked : '—'}</td> */}
                 {/* <td className="px-4 py-3 text-sm text-[#4c669a]">{row.payType === 'Hourly' ? `£${row.hourlyRate}` : '—'}</td> */}
@@ -122,7 +123,7 @@ const PayrollTable: React.FC<PayrollTableProps> = ({
                     {row.paymentStatus}
                   </span>
                 </td>
-                <td className="px-4 py-3">
+                {/* <td className="px-4 py-3">
                   {row.salarySlip ? (
                     <div className="flex items-center gap-1">
                       {onDownloadPayslip && (
@@ -147,42 +148,37 @@ const PayrollTable: React.FC<PayrollTableProps> = ({
                           <span className="material-symbols-outlined text-[20px]">send</span>
                         </button>
                       )}
+                      
                     </div>
                   ) : (
                     <span className="text-[#6b7a99] text-sm">—</span>
                   )}
-                </td>
+                </td> */}
                 <td className="px-4 py-3">
-                  <div className="flex items-center gap-2">
-                    {onView && (
-                      <button
-                        type="button"
-                        onClick={() => onView(row.id)}
-                        className="text-[#4c669a] hover:text-[#2e4150] text-sm font-medium"
-                      >
-                        View
-                      </button>
-                    )}
-                    {onEdit && (
-                      <button
-                        type="button"
-                        onClick={() => onEdit(row.id)}
-                        className="text-[#4c669a] hover:text-[#2e4150] text-sm font-medium"
-                      >
-                        Edit
-                      </button>
-                    )}
-                    {onDelete && (
-                      <button
-                        type="button"
-                        onClick={() => onDelete(row.id)}
-                        className="text-red-600 hover:text-red-700 text-sm font-medium"
-                      >
-                        Delete
-                      </button>
-                    )}
-                  </div>
-                </td>
+  <div className="flex items-center gap-3">
+
+    {/* VIEW PAYSLIP */}
+    {row.salarySlip && (
+      <button
+        onClick={() => onDownloadPayslip(row.salarySlip.fileUrl)}
+        className="text-[#4c669a] hover:text-[#2e4150] text-sm font-medium"
+      >
+        View
+      </button>
+    )}
+
+    {/* DELETE */}
+    {onDelete && (
+      <button
+        onClick={() => onDelete(row.id)}
+        className="text-red-600 hover:text-red-700 text-sm font-medium"
+      >
+        Delete
+      </button>
+    )}
+
+  </div>
+</td>
               </tr>
             ))
           )}
@@ -190,6 +186,6 @@ const PayrollTable: React.FC<PayrollTableProps> = ({
       </table>
     </div>
   </div>
-);
+)
 
 export default PayrollTable;

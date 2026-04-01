@@ -17,7 +17,7 @@ const ProspectCreate: React.FC<Props> = ({ onBack, onCreated }) => {
 
   return (
     <div className="min-h-full bg-[#f6f7fb]">
-      <div className="bg-white border-b border-[#e7ebf3] sm:px-8 px-4 sm:py-5 py-3">
+      <div className=" sm:px-0 px-4 sm:py-0 py-3">
         <button
           onClick={onBack}
           className="flex items-center gap-1.5 text-sm text-[#6b7a99] hover:text-[#0d121b] transition-colors mb-4"
@@ -36,7 +36,7 @@ const ProspectCreate: React.FC<Props> = ({ onBack, onCreated }) => {
         </div>
       </div>
 
-      <div className="sm:px-8 px-4 sm:py-6 py-3">
+      <div className="sm:px-0 px-4 sm:py-6 py-3">
         <div className="bg-white rounded-xl border border-[#e7ebf3] shadow-sm p-6 max-w-2xl">
           <ProspectForm
             onSubmit={handleSubmit}
