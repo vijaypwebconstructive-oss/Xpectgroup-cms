@@ -1,11 +1,25 @@
-import { randomUUID } from 'crypto';
-import PayrollRecord from '../models/PayrollRecord.js';
-import SalarySlip from '../models/SalarySlip.js';
-import Cleaner from '../models/Cleaner.js';
-import { sendSalarySlipWithPdf } from './emailService.js';
-import { generateSalarySlipPdf, saveSalarySlipPdf } from './salarySlipPdf.js';
+import { randomUUID } from "crypto";
+import PayrollRecord from "../models/PayrollRecord.js";
+import SalarySlip from "../models/SalarySlip.js";
+import Cleaner from "../models/Cleaner.js";
+import { sendSalarySlipWithPdf } from "./emailService.js";
+import { generateSalarySlipPdf, saveSalarySlipPdf } from "./salarySlipPdf.js";
 
-const MONTHS_SHORT = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const MONTHS_SHORT = [
+  "",
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+];
 
 /**
  * Create and send salary slip for a payroll record (used when status → Paid)
@@ -17,10 +31,13 @@ export async function createAndSendSalarySlip(payrollDoc) {
   if (existingSlip) return;
 
   const slipId = `ss-${randomUUID().slice(0, 8)}`;
-  const slipNumber = `SS-${payrollDoc.year}${String(payrollDoc.month).padStart(2, '0')}-${slipId.slice(-6)}`;
+  const slipNumber = `SS-${payrollDoc.year}${String(payrollDoc.month).padStart(2, "0")}-${slipId.slice(-6)}`;
   const payPeriod = `${MONTHS_SHORT[payrollDoc.month] || payrollDoc.month} ${payrollDoc.year}`;
   const cleaner = await Cleaner.findOne({ id: payrollDoc.workerId }).lean();
-  const workerName = (payrollDoc.workerName || cleaner?.name || 'Unknown').trim() || cleaner?.name || 'Unknown';
+  const workerName =
+    (payrollDoc.workerName || cleaner?.name || "Unknown").trim() ||
+    cleaner?.name ||
+    "Unknown";
 
   const obj = payrollDoc.toObject ? payrollDoc.toObject() : payrollDoc;
   const pdfBuffer = await generateSalarySlipPdf(obj);
@@ -35,14 +52,20 @@ export async function createAndSendSalarySlip(payrollDoc) {
     year: payrollDoc.year,
     payPeriod,
     salaryAmount: payrollDoc.totalSalary,
-    paymentStatus: 'Paid',
+    paymentStatus: "Paid",
     slipNumber,
     pdfPath: relativePath,
   });
 
   const email = cleaner?.email;
   if (email) {
-    await sendSalarySlipWithPdf(email, workerName, obj, fullPath, `salary-slip-${payPeriod.replace(/\s/g, '-')}.pdf`);
+    await sendSalarySlipWithPdf(
+      email,
+      workerName,
+      obj,
+      fullPath,
+      `salary-slip-${payPeriod.replace(/\s/g, "-")}.pdf`,
+    );
   }
 
   if (payrollDoc.save) {
@@ -63,7 +86,10 @@ export async function regenerateSalarySlipPdf(payrollDoc) {
 
   const obj = payrollDoc.toObject ? payrollDoc.toObject() : payrollDoc;
   const pdfBuffer = await generateSalarySlipPdf(obj);
-  const { fullPath, relativePath } = await saveSalarySlipPdf(pdfBuffer, slip.id);
+  const { fullPath, relativePath } = await saveSalarySlipPdf(
+    pdfBuffer,
+    slip.id,
+  );
 
   slip.salaryAmount = payrollDoc.totalSalary;
   slip.workerName = payrollDoc.workerName || slip.workerName;
@@ -74,7 +100,6 @@ export async function regenerateSalarySlipPdf(payrollDoc) {
 }
 
 export const uploadPayslipService = async ({ employeeId, date, file }) => {
-
   const [year, month] = date.split("-");
 
   // 🔹 Get cleaner
@@ -85,7 +110,7 @@ export const uploadPayslipService = async ({ employeeId, date, file }) => {
   const exists = await PayrollRecord.findOne({
     workerId: employeeId,
     month: Number(month),
-    year: Number(year)
+    year: Number(year),
   });
 
   if (exists) {
@@ -108,14 +133,14 @@ export const uploadPayslipService = async ({ employeeId, date, file }) => {
     hourlyRate: cleaner.hourlyRate || 0,
 
     paymentStatus: "Pending",
-    role: "Cleaner"
+    role: "Cleaner",
   });
 
   // 🔥 Create SalarySlip
   const slip = await SalarySlip.create({
     payrollId: payroll._id,
     type: "uploaded",
-    fileUrl: `/uploads/${file.filename}`
+    fileUrl: `uploads/${file.filename}`,
   });
 
   return { payroll, slip };

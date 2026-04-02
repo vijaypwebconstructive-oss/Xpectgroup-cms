@@ -649,7 +649,6 @@ router.get("/salary-slips", async (req, res) => {
 });
 
 router.get("/salary-slips/:id", async (req, res) => {
-  console.log("9");
   try {
     const data = req.body;
 
@@ -680,7 +679,7 @@ router.get("/salary-slips/:id/download", async (req, res) => {
     const fsModule = await import("fs");
     const { fileURLToPath } = await import("url");
     const __dirname = pathModule.dirname(fileURLToPath(import.meta.url));
-    const fullPath = pathModule.join(__dirname, "..", slip.pdfPath);
+    const fullPath = pathModule.join(__dirname, slip.pdfPath);
     if (!fsModule.existsSync(fullPath))
       return res
         .status(404)
@@ -735,7 +734,7 @@ router.post("/salary-slips/send", async (req, res) => {
     const fsModule = await import("fs");
     const { fileURLToPath } = await import("url");
     const __dirname = pathModule.dirname(fileURLToPath(import.meta.url));
-    const fullPath = pathModule.join(__dirname, "..", slip.fileUrl);
+    const fullPath = pathModule.join(__dirname, slip.fileUrl);
 
     if (!fsModule.existsSync(fullPath)) {
       return res
