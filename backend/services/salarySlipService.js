@@ -140,7 +140,7 @@ export const uploadPayslipService = async ({ employeeId, date, file }) => {
   const slip = await SalarySlip.create({
     payrollId: payroll._id,
     type: "uploaded",
-    fileUrl: `uploads/${file.filename}`,
+    fileUrl: `/uploads/${file.filename}`,
   });
 
   return { payroll, slip };
