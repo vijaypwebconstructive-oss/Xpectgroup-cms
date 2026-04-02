@@ -1,13 +1,13 @@
-import React, { useEffect, useState } from 'react';
-import { financeNavigate } from '../../financeNavStore';
-import api from '../../../../services/api';
-import type { PayrollRecord } from '../../finance-payroll/types';
-import PayslipTemplate from '../../../../components/payroll/PayslipTemplate';
+import React, { useEffect, useState } from "react";
+import { financeNavigate } from "../../financeNavStore";
+import api from "../../../../services/api";
+import type { PayrollRecord } from "../../finance-payroll/types";
+import PayslipTemplate from "../../../../components/payroll/PayslipTemplate";
 import {
   buildPayslipTemplateData,
   type PayslipSettingsLike,
-} from '../../../../components/payroll/buildPayslipTemplateData';
-import type { PayslipTemplateData } from '../../../../components/payroll/payslipTemplateTypes';
+} from "../../../../components/payroll/buildPayslipTemplateData";
+import type { PayslipTemplateData } from "../../../../components/payroll/payslipTemplateTypes";
 
 interface PayslipViewPageProps {
   payslipId: string;
@@ -18,7 +18,10 @@ const PayslipViewPage: React.FC<PayslipViewPageProps> = ({ payslipId }) => {
   const [settings, setSettings] = useState<PayslipSettingsLike | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const isPlaceholder = payslipId === 'preview' || payslipId === 'generated' || payslipId === 'updated';
+  const isPlaceholder =
+    payslipId === "preview" ||
+    payslipId === "generated" ||
+    payslipId === "updated";
 
   useEffect(() => {
     const load = async () => {
@@ -46,13 +49,19 @@ const PayslipViewPage: React.FC<PayslipViewPageProps> = ({ payslipId }) => {
 
   useEffect(() => {
     if (isPlaceholder && !settings) {
-      api.payslipSettings.get().then((s) => setSettings(s as PayslipSettingsLike)).catch(() => {});
+      api.payslipSettings
+        .get()
+        .then((s) => setSettings(s as PayslipSettingsLike))
+        .catch(() => {});
     }
   }, [isPlaceholder, settings]);
 
   const handlePrint = () => window.print();
 
-  const templateData: PayslipTemplateData = buildPayslipTemplateData(payroll, settings);
+  const templateData: PayslipTemplateData = buildPayslipTemplateData(
+    payroll,
+    settings,
+  );
 
   if (loading && !isPlaceholder) {
     return (
@@ -68,10 +77,12 @@ const PayslipViewPage: React.FC<PayslipViewPageProps> = ({ payslipId }) => {
       <div className="flex flex-wrap items-center justify-between gap-4 mb-6 print:hidden">
         <button
           type="button"
-          onClick={() => financeNavigate('payroll-list')}
+          onClick={() => financeNavigate("payroll-list")}
           className="flex items-center gap-2 text-[#4c669a] hover:text-[#2e4150] font-semibold"
         >
-          <span className="material-symbols-outlined text-[20px]">arrow_back</span>
+          <span className="material-symbols-outlined text-[20px]">
+            arrow_back
+          </span>
           Back to Payroll
         </button>
         <button

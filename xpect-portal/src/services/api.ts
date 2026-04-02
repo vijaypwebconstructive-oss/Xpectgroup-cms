@@ -1247,6 +1247,14 @@ export const api = {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(updates),
         }),
+      send: (id: string) =>
+        fetchWithErrorHandling<{ success: boolean }>(
+          `${API_BASE_URL}/finance/quotations/${id}/send`,
+          {
+            method: "POST",
+          },
+        ),
+
       delete: (id: string) =>
         fetchWithErrorHandling<void>(
           `${API_BASE_URL}/finance/quotations/${id}`,

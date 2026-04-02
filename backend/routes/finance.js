@@ -8,9 +8,12 @@ import InvoiceSettings from "../models/InvoiceSettings.js";
 import Quotation from "../models/Quotation.js";
 import Cleaner from "../models/Cleaner.js";
 import WorkerAssignment from "../models/WorkerAssignment.js";
+import { generateInvoicePdf } from "../services/invoicePdf.js";
+import { generateQuotationPdf } from "../services/generateQuotationPdf.js";
 import {
   sendSalarySlipWithPdf,
   sendFinanceInvoice,
+  sendQuotationEmail,
 } from "../services/emailService.js";
 import {
   generateSalarySlipPdf,
@@ -410,6 +413,7 @@ router.get("/invoices/:id", async (req, res) => {
         .status(404)
         .json({ error: "Not found", message: "Invoice not found" });
     const status = computeInvoiceStatus(doc);
+    console.log("docs:", doc);
     res.json({ ...doc, status });
   } catch (err) {
     console.error("Error fetching invoice:", err);
@@ -456,24 +460,24 @@ router.post("/invoices", async (req, res) => {
   try {
     const body = req.body;
     const invoiceNumber = body.invoiceNumber || (await nextInvoiceNumber());
-    // const issueDate = body.issueDate || new Date().toISOString().split('T')[0];
-    // const dueDate = body.dueDate || issueDate;
-    const formatDate = (str) => {
-      if (!str) return new Date();
+    const issueDate = body.issueDate || new Date().toISOString().split("T")[0];
+    const dueDate = body.dueDate || issueDate;
+    // const formatDate = (str) => {
+    //   if (!str) return new Date();
 
-      // already ISO
-      if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
-        const [year, month, day] = str.split("-");
-        return new Date(Date.UTC(year, month - 1, day));
-      }
+    //   // already ISO
+    //   if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+    //     const [year, month, day] = str.split("-");
+    //     return new Date(Date.UTC(year, month - 1, day));
+    //   }
 
-      // dd-mm-yyyy
-      const [day, month, year] = str.split("-");
-      return new Date(Date.UTC(year, month - 1, day));
-    };
+    //   // dd-mm-yyyy
+    //   const [day, month, year] = str.split("-");
+    //   return new Date(Date.UTC(year, month - 1, day));
+    // };
 
-    const issueDate = formatDate(body.issueDate);
-    const dueDate = formatDate(body.dueDate);
+    // const issueDate = formatDate(body.issueDate);
+    // const dueDate = formatDate(body.dueDate);
 
     const status = body.status === "Paid" ? "Paid" : "Pending";
 
@@ -578,7 +582,15 @@ router.patch("/invoices/:id", async (req, res) => {
       )
         doc[k] = parseFloat(body[k]) || 0;
       else if (k === "issueDate" || k === "dueDate") {
-        doc[k] = formatDate(body[k]);
+        const d = new Date(body[k]);
+        if (isNaN(d.getTime())) {
+          return res.status(400).json({
+            error: "Invalid date",
+            message: `${k} is invalid`,
+          });
+        }
+
+        doc[k] = d;
       }
     }
     await doc.save();
@@ -610,33 +622,103 @@ router.delete("/invoices/:id", async (req, res) => {
   }
 });
 
+// router.post("/invoices/:id/send", async (req, res) => {
+
+//   try {
+//     const doc = await Invoice.findOne({ id: req.params.id }).lean();
+//     if (!doc)
+//       return res
+//         .status(404)
+//         .json({ error: "Not found", message: "Invoice not found" });
+//     const email = doc.billTo?.email?.trim();
+//     if (!email)
+//       return res.status(400).json({
+//         error: "Validation error",
+//         message: "Client email is required to send invoice",
+//       });
+//     await sendFinanceInvoice(email, doc.billTo?.clientName, doc);
+//     await Invoice.updateOne(
+//       { id: req.params.id },
+//       { $set: { status: "Sent" } },
+//     );
+//     const updated = await Invoice.findOne({ id: req.params.id }).lean();
+//     const obj = { ...updated, status: computeInvoiceStatus(updated) };
+//     res.json(obj);
+//   } catch (err) {
+//     console.error("Error sending invoice:", err);
+//     res
+//       .status(500)
+//       .json({ error: "Failed to send invoice", message: err.message });
+//   }
+// });
+
+// router.post("/invoices/:id/send", async (req, res) => {
+//   try {
+//     const doc = await Invoice.findOne({ id: req.params.id }).lean();
+
+//     if (!doc) {
+//       return res.status(404).json({ error: "Invoice not found" });
+//     }
+
+//     const email = doc.billTo?.email?.trim();
+
+//     if (!email) {
+//       return res.status(400).json({
+//         error: "Client email is required",
+//       });
+//     }
+
+//     // 🔥 STEP 1: Generate PDF
+//     const pdfBuffer = await generateInvoicePdf(doc);
+
+//     // 🔥 STEP 2: Send Email with attachment
+//     await sendFinanceInvoice(email, doc.billTo?.clientName, doc, pdfBuffer);
+
+//     // 🔥 STEP 3: Update status
+//     await Invoice.updateOne(
+//       { id: req.params.id },
+//       { $set: { status: "Sent" } },
+//     );
+
+//     res.json({ success: true });
+//   } catch (err) {
+//     console.error(err);
+//     res.status(500).json({ error: "Failed to send invoice" });
+//   }
+// });
+
 router.post("/invoices/:id/send", async (req, res) => {
-  console.log("11");
   try {
     const doc = await Invoice.findOne({ id: req.params.id }).lean();
-    if (!doc)
-      return res
-        .status(404)
-        .json({ error: "Not found", message: "Invoice not found" });
+
+    if (!doc) {
+      return res.status(404).json({ error: "Invoice not found" });
+    }
+
     const email = doc.billTo?.email?.trim();
-    if (!email)
+
+    if (!email) {
       return res.status(400).json({
-        error: "Validation error",
-        message: "Client email is required to send invoice",
+        error: "Client email is required",
       });
-    await sendFinanceInvoice(email, doc.billTo?.clientName, doc);
+    }
+
+    // 🔥 1. Generate PDF from YOUR UI
+    const pdfBuffer = await generateInvoicePdf(doc.id);
+
+    // 🔥 2. Send email with attachment
+    await sendFinanceInvoice(email, doc.billTo?.clientName, doc, pdfBuffer);
+
+    // 🔥 3. Update status
     await Invoice.updateOne(
       { id: req.params.id },
       { $set: { status: "Sent" } },
     );
-    const updated = await Invoice.findOne({ id: req.params.id }).lean();
-    const obj = { ...updated, status: computeInvoiceStatus(updated) };
-    res.json(obj);
+
+    res.json({ success: true });
   } catch (err) {
-    console.error("Error sending invoice:", err);
-    res
-      .status(500)
-      .json({ error: "Failed to send invoice", message: err.message });
+    console.error(err);
+    res.status(500).json({ error: "Failed to send invoice" });
   }
 });
 
@@ -711,8 +793,8 @@ router.get("/salary-slips/:id/download", async (req, res) => {
 router.post("/salary-slips/send", async (req, res) => {
   try {
     const data = req.body;
+    console.log("data", data);
 
-    console.log("Received:", data);
     const slip = await SalarySlip.findById(data.salarySlip._id).lean();
     console.log("slip:", slip);
     if (!slip)
@@ -746,7 +828,8 @@ router.post("/salary-slips/send", async (req, res) => {
     const fsModule = await import("fs");
     const { fileURLToPath } = await import("url");
     const __dirname = pathModule.dirname(fileURLToPath(import.meta.url));
-    const fullPath = pathModule.join(__dirname, slip.fileUrl);
+    const fullPath = pathModule.join(process.cwd(), slip.fileUrl);
+    console.log("fullpath", fullPath);
 
     if (!fsModule.existsSync(fullPath)) {
       return res
@@ -903,7 +986,6 @@ router.get("/site-contracts/:id", async (req, res) => {
 });
 
 router.post("/site-contracts", async (req, res) => {
-  console.log("6");
   try {
     const {
       siteId,
@@ -993,9 +1075,9 @@ router.patch("/site-contracts/:id", async (req, res) => {
 // ── Quotations ─────────────────────────────────────────────────────
 
 function normalizeQuotationDoc(doc) {
-  console.log("5");
   if (!doc) return doc;
   const d = { ...doc };
+
   d.billTo = d.billTo || {};
   if (!d.billTo.clientName && d.clientName) d.billTo.clientName = d.clientName;
   if (!d.billTo.email && d.clientEmail) d.billTo.email = d.clientEmail;
@@ -1029,7 +1111,6 @@ function normalizeQuotationDoc(doc) {
 }
 
 router.get("/quotations", async (req, res) => {
-  console.log("4");
   try {
     const docs = await Quotation.find().sort({ createdAt: -1 }).lean();
     res.json(docs.map(normalizeQuotationDoc));
@@ -1058,7 +1139,6 @@ router.get("/quotations/:id", async (req, res) => {
 });
 
 router.post("/quotations", async (req, res) => {
-  console.log("3");
   try {
     const body = req.body;
     const hasNewFormat =
@@ -1163,7 +1243,6 @@ router.post("/quotations", async (req, res) => {
 });
 
 router.patch("/quotations/:id", async (req, res) => {
-  console.log("2");
   try {
     const doc = await Quotation.findOne({ id: req.params.id });
     if (!doc)
@@ -1222,7 +1301,14 @@ router.patch("/quotations/:id", async (req, res) => {
       else if (["numCleaners", "hoursPerVisit", "visitsPerWeek"].includes(k))
         doc[k] = parseInt(body[k], 10) || 0;
       else if (k === "issueDate" || k === "expiryDate") {
-        doc[k] = formatDate(body[k]);
+        const d = new Date(body[k]);
+        if (isNaN(d.getTime())) {
+          return res.status(400).json({
+            error: "Invalid date",
+            message: `${k} is invalid`,
+          });
+        }
+        doc[k] = d;
       }
     }
     await doc.save();
@@ -1235,8 +1321,42 @@ router.patch("/quotations/:id", async (req, res) => {
   }
 });
 
+router.post("/quotations/:id/send", async (req, res) => {
+  try {
+    const doc = await Quotation.findOne({ id: req.params.id }).lean();
+
+    if (!doc) {
+      return res.status(404).json({ error: "Quotation not found" });
+    }
+
+    const email = doc.billTo?.email?.trim();
+
+    if (!email) {
+      return res.status(400).json({
+        error: "Client email is required",
+      });
+    }
+
+    // 🔥 Generate PDF from YOUR UI
+    const pdfBuffer = await generateQuotationPdf(doc.id);
+
+    // 🔥 Send email
+    await sendQuotationEmail(email, doc.billTo?.clientName, doc, pdfBuffer);
+
+    // 🔥 Update status
+    await Quotation.updateOne(
+      { id: req.params.id },
+      { $set: { status: "Sent" } },
+    );
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to send quotation" });
+  }
+});
+
 router.delete("/quotations/:id", async (req, res) => {
-  console.log("1");
   try {
     const doc = await Quotation.findOneAndDelete({ id: req.params.id });
     if (!doc)

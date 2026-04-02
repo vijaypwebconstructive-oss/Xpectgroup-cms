@@ -25,10 +25,10 @@ const QuotationForm: React.FC<Props> = ({ mode, quotationId, initialData }) => {
   const { addQuotation, updateQuotation, refreshQuotations } = useFinance();
   const defaults = { ...DEFAULT_QUOTATION_FORM_DATA, ...initialData };
 
-  const [company, setCompany] = useState(defaults.company);
   const [quotationInfo, setQuotationInfo] = useState(defaults.quotationInfo);
   const [billBy, setBillBy] = useState(defaults.billBy);
   const [billTo, setBillTo] = useState(defaults.billTo);
+  console.log("defaults", billBy);
   const [serviceItems, setServiceItems] = useState(
     defaults.serviceItems ?? DEFAULT_QUOTATION_SERVICE_ITEMS,
   );
@@ -131,8 +131,6 @@ const QuotationForm: React.FC<Props> = ({ mode, quotationId, initialData }) => {
     }
   };
 
-  console.log("company value", billBy);
-
   const handlePreview = () =>
     financeNavigate("quotation-view", quotationId || "preview");
   const handleCancel = () => financeNavigate("quotation-list");
@@ -159,7 +157,7 @@ const QuotationForm: React.FC<Props> = ({ mode, quotationId, initialData }) => {
 
         <div className="bg-[#fafbfd] rounded-xl border border-[#e7ebf3] p-4 sm:p-6 space-y-6">
           <CompanyInformationForm
-            value={company}
+            value={billBy}
             onChange={(v) => {
               setBillBy((prev) => ({ ...prev, ...v }));
               setCompany((prev) => ({ ...prev, ...v }));

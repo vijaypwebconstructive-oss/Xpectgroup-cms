@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from "react";
 
 interface QuotationTableActionsProps {
   onAddQuotation?: () => void;
@@ -9,16 +9,18 @@ interface QuotationTableActionsProps {
   onBulkMarkAsSent?: () => void;
   onBulkDelete?: () => void;
   bulkLoading?: boolean;
+  onSend: (id: string) => void;
 }
 
 const QuotationTableActions: React.FC<QuotationTableActionsProps> = ({
   onAddQuotation,
   onExportCsv,
-  sortValue = '',
+  sortValue = "",
   onSortChange,
   selectedCount = 0,
   onBulkMarkAsSent,
   onBulkDelete,
+  onSend,
   bulkLoading = false,
 }) => {
   const [bulkOpen, setBulkOpen] = useState(false);
@@ -26,12 +28,15 @@ const QuotationTableActions: React.FC<QuotationTableActionsProps> = ({
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(e.target as Node)
+      ) {
         setBulkOpen(false);
       }
     };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   return (
@@ -53,7 +58,9 @@ const QuotationTableActions: React.FC<QuotationTableActionsProps> = ({
             onClick={onExportCsv}
             className="flex items-center gap-2 px-4 py-2 bg-white border border-[#e7ebf3] text-[#4c669a] rounded-lg text-sm font-semibold hover:bg-[#f2f6f9] transition-colors"
           >
-            <span className="material-symbols-outlined text-[18px]">download</span>
+            <span className="material-symbols-outlined text-[18px]">
+              download
+            </span>
             Export As CSV
           </button>
         )}
@@ -61,12 +68,14 @@ const QuotationTableActions: React.FC<QuotationTableActionsProps> = ({
           <div className="relative" ref={dropdownRef}>
             <button
               type="button"
-              onClick={() => setBulkOpen(o => !o)}
+              onClick={() => setBulkOpen((o) => !o)}
               disabled={bulkLoading}
               className="flex items-center gap-2 px-4 py-2 bg-white border border-[#e7ebf3] text-[#4c669a] rounded-lg text-sm font-semibold hover:bg-[#f2f6f9] transition-colors disabled:opacity-60"
             >
               Bulk Actions
-              <span className="material-symbols-outlined text-[18px]">expand_more</span>
+              <span className="material-symbols-outlined text-[18px]">
+                expand_more
+              </span>
             </button>
             {bulkOpen && (
               <div className="absolute top-full left-0 mt-1 py-1 bg-white border border-[#e7ebf3] rounded-lg shadow-lg z-10 min-w-[200px]">
@@ -103,7 +112,7 @@ const QuotationTableActions: React.FC<QuotationTableActionsProps> = ({
         {onSortChange && (
           <select
             value={sortValue}
-            onChange={e => onSortChange(e.target.value)}
+            onChange={(e) => onSortChange(e.target.value)}
             className="h-9 px-3 py-2 bg-[#f6f7fb] border border-[#e7ebf3] rounded-lg text-sm text-[#0d121b] focus:outline-none focus:ring-2 focus:ring-[#2e4150]/20 min-w-[140px]"
           >
             <option value="">Sort by</option>

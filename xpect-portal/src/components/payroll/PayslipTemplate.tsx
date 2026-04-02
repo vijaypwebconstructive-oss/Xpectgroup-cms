@@ -1,5 +1,5 @@
-import React from 'react';
-import type { PayslipTemplateData } from './payslipTemplateTypes';
+import React from "react";
+import type { PayslipTemplateData } from "./payslipTemplateTypes";
 
 export interface PayslipTemplateProps {
   data: PayslipTemplateData;
@@ -15,7 +15,11 @@ export interface PayslipTemplateProps {
  * - PDF download (backend mirrors this layout)
  * - Email attachments (PDF)
  */
-const PayslipTemplate: React.FC<PayslipTemplateProps> = ({ data, className = '', printMode = false }) => {
+const PayslipTemplate: React.FC<PayslipTemplateProps> = ({
+  data,
+  className = "",
+  printMode = false,
+}) => {
   const {
     company,
     employee,
@@ -32,8 +36,11 @@ const PayslipTemplate: React.FC<PayslipTemplateProps> = ({ data, className = '',
   } = data;
 
   const formatCurrency = (val: string) => {
-    const n = parseFloat(String(val).replace(/,/g, '')) || 0;
-    return n.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const n = parseFloat(String(val).replace(/,/g, "")) || 0;
+    return n.toLocaleString("en-GB", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
   };
 
   return (
@@ -45,27 +52,43 @@ const PayslipTemplate: React.FC<PayslipTemplateProps> = ({ data, className = '',
       <div className="flex flex-wrap justify-between items-start gap-6 pb-4 border-b-2 border-[#2e4150]">
         <div className="space-y-1">
           {company.companyLogoBase64 ? (
-            <img src={company.companyLogoBase64} alt="Company" className="h-12 w-auto print:h-10" />
+            <img
+              src={company.companyLogoBase64}
+              alt="Company"
+              className="h-12 w-auto print:h-10"
+            />
           ) : (
-            <img src="/logo.webp" alt="Company" className="h-12 w-auto print:h-10" />
+            <img
+              src="/logo.webp"
+              alt="Company"
+              className="h-12 w-auto print:h-10"
+            />
           )}
-          <p className="text-lg font-bold text-[#0d121b]">{company.companyName}</p>
+          <p className="text-lg font-bold text-[#0d121b]">
+            {company.companyName}
+          </p>
           <p className="text-sm text-[#4c669a]">{company.companyAddress}</p>
-          <p className="text-sm text-[#4c669a]">PAYE Reference: {company.payeReference}</p>
+          <p className="text-sm text-[#4c669a]">
+            PAYE Reference: {company.payeReference}
+          </p>
         </div>
         <div className="text-right">
-          <h1 className="text-xl font-black font-bold text-[#0d121b] tracking-wide uppercase">Payslip</h1>
+          <h1 className="text-xl font-black font-bold text-[#0d121b] tracking-wide uppercase">
+            Payslip
+          </h1>
           <div className="mt-3 space-y-1 text-sm">
             <p>
-              <span className="font-semibold text-[#6b7a99]">Pay Period:</span>{' '}
+              <span className="font-semibold text-[#6b7a99]">Pay Period:</span>{" "}
               <span className="text-[#0d121b]">{company.payPeriod}</span>
             </p>
             <p>
-              <span className="font-semibold text-[#6b7a99]">Pay Date:</span>{' '}
+              <span className="font-semibold text-[#6b7a99]">Pay Date:</span>{" "}
               <span className="text-[#0d121b]">{company.payDate}</span>
             </p>
             <p>
-              <span className="font-semibold text-[#6b7a99]">Payslip Number:</span>{' '}
+              <span className="font-semibold text-[#6b7a99]">
+                Payslip Number:
+              </span>{" "}
               <span className="text-[#0d121b]">{company.payslipNumber}</span>
             </p>
           </div>
@@ -74,33 +97,59 @@ const PayslipTemplate: React.FC<PayslipTemplateProps> = ({ data, className = '',
 
       {/* Employee Information */}
       <div className="mt-6">
-        <h2 className="text-sm font-bold text-[#6b7a99] uppercase tracking-wide mb-2">Employee Information</h2>
+        <h2 className="text-sm font-bold text-[#6b7a99] uppercase tracking-wide mb-2">
+          Employee Information
+        </h2>
         <div className="bg-white rounded-xl border border-[#e7ebf3] overflow-hidden">
           <table className="w-full text-sm">
             <tbody>
               <tr className="border-b border-[#e7ebf3]">
-                <td className="px-4 py-3 w-1/3 font-semibold text-[#6b7a99] bg-[#f6f7fb]">Employee ID</td>
-                <td className="px-4 py-3 text-[#0d121b]">{employee.employeeId}</td>
+                <td className="px-4 py-3 w-1/3 font-semibold text-[#6b7a99] bg-[#f6f7fb]">
+                  Employee ID
+                </td>
+                <td className="px-4 py-3 text-[#0d121b]">
+                  {employee.employeeId}
+                </td>
               </tr>
               <tr className="border-b border-[#e7ebf3]">
-                <td className="px-4 py-3 font-semibold text-[#6b7a99] bg-[#f6f7fb]">Employee Name</td>
-                <td className="px-4 py-3 text-[#0d121b]">{employee.employeeName}</td>
+                <td className="px-4 py-3 font-semibold text-[#6b7a99] bg-[#f6f7fb]">
+                  Employee Name
+                </td>
+                <td className="px-4 py-3 text-[#0d121b]">
+                  {employee.employeeName}
+                </td>
               </tr>
               <tr className="border-b border-[#e7ebf3]">
-                <td className="px-4 py-3 font-semibold text-[#6b7a99] bg-[#f6f7fb]">Department</td>
-                <td className="px-4 py-3 text-[#0d121b]">{employee.department}</td>
+                <td className="px-4 py-3 font-semibold text-[#6b7a99] bg-[#f6f7fb]">
+                  Department
+                </td>
+                <td className="px-4 py-3 text-[#0d121b]">
+                  {employee.department}
+                </td>
               </tr>
               <tr className="border-b border-[#e7ebf3]">
-                <td className="px-4 py-3 font-semibold text-[#6b7a99] bg-[#f6f7fb]">Job Title</td>
-                <td className="px-4 py-3 text-[#0d121b]">{employee.jobTitle}</td>
+                <td className="px-4 py-3 font-semibold text-[#6b7a99] bg-[#f6f7fb]">
+                  Job Title
+                </td>
+                <td className="px-4 py-3 text-[#0d121b]">
+                  {employee.jobTitle}
+                </td>
               </tr>
               <tr className="border-b border-[#e7ebf3]">
-                <td className="px-4 py-3 font-semibold text-[#6b7a99] bg-[#f6f7fb]">National Insurance Number</td>
-                <td className="px-4 py-3 text-[#0d121b]">{employee.niNumber || '—'}</td>
+                <td className="px-4 py-3 font-semibold text-[#6b7a99] bg-[#f6f7fb]">
+                  National Insurance Number
+                </td>
+                <td className="px-4 py-3 text-[#0d121b]">
+                  {employee.niNumber || "—"}
+                </td>
               </tr>
               <tr>
-                <td className="px-4 py-3 font-semibold text-[#6b7a99] bg-[#f6f7fb]">Tax Code</td>
-                <td className="px-4 py-3 text-[#0d121b]">{employee.taxCode || '—'}</td>
+                <td className="px-4 py-3 font-semibold text-[#6b7a99] bg-[#f6f7fb]">
+                  Tax Code
+                </td>
+                <td className="px-4 py-3 text-[#0d121b]">
+                  {employee.taxCode || "—"}
+                </td>
               </tr>
             </tbody>
           </table>
@@ -110,7 +159,9 @@ const PayslipTemplate: React.FC<PayslipTemplateProps> = ({ data, className = '',
       {/* Earnings & Deductions */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6 print:grid-cols-2">
         <div>
-          <h2 className="text-sm font-bold text-[#6b7a99] uppercase tracking-wide mb-2">Earnings</h2>
+          <h2 className="text-sm font-bold text-[#6b7a99] uppercase tracking-wide mb-2">
+            Earnings
+          </h2>
           <div className="bg-white rounded-xl border border-[#e7ebf3] overflow-hidden">
             <table className="w-full text-sm">
               <thead>
@@ -132,24 +183,36 @@ const PayslipTemplate: React.FC<PayslipTemplateProps> = ({ data, className = '',
               <tbody>
                 {earningsRows.map((row, i) => (
                   <tr key={i} className="border-b border-[#e7ebf3]">
-                    <td className="px-4 py-3 text-[#0d121b]">{row.description}</td>
-                    <td className="px-4 py-3 text-right font-medium text-[#0d121b]">{row.hours}</td>
-                    <td className="px-4 py-3 text-right font-medium text-[#0d121b]">{row.rate}</td>
-                    <td className="px-4 py-3 text-right font-medium text-[#0d121b]">{row.amount}</td>
+                    <td className="px-4 py-3 text-[#0d121b]">
+                      {row.description}
+                    </td>
+                    <td className="px-4 py-3 text-right font-medium text-[#0d121b]">
+                      {row.hours}
+                    </td>
+                    <td className="px-4 py-3 text-right font-medium text-[#0d121b]">
+                      {row.rate}
+                    </td>
+                    <td className="px-4 py-3 text-right font-medium text-[#0d121b]">
+                      {row.amount}
+                    </td>
                   </tr>
                 ))}
                 <tr className="border-t-2 border-[#2e4150] bg-[#f6f7fb] font-bold">
                   <td className="px-4 py-3 text-[#0d121b]" colSpan={3}>
                     Gross Pay
                   </td>
-                  <td className="px-4 py-3 text-right text-[#0d121b]">£{formatCurrency(grossPay)}</td>
+                  <td className="px-4 py-3 text-right text-[#0d121b]">
+                    £{formatCurrency(grossPay)}
+                  </td>
                 </tr>
               </tbody>
             </table>
           </div>
         </div>
         <div>
-          <h2 className="text-sm font-bold text-[#6b7a99] uppercase tracking-wide mb-2">Deductions</h2>
+          <h2 className="text-sm font-bold text-[#6b7a99] uppercase tracking-wide mb-2">
+            Deductions
+          </h2>
           <div className="bg-white rounded-xl border border-[#e7ebf3] overflow-hidden">
             <table className="w-full text-sm">
               <thead>
@@ -165,13 +228,19 @@ const PayslipTemplate: React.FC<PayslipTemplateProps> = ({ data, className = '',
               <tbody>
                 {deductionsRows.map((row, i) => (
                   <tr key={i} className="border-b border-[#e7ebf3]">
-                    <td className="px-4 py-3 text-[#0d121b]">{row.description}</td>
-                    <td className="px-4 py-3 text-right font-medium text-[#0d121b]">{row.amount}</td>
+                    <td className="px-4 py-3 text-[#0d121b]">
+                      {row.description}
+                    </td>
+                    <td className="px-4 py-3 text-right font-medium text-[#0d121b]">
+                      {row.amount}
+                    </td>
                   </tr>
                 ))}
                 <tr className="border-t-2 border-[#2e4150] bg-[#f6f7fb] font-bold">
                   <td className="px-4 py-3 text-[#0d121b]">Total Deductions</td>
-                  <td className="px-4 py-3 text-right text-[#0d121b]">£{formatCurrency(totalDeductions)}</td>
+                  <td className="px-4 py-3 text-right text-[#0d121b]">
+                    £{formatCurrency(totalDeductions)}
+                  </td>
                 </tr>
               </tbody>
             </table>
@@ -181,25 +250,41 @@ const PayslipTemplate: React.FC<PayslipTemplateProps> = ({ data, className = '',
 
       {/* Net Pay Summary */}
       <div className="mt-6">
-        <h2 className="text-sm font-bold text-[#6b7a99] uppercase tracking-wide mb-2">Net Salary Summary</h2>
+        <h2 className="text-sm font-bold text-[#6b7a99] uppercase tracking-wide mb-2">
+          Net Salary Summary
+        </h2>
         <div className="bg-[#2e4150] rounded-xl border border-[#2e4150] overflow-hidden">
           <table className="w-full text-sm">
             <tbody>
               <tr className="border-b border-white/20">
-                <td className="px-4 py-3 w-1/3 font-semibold text-white/90">Gross Pay</td>
-                <td className="px-4 py-3 text-right text-white">£{formatCurrency(grossPay)}</td>
+                <td className="px-4 py-3 w-1/3 font-semibold text-white/90">
+                  Gross Pay
+                </td>
+                <td className="px-4 py-3 text-right text-white">
+                  £{formatCurrency(grossPay)}
+                </td>
               </tr>
               <tr className="border-b border-white/20">
-                <td className="px-4 py-3 font-semibold text-white/90">Total Deductions</td>
-                <td className="px-4 py-3 text-right text-white">£{formatCurrency(totalDeductions)}</td>
+                <td className="px-4 py-3 font-semibold text-white/90">
+                  Total Deductions
+                </td>
+                <td className="px-4 py-3 text-right text-white">
+                  £{formatCurrency(totalDeductions)}
+                </td>
               </tr>
               <tr>
                 <td className="px-4 py-4 font-bold text-white">Net Pay</td>
-                <td className="px-4 py-4 text-right font-bold text-white text-lg">£{formatCurrency(netPay)}</td>
+                <td className="px-4 py-4 text-right font-bold text-white text-lg">
+                  £{formatCurrency(netPay)}
+                </td>
               </tr>
               <tr>
-                <td className="px-4 py-3 font-semibold text-white/90 align-top">Net Pay in Words</td>
-                <td className="px-4 py-3 text-right text-white">{netPayInWords || '—'}</td>
+                <td className="px-4 py-3 font-semibold text-white/90 align-top">
+                  Net Pay in Words
+                </td>
+                <td className="px-4 py-3 text-right text-white">
+                  {netPayInWords || "—"}
+                </td>
               </tr>
             </tbody>
           </table>
@@ -208,7 +293,9 @@ const PayslipTemplate: React.FC<PayslipTemplateProps> = ({ data, className = '',
 
       {/* Year To Date Summary */}
       <div className="mt-6">
-        <h2 className="text-sm font-bold text-[#6b7a99] uppercase tracking-wide mb-2">Year To Date Summary</h2>
+        <h2 className="text-sm font-bold text-[#6b7a99] uppercase tracking-wide mb-2">
+          Year To Date Summary
+        </h2>
         <div className="bg-white rounded-xl border border-[#e7ebf3] overflow-hidden">
           <table className="w-full text-sm">
             <thead>
@@ -223,20 +310,36 @@ const PayslipTemplate: React.FC<PayslipTemplateProps> = ({ data, className = '',
             </thead>
             <tbody>
               <tr className="border-b border-[#e7ebf3]">
-                <td className="px-4 py-3 font-semibold text-[#6b7a99] bg-[#f6f7fb]">Gross Pay YTD</td>
-                <td className="px-4 py-3 text-right text-[#0d121b]">£{formatCurrency(ytdSummary.grossPayYTD)}</td>
+                <td className="px-4 py-3 font-semibold text-[#6b7a99] bg-[#f6f7fb]">
+                  Gross Pay YTD
+                </td>
+                <td className="px-4 py-3 text-right text-[#0d121b]">
+                  £{formatCurrency(ytdSummary.grossPayYTD)}
+                </td>
               </tr>
               <tr className="border-b border-[#e7ebf3]">
-                <td className="px-4 py-3 font-semibold text-[#6b7a99] bg-[#f6f7fb]">Tax Paid YTD</td>
-                <td className="px-4 py-3 text-right text-[#0d121b]">£{formatCurrency(ytdSummary.taxPaidYTD)}</td>
+                <td className="px-4 py-3 font-semibold text-[#6b7a99] bg-[#f6f7fb]">
+                  Tax Paid YTD
+                </td>
+                <td className="px-4 py-3 text-right text-[#0d121b]">
+                  £{formatCurrency(ytdSummary.taxPaidYTD)}
+                </td>
               </tr>
               <tr className="border-b border-[#e7ebf3]">
-                <td className="px-4 py-3 font-semibold text-[#6b7a99] bg-[#f6f7fb]">NI Paid YTD</td>
-                <td className="px-4 py-3 text-right text-[#0d121b]">£{formatCurrency(ytdSummary.niPaidYTD)}</td>
+                <td className="px-4 py-3 font-semibold text-[#6b7a99] bg-[#f6f7fb]">
+                  NI Paid YTD
+                </td>
+                <td className="px-4 py-3 text-right text-[#0d121b]">
+                  £{formatCurrency(ytdSummary.niPaidYTD)}
+                </td>
               </tr>
               <tr>
-                <td className="px-4 py-3 font-semibold text-[#6b7a99] bg-[#f6f7fb]">Pension YTD</td>
-                <td className="px-4 py-3 text-right text-[#0d121b]">£{formatCurrency(ytdSummary.pensionYTD)}</td>
+                <td className="px-4 py-3 font-semibold text-[#6b7a99] bg-[#f6f7fb]">
+                  Pension YTD
+                </td>
+                <td className="px-4 py-3 text-right text-[#0d121b]">
+                  £{formatCurrency(ytdSummary.pensionYTD)}
+                </td>
               </tr>
             </tbody>
           </table>
@@ -246,7 +349,9 @@ const PayslipTemplate: React.FC<PayslipTemplateProps> = ({ data, className = '',
       {/* Leave Summary */}
       {leaveRows.length > 0 && (
         <div className="mt-6">
-          <h2 className="text-sm font-bold text-[#6b7a99] uppercase tracking-wide mb-2">Leave Summary</h2>
+          <h2 className="text-sm font-bold text-[#6b7a99] uppercase tracking-wide mb-2">
+            Leave Summary
+          </h2>
           <div className="bg-white rounded-xl border border-[#e7ebf3] overflow-hidden">
             <table className="w-full text-sm">
               <thead>
@@ -268,10 +373,18 @@ const PayslipTemplate: React.FC<PayslipTemplateProps> = ({ data, className = '',
               <tbody>
                 {leaveRows.map((row, i) => (
                   <tr key={i} className="border-b border-[#e7ebf3]">
-                    <td className="px-4 py-3 text-[#0d121b]">{row.leaveType}</td>
-                    <td className="px-4 py-3 text-center text-[#0d121b]">{row.entitled}</td>
-                    <td className="px-4 py-3 text-center text-[#0d121b]">{row.used}</td>
-                    <td className="px-4 py-3 text-center font-medium text-[#0d121b]">{row.balance}</td>
+                    <td className="px-4 py-3 text-[#0d121b]">
+                      {row.leaveType}
+                    </td>
+                    <td className="px-4 py-3 text-center text-[#0d121b]">
+                      {row.entitled}
+                    </td>
+                    <td className="px-4 py-3 text-center text-[#0d121b]">
+                      {row.used}
+                    </td>
+                    <td className="px-4 py-3 text-center font-medium text-[#0d121b]">
+                      {row.balance}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -283,7 +396,9 @@ const PayslipTemplate: React.FC<PayslipTemplateProps> = ({ data, className = '',
       {/* Notes */}
       {notes && (
         <div className="mt-6">
-          <h2 className="text-sm font-bold text-[#6b7a99] uppercase tracking-wide mb-2">Notes</h2>
+          <h2 className="text-sm font-bold text-[#6b7a99] uppercase tracking-wide mb-2">
+            Notes
+          </h2>
           <p className="text-sm text-[#0d121b] bg-[#f6f7fb] rounded-xl border border-[#e7ebf3] px-4 py-3">
             {notes}
           </p>
@@ -294,17 +409,26 @@ const PayslipTemplate: React.FC<PayslipTemplateProps> = ({ data, className = '',
       <div className="mt-8 pt-6 border-t border-[#e7ebf3]">
         <div className="flex flex-wrap justify-between items-end gap-6">
           <div>
-            <p className="text-xs font-semibold text-[#6b7a99] uppercase tracking-wide mb-1">Employee Signature</p>
+            <p className="text-xs font-semibold text-[#6b7a99] uppercase tracking-wide mb-1">
+              Employee Signature
+            </p>
             <div className="h-12 border-b border-[#0d121b] w-48" />
           </div>
           <div className="text-right">
-            <p className="text-xs font-semibold text-[#6b7a99] uppercase tracking-wide mb-1">Authorized Signature</p>
+            <p className="text-xs font-semibold text-[#6b7a99] uppercase tracking-wide mb-1">
+              Authorized Signature
+            </p>
             <div className="h-12 border-b border-[#0d121b] w-48 ml-auto" />
           </div>
         </div>
         <div className="mt-8 space-y-1 text-xs text-[#6b7a99] text-center">
-          <p>This is a computer generated payslip and does not require a signature.</p>
-          <p>For any discrepancies please contact HR department within 7 days.</p>
+          <p>
+            This is a computer generated payslip and does not require a
+            signature.
+          </p>
+          <p>
+            For any discrepancies please contact HR department within 7 days.
+          </p>
         </div>
       </div>
     </div>

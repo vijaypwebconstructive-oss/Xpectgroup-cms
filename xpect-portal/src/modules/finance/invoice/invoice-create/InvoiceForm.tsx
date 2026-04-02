@@ -198,6 +198,11 @@ const InvoiceForm: React.FC<Props> = ({
     financeNavigate("invoice-view", invoiceId || "preview");
   };
 
+  const parseDate = (d) => {
+    const date = new Date(d);
+    return isNaN(date.getTime()) ? null : date;
+  };
+
   const handleGenerate = async () => {
     if (isTemplate) {
       setSubmitLoading(true);
@@ -242,8 +247,8 @@ const InvoiceForm: React.FC<Props> = ({
 
     const payload = {
       invoiceNumber: invoiceInfo?.invoiceNumber || "",
-      issueDate: invoiceInfo?.issueDate || "",
-      dueDate: invoiceInfo?.dueDate || "",
+      issueDate: invoiceInfo?.issueDate,
+      dueDate: invoiceInfo?.dueDate,
       servicePeriod: invoiceInfo?.servicePeriod || "",
       status: "Pending" as const,
       billBy: {

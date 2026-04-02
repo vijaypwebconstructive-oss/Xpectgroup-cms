@@ -36,6 +36,19 @@ const DocumentHeader: React.FC<DocumentHeaderProps> = ({
   const defaultIssue = "01 Feb 2026";
   const defaultDue = "15 Feb 2026";
 
+  const formatDisplayDate = (d?: string) => {
+    if (!d) return "";
+
+    const date = new Date(d);
+    if (isNaN(date.getTime())) return d;
+
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const year = date.getFullYear();
+
+    return `${day}-${month}-${year}`;
+  };
+
   return (
     <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-6 print:flex-row">
       <div>
@@ -71,11 +84,11 @@ const DocumentHeader: React.FC<DocumentHeaderProps> = ({
           </p>
           <p className="text-sm text-[#4c669a]">
             <span className="font-semibold text-[#0d121b]">Issue Date:</span>{" "}
-            {issueDate || defaultIssue}
+            {formatDisplayDate(issueDate) || defaultIssue}
           </p>
           <p className="text-sm text-[#4c669a]">
             <span className="font-semibold text-[#0d121b]">{label}:</span>{" "}
-            {dueOrExpiryDate || defaultDue}
+            {formatDisplayDate(dueOrExpiryDate) || defaultIssue}
           </p>
           <p className="text-sm text-[#4c669a]">
             <span className="font-semibold text-[#0d121b]">CRN:</span>{" "}
