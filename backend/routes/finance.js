@@ -384,8 +384,8 @@ router.get("/invoices", async (req, res) => {
       const y = parseInt(year, 10);
 
       filter.issueDate = {
-        $gte: new Date(`${y}-01-01`),
-        $lte: new Date(`${y}-12-31`),
+        $gte: new Date(Date.UTC(y, 0, 1)),
+        $lte: new Date(Date.UTC(y, 11, 31)),
       };
     }
     const docs = await Invoice.find(filter).sort({ createdAt: -1 }).lean();
@@ -453,7 +453,6 @@ function parseDateToISO(str) {
 }
 
 router.post("/invoices", async (req, res) => {
-  console.log("14");
   try {
     const body = req.body;
     const invoiceNumber = body.invoiceNumber || (await nextInvoiceNumber());
@@ -462,13 +461,15 @@ router.post("/invoices", async (req, res) => {
     const formatDate = (str) => {
       if (!str) return new Date();
 
+      // already ISO
       if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
-        return new Date(str);
+        const [year, month, day] = str.split("-");
+        return new Date(Date.UTC(year, month - 1, day));
       }
 
-      // handle dd-mm-yyyy
+      // dd-mm-yyyy
       const [day, month, year] = str.split("-");
-      return new Date(`${year}-${month}-${day}`);
+      return new Date(Date.UTC(year, month - 1, day));
     };
 
     const issueDate = formatDate(body.issueDate);
@@ -514,7 +515,18 @@ router.post("/invoices", async (req, res) => {
 
 router.patch("/invoices/:id", async (req, res) => {
   try {
-    console.log("13");
+    const formatDate = (str) => {
+      if (!str) return new Date();
+
+      if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+        const [year, month, day] = str.split("-");
+        return new Date(Date.UTC(year, month - 1, day));
+      }
+
+      const [day, month, year] = str.split("-");
+      return new Date(Date.UTC(year, month - 1, day));
+    };
+
     const doc = await Invoice.findOne({ id: req.params.id });
     if (!doc)
       return res

@@ -121,12 +121,16 @@ const PerformanceDashboard: React.FC = () => {
 
     fetchGoals();
   }, []);
+  const offset = new Date().getTimezoneOffset();
+  console.log("offset", offset);
 
   useEffect(() => {
+    const offset = new Date().getTimezoneOffset();
+
     const fetchData = async () => {
       try {
         setLoading(true);
-        const res = await api.performance.getDashboard(filter);
+        const res = await api.performance.getDashboard(filter, offset);
         setData(res);
       } catch (err) {
         console.error("Error fetching performance:", err);
@@ -138,7 +142,7 @@ const PerformanceDashboard: React.FC = () => {
     fetchData();
 
     const fetchCharts = async () => {
-      const data = await api.performance.getCharts(filter);
+      const data = await api.performance.getCharts(filter, offset);
       console.log("flieter", filter);
       setMetrics(data);
     };
@@ -146,7 +150,7 @@ const PerformanceDashboard: React.FC = () => {
     fetchCharts();
 
     const fetchSales = async () => {
-      const data = await api.performance.getSales(filter);
+      const data = await api.performance.getSales(filter, offset);
 
       setSales(data);
     };

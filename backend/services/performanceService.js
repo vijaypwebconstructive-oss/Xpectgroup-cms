@@ -9,8 +9,8 @@ import Prospect from "../models/Prospect.js";
 import Quotation from "../models/Quotation.js";
 import PerformanceGoal from "../models/PerformanceGoal.js";
 
-export const getDashboardData = async (filter) => {
-  const dateFilter = getDateRange(filter, "issueDate");
+export const getDashboardData = async (filter, offset = 0) => {
+  const dateFilter = getDateRange(filter, offset, "issueDate");
 
   // 💰 REVENUE (ONLY PAID)
 
@@ -204,36 +204,68 @@ export const getDashboardData = async (filter) => {
   };
 };
 
-const getDateRange = (filter, field = "createdAt") => {
+const getDateRange = (filter, offsetMinutes = 0, field = "createdAt") => {
   const now = new Date();
 
-  let startDate;
+  // Convert to user local time
+  const localNow = new Date(now.getTime() - offsetMinutes * 60000);
+
+  let start, end;
 
   switch (filter) {
-    case "week":
-      startDate = new Date();
-      startDate.setDate(now.getDate() - 7);
-      break;
-
     case "month":
-      startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-      break;
-
-    case "quarter":
-      startDate = new Date();
-      startDate.setMonth(now.getMonth() - 3);
+      start = new Date(localNow.getFullYear(), localNow.getMonth(), 1);
+      end = new Date(
+        localNow.getFullYear(),
+        localNow.getMonth() + 1,
+        0,
+        23,
+        59,
+        59,
+        999,
+      );
       break;
 
     case "year":
-      startDate = new Date(now.getFullYear(), 0, 1);
+      start = new Date(localNow.getFullYear(), 0, 1);
+      end = new Date(localNow.getFullYear(), 11, 31, 23, 59, 59, 999);
+      break;
+
+    case "quarter": {
+      // const q = Math.floor(localNow.getMonth() / 3);
+      // start = new Date(localNow.getFullYear(), q * 3, 1);
+      // end = new Date(localNow.getFullYear(), q * 3 + 3, 0, 23, 59, 59, 999);
+      start = new Date(localNow.getFullYear(), localNow.getMonth() - 2, 1);
+
+      // End = end of current month
+      end = new Date(
+        localNow.getFullYear(),
+        localNow.getMonth() + 1,
+        0,
+        23,
+        59,
+        59,
+        999,
+      );
+      break;
+    }
+
+    case "week":
+      start = new Date(localNow);
+      start.setDate(localNow.getDate() - 7);
+      end = new Date(localNow);
       break;
 
     default:
-      return {}; // All time
+      return {};
   }
 
+  // Convert back to UTC
   return {
-    [field]: { $gte: startDate, $lte: now },
+    [field]: {
+      $gte: new Date(start.getTime() + offsetMinutes * 60000),
+      $lte: new Date(end.getTime() + offsetMinutes * 60000),
+    },
   };
 };
 
@@ -274,86 +306,53 @@ export const getGoalsData = async (filter) => {
   });
 };
 
-const getPreviousDateRange = (filter) => {
+const getPreviousDateRange = (filter, offsetMinutes = 0) => {
   const now = new Date();
+  const localNow = new Date(now.getTime() - offsetMinutes * 60000);
 
   let start, end;
 
   switch (filter) {
     case "month":
-      start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-      end = new Date(now.getFullYear(), now.getMonth(), 0);
+      start = new Date(localNow.getFullYear(), localNow.getMonth() - 1, 1);
+      end = new Date(
+        localNow.getFullYear(),
+        localNow.getMonth(),
+        0,
+        23,
+        59,
+        59,
+        999,
+      );
       break;
 
     case "year":
-      start = new Date(now.getFullYear() - 1, 0, 1);
-      end = new Date(now.getFullYear() - 1, 11, 31);
+      start = new Date(localNow.getFullYear() - 1, 0, 1);
+      end = new Date(localNow.getFullYear() - 1, 11, 31, 23, 59, 59, 999);
       break;
 
     case "week":
-      end = new Date();
-      start = new Date();
-      start.setDate(end.getDate() - 14); // previous week window
+      end = new Date(localNow);
       end.setDate(end.getDate() - 7);
+      start = new Date(localNow);
+      start.setDate(start.getDate() - 14);
       break;
 
     default:
       return {};
   }
 
-  return { createdAt: { $gte: start, $lte: end } };
+  return {
+    createdAt: {
+      $gte: new Date(start.getTime() + offsetMinutes * 60000),
+      $lte: new Date(end.getTime() + offsetMinutes * 60000),
+    },
+  };
 };
 
-// charts
-
-//   export const getMonthlyMetrics = async () => {
-//     const { filter } = req.query;
-//     const data = await getMonthlyMetrics(filter);
-//     const invoices = await Invoice.find({ status: "Paid" });
-//     console.log(invoices)
-
-//     const clients = await Client.find({}, { id: 1, relation: 1 });
-
-//     const clientMap = {};
-//     clients.forEach((c) => {
-//       clientMap[c._id] = c.relation;
-//     });
-
-//     const monthlyData = {};
-
-//     invoices.forEach((inv) => {
-//       const date = new Date(inv.createdAt);
-//       const month = date.toLocaleString("default", { month: "short" });
-
-//       if (!monthlyData[month]) {
-//         monthlyData[month] = {
-//           month,
-//           recurring: 0,
-//           oneTime: 0,
-//           total: 0,
-//         };
-//       }
-
-//       const relation = clientMap[inv.clientId];
-
-//       if (relation === "Recurring") {
-//         monthlyData[month].recurring += inv.totalAmount;
-//       } else {
-//         monthlyData[month].oneTime += inv.totalAmount;
-//       }
-
-//       monthlyData[month].total += inv.totalAmount;
-//     });
-
-//     console.log("FILTER:", dateFilter);
-// console.log("INVOICES COUNT:", invoices.length);
-
-//     return Object.values(monthlyData);
-//   };
-
-export const getMonthlyMetrics = async (filter) => {
-  const dateFilter = getDateRange(filter, "issueDate");
-
+export const getMonthlyMetrics = async (filter, offset = 0) => {
+  const dateFilter = getDateRange(filter, offset, "issueDate");
+  console.log("dateFilter", dateFilter);
   const invoices = await Invoice.find({
     ...dateFilter,
     status: "Paid",
@@ -370,13 +369,18 @@ export const getMonthlyMetrics = async (filter) => {
 
   invoices.forEach((inv) => {
     // ✅ FIX: use issueDate NOT createdAt
-    const month = new Date(inv.issueDate).toLocaleString("default", {
+    const date = new Date(inv.issueDate);
+
+    const monthKey = `${date.getFullYear()}-${date.getMonth()}`; // unique key
+    const monthLabel = date.toLocaleString("default", {
       month: "short",
+      year: "numeric",
     });
 
-    if (!monthlyData[month]) {
-      monthlyData[month] = {
-        month,
+    if (!monthlyData[monthKey]) {
+      monthlyData[monthKey] = {
+        month: monthLabel, // "Dec 2025"
+        sortDate: new Date(date.getFullYear(), date.getMonth(), 1),
         recurring: 0,
         oneTime: 0,
         total: 0,
@@ -386,12 +390,12 @@ export const getMonthlyMetrics = async (filter) => {
     const relation = clientMap[inv.clientId];
 
     if (relation === "Recurring") {
-      monthlyData[month].recurring += inv.totalAmount;
+      monthlyData[monthKey].recurring += inv.totalAmount;
     } else {
-      monthlyData[month].oneTime += inv.totalAmount;
+      monthlyData[monthKey].oneTime += inv.totalAmount;
     }
 
-    monthlyData[month].total += inv.totalAmount;
+    monthlyData[monthKey].total += inv.totalAmount;
   });
 
   // ✅ FIX: sort months properly
@@ -412,139 +416,13 @@ export const getMonthlyMetrics = async (filter) => {
 
   const result = Object.values(monthlyData);
 
-  result.sort((a, b) => {
-    return monthOrder.indexOf(a.month) - monthOrder.indexOf(b.month);
-  });
-
+  result.sort((a, b) => a.sortDate - b.sortDate);
+  console.log("invoices", result);
   return result;
 };
 
-// summary ledger revenue table
-
-// export const getMonthlyMetricsTable = async (filter) => {
-//   const dateFilter = getDateRange(filter);
-
-//   const invoices = await Invoice.find({
-//     ...dateFilter,
-//     status: "Paid",
-//   });
-
-//   const clients = await Client.find({}, { id: 1, relation: 1 });
-
-//   const clientMap = {};
-//   clients.forEach((c) => {
-//     clientMap[c.id] = c.relation;
-//   });
-
-//   const monthlyData = {};
-
-//   invoices.forEach((inv) => {
-//     const date = new Date(inv.createdAt);
-//     const month = date.toLocaleString("default", { month: "short" });
-
-//     if (!monthlyData[month]) {
-//       monthlyData[month] = {
-//         month,
-//         recurring: 0,
-//         oneTime: 0,
-//         total: 0,
-//       };
-//     }
-
-//     const relation = clientMap[inv.clientId];
-
-//     if (relation === "Recurring") {
-//       monthlyData[month].recurring += inv.totalAmount;
-//     } else {
-//       monthlyData[month].oneTime += inv.totalAmount;
-//     }
-
-//     monthlyData[month].total += inv.totalAmount;
-//   });
-
-//   // 🔥 FIX: SORT MONTHS
-//   const monthOrder = [
-//     "Jan","Feb","Mar","Apr","May","Jun",
-//     "Jul","Aug","Sep","Oct","Nov","Dec"
-//   ];
-
-//   const result = Object.values(monthlyData);
-
-//   result.sort((a, b) => {
-//     return monthOrder.indexOf(a.month) - monthOrder.indexOf(b.month);
-//   });
-
-//   return result;
-// };
-
-// export const recentTransation = async (filter) => {
-//   const dateFilter = getDateRange(filter, "issueDate");
-
-//   const invoices = await Invoice.find({
-//     ...dateFilter,
-//     status: "Paid",
-//   });
-
-//   const clients = await Client.find({}, { id: 1, relation: 1 });
-
-//   const clientMap = {};
-//   clients.forEach((c) => {
-//     clientMap[c.id] = c.relation;
-//   });
-
-//   const monthlyData = {};
-
-//   invoices.forEach((inv) => {
-//     const date = new Date(inv.createdAt);
-//     const month = date.toLocaleString("default", { month: "short" });
-
-//     if (!monthlyData[month]) {
-//       monthlyData[month] = {
-//         month,
-//         recurring: 0,
-//         oneTime: 0,
-//         total: 0,
-//       };
-//     }
-
-//     const relation = clientMap[inv.clientId];
-
-//     if (relation === "Recurring") {
-//       monthlyData[month].recurring += inv.totalAmount;
-//     } else {
-//       monthlyData[month].oneTime += inv.totalAmount;
-//     }
-
-//     monthlyData[month].total += inv.totalAmount;
-//   });
-
-//   // 🔥 FIX: SORT MONTHS
-//   const monthOrder = [
-//     "Jan",
-//     "Feb",
-//     "Mar",
-//     "Apr",
-//     "May",
-//     "Jun",
-//     "Jul",
-//     "Aug",
-//     "Sep",
-//     "Oct",
-//     "Nov",
-//     "Dec",
-//   ];
-
-//   const result = Object.values(monthlyData);
-
-//   result.sort((a, b) => {
-//     return monthOrder.indexOf(a.month) - monthOrder.indexOf(b.month);
-//   });
-
-//   return result;
-// };
-
-export const recentTransation = async (filter) => {
-  const dateFilter = getDateRange(filter, "issueDate");
+export const recentTransation = async (filter, offset = 0) => {
+  const dateFilter = getDateRange(filter, offset, "issueDate");
 
   const invoices = await Invoice.find({
     ...dateFilter,
@@ -578,8 +456,8 @@ export const recentTransation = async (filter) => {
   return sales;
 };
 
-export const getSalesTransactions = async (filter) => {
-  const dateFilter = getDateRange(filter, "issueDate");
+export const getSalesTransactions = async (filter, offset = 0) => {
+  const dateFilter = getDateRange(filter, offset, "issueDate");
 
   const invoices = await Invoice.find({
     ...dateFilter,
