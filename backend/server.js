@@ -77,6 +77,13 @@ app.use("/api/prospects", prospectsRoutes);
 app.use("/api/inspections", inspectionRoutes);
 app.use("/uploads", express.static("uploads"));
 app.use("/api/performance", performanceRoutes);
+// ✅ Serve frontend (React build)
+app.use(express.static(path.join(__dirname, "../public_html")));
+
+// ✅ Catch-all route for React (MUST BE LAST ROUTE)
+app.get("*", (req, res) => {
+  res.sendFile(path.join(__dirname, "../public_html", "index.html"));
+});
 app.use(express.json());
 // Health check
 app.get("/api/health", (req, res) => {

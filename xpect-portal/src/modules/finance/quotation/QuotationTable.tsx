@@ -51,6 +51,7 @@ const QuotationTable: React.FC<QuotationTableProps> = ({
   onView,
   onEdit,
   onDelete,
+  onSend,
   onDownload,
   onQuotationNoClick,
 }) => (

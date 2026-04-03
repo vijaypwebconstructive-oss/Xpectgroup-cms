@@ -691,6 +691,8 @@ router.post("/invoices/:id/send", async (req, res) => {
   try {
     const doc = await Invoice.findOne({ id: req.params.id }).lean();
 
+    console.log("docs", doc);
+
     if (!doc) {
       return res.status(404).json({ error: "Invoice not found" });
     }
@@ -704,7 +706,7 @@ router.post("/invoices/:id/send", async (req, res) => {
     }
 
     // 🔥 1. Generate PDF from YOUR UI
-    const pdfBuffer = await generateInvoicePdf(doc.id);
+    const pdfBuffer = await generateInvoicePdf(doc);
 
     // 🔥 2. Send email with attachment
     await sendFinanceInvoice(email, doc.billTo?.clientName, doc, pdfBuffer);
@@ -1338,7 +1340,7 @@ router.post("/quotations/:id/send", async (req, res) => {
     }
 
     // 🔥 Generate PDF from YOUR UI
-    const pdfBuffer = await generateQuotationPdf(doc.id);
+    const pdfBuffer = await generateQuotationPdf(doc);
 
     // 🔥 Send email
     await sendQuotationEmail(email, doc.billTo?.clientName, doc, pdfBuffer);
