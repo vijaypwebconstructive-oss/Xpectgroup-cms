@@ -1,12 +1,32 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { AppView } from '../types';
-import api from '../services/api';
-import ProfileModal from './ProfileModal';
-import { csNavigate, CSView, getState as getCSState, subscribe as subscribeCS } from '../modules/clients-sites/csNavStore';
-import { docNavigate, DocView, getDocState, subscribeDoc } from '../modules/document-control/docNavStore';
-import { riskNavigate, RiskView, getRiskState, subscribeRisk } from '../modules/risk-coshh/riskNavStore';
-import { incidentNavigate, IncidentView, getIncidentState, subscribeIncident } from '../modules/incidents/incidentNavStore';
-import { userNavigate } from '../modules/user-access/userNavStore';
+import React, { useState, useEffect, useRef } from "react";
+import { AppView } from "../types";
+import api from "../services/api";
+import ProfileModal from "./ProfileModal";
+import {
+  csNavigate,
+  CSView,
+  getState as getCSState,
+  subscribe as subscribeCS,
+} from "../modules/clients-sites/csNavStore";
+import {
+  docNavigate,
+  DocView,
+  getDocState,
+  subscribeDoc,
+} from "../modules/document-control/docNavStore";
+import {
+  riskNavigate,
+  RiskView,
+  getRiskState,
+  subscribeRisk,
+} from "../modules/risk-coshh/riskNavStore";
+import {
+  incidentNavigate,
+  IncidentView,
+  getIncidentState,
+  subscribeIncident,
+} from "../modules/incidents/incidentNavStore";
+import { userNavigate } from "../modules/user-access/userNavStore";
 
 interface AdminLayoutProps {
   children: React.ReactNode;
@@ -23,38 +43,65 @@ interface AdminProfile {
   role?: string;
 }
 
-const COMPLIANCE_VIEWS: AppView[] = ['EMPLOYEE_COMPLIANCE', 'CLEANERS_LIST', 'CLEANER_DETAIL', 'REPORT', 'STAFF_INVITES', 'TRAINING_CERTIFICATION'];
-const CLIENT_SITES_VIEWS: AppView[] = ['CLIENTS_SITES'];
-const DOC_CONTROL_VIEWS: AppView[] = ['DOCUMENT_CONTROL'];
-const RISK_COSHH_VIEWS: AppView[]  = ['RISK_COSHH'];
-const INCIDENTS_VIEWS: AppView[]   = ['INCIDENTS'];
-const FINANCE_VIEWS: AppView[] = ['FINANCE'];
+const COMPLIANCE_VIEWS: AppView[] = [
+  "EMPLOYEE_COMPLIANCE",
+  "CLEANERS_LIST",
+  "CLEANER_DETAIL",
+  "REPORT",
+  "STAFF_INVITES",
+  "TRAINING_CERTIFICATION",
+];
+const CLIENT_SITES_VIEWS: AppView[] = ["CLIENTS_SITES"];
+const DOC_CONTROL_VIEWS: AppView[] = ["DOCUMENT_CONTROL"];
+const RISK_COSHH_VIEWS: AppView[] = ["RISK_COSHH"];
+const INCIDENTS_VIEWS: AppView[] = ["INCIDENTS"];
+const FINANCE_VIEWS: AppView[] = ["FINANCE"];
 
-const AdminLayout: React.FC<AdminLayoutProps> = ({ children, currentView, onNavigate }) => {
-  const [profile, setProfile]                             = useState<AdminProfile>({});
-  const [isProfileModalOpen, setIsProfileModalOpen]       = useState(false);
+const AdminLayout: React.FC<AdminLayoutProps> = ({
+  children,
+  currentView,
+  onNavigate,
+}) => {
+  const [profile, setProfile] = useState<AdminProfile>({});
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
-  const [isSidebarOpen, setIsSidebarOpen]                 = useState(false);
-  const [isComplianceOpen, setIsComplianceOpen]           = useState(COMPLIANCE_VIEWS.includes(currentView));
-  const [isClientSitesOpen, setIsClientSitesOpen]         = useState(CLIENT_SITES_VIEWS.includes(currentView));
-  const [isDocControlOpen, setIsDocControlOpen]           = useState(DOC_CONTROL_VIEWS.includes(currentView));
-  const [isRiskCoshhOpen, setIsRiskCoshhOpen]             = useState(RISK_COSHH_VIEWS.includes(currentView));
-  const [isIncidentsOpen, setIsIncidentsOpen]             = useState(INCIDENTS_VIEWS.includes(currentView));
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isComplianceOpen, setIsComplianceOpen] = useState(
+    COMPLIANCE_VIEWS.includes(currentView),
+  );
+  const [isClientSitesOpen, setIsClientSitesOpen] = useState(
+    CLIENT_SITES_VIEWS.includes(currentView),
+  );
+  const [isDocControlOpen, setIsDocControlOpen] = useState(
+    DOC_CONTROL_VIEWS.includes(currentView),
+  );
+  const [isRiskCoshhOpen, setIsRiskCoshhOpen] = useState(
+    RISK_COSHH_VIEWS.includes(currentView),
+  );
+  const [isIncidentsOpen, setIsIncidentsOpen] = useState(
+    INCIDENTS_VIEWS.includes(currentView),
+  );
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Active sub-view tracking for modules that manage their own URL
-  const [activeCSView, setActiveCSView]           = useState<CSView>(getCSState().view);
-  const [activeDocView, setActiveDocView]         = useState<DocView>(getDocState().view);
-  const [activeRiskView, setActiveRiskView]       = useState<RiskView>(getRiskState().view);
-  const [activeIncidentView, setActiveIncidentView] = useState<IncidentView>(getIncidentState().view);
+  const [activeCSView, setActiveCSView] = useState<CSView>(getCSState().view);
+  const [activeDocView, setActiveDocView] = useState<DocView>(
+    getDocState().view,
+  );
+  const [activeRiskView, setActiveRiskView] = useState<RiskView>(
+    getRiskState().view,
+  );
+  const [activeIncidentView, setActiveIncidentView] = useState<IncidentView>(
+    getIncidentState().view,
+  );
 
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const data = await api.admin.getProfile() as AdminProfile;
+        const data = (await api.admin.getProfile()) as AdminProfile;
         setProfile(data);
       } catch (err) {
-        console.warn('Failed to fetch admin profile:', err);
+        console.warn("Failed to fetch admin profile:", err);
       }
     };
     fetchProfile();
@@ -62,22 +109,25 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, currentView, onNavi
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node)
+      ) {
         setIsProfileDropdownOpen(false);
       }
     };
     if (isProfileDropdownOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener("mousedown", handleClickOutside);
     }
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [isProfileDropdownOpen]);
 
   const handleProfileUpdate = async () => {
     try {
-      const data = await api.admin.getProfile() as AdminProfile;
+      const data = (await api.admin.getProfile()) as AdminProfile;
       setProfile(data);
     } catch (err) {
-      console.warn('Failed to refresh admin profile:', err);
+      console.warn("Failed to refresh admin profile:", err);
     }
   };
 
@@ -101,10 +151,10 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, currentView, onNavi
 
   // Subscribe to each module's nav store so active sub-item highlights correctly
   useEffect(() => {
-    const unCS  = subscribeCS(s  => setActiveCSView(s.view));
-    const unDoc = subscribeDoc(s => setActiveDocView(s.view));
-    const unRisk = subscribeRisk(s => setActiveRiskView(s.view));
-    const unInc  = subscribeIncident(s => setActiveIncidentView(s.view));
+    const unCS = subscribeCS((s) => setActiveCSView(s.view));
+    const unDoc = subscribeDoc((s) => setActiveDocView(s.view));
+    const unRisk = subscribeRisk((s) => setActiveRiskView(s.view));
+    const unInc = subscribeIncident((s) => setActiveIncidentView(s.view));
 
     // Also sync on browser back/forward
     const onPop = () => {
@@ -113,11 +163,14 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, currentView, onNavi
       setActiveRiskView(getRiskState().view);
       setActiveIncidentView(getIncidentState().view);
     };
-    window.addEventListener('popstate', onPop);
+    window.addEventListener("popstate", onPop);
 
     return () => {
-      unCS(); unDoc(); unRisk(); unInc();
-      window.removeEventListener('popstate', onPop);
+      unCS();
+      unDoc();
+      unRisk();
+      unInc();
+      window.removeEventListener("popstate", onPop);
     };
   }, []);
 
@@ -129,36 +182,63 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, currentView, onNavi
   const sidebarContent = (
     <div className="flex flex-col h-full bg-[#2e4150] w-64">
       {/* Admin profile — top of sidebar */}
-      <div className="px-3 pb-3 pt-3 border-b border-white/10 shrink-0" ref={dropdownRef}>
+      <div
+        className="px-3 pb-3 pt-3 border-b border-white/10 shrink-0"
+        ref={dropdownRef}
+      >
         <button
           type="button"
           className="w-full flex items-center gap-3 px-3 py-3 rounded-xl cursor-pointer hover:bg-white/10 transition-all text-left"
-          onClick={() => setIsProfileDropdownOpen(prev => !prev)}
+          onClick={() => setIsProfileDropdownOpen((prev) => !prev)}
         >
           <div
             className="w-9 h-9 rounded-full border-2 border-white/30 bg-cover bg-center shrink-0 flex items-center justify-center bg-white/10"
-            style={{ backgroundImage: profile.profilePicture ? `url('${profile.profilePicture}')` : 'none' }}
+            style={{
+              backgroundImage: profile.profilePicture
+                ? `url('${profile.profilePicture}')`
+                : "none",
+            }}
           >
             {!profile.profilePicture && (
-              <span className="material-symbols-outlined text-white/70 text-xl">person</span>
+              <span className="material-symbols-outlined text-white/70 text-xl">
+                person
+              </span>
             )}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-white text-sm font-bold truncate">{profile.name || 'Admin'}</p>
-            <p className="text-white/50 text-xs truncate">{profile.role || 'Administrator'}</p>
+            <p className="text-white text-sm font-bold truncate">
+              {profile.name || "Admin"}
+            </p>
+            <p className="text-white/50 text-xs truncate">
+              {profile.role || "Administrator"}
+            </p>
           </div>
-          <span className="material-symbols-outlined text-white/50 text-base transition-transform duration-200" style={{ transform: isProfileDropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}>
+          <span
+            className="material-symbols-outlined text-white/50 text-base transition-transform duration-200"
+            style={{
+              transform: isProfileDropdownOpen
+                ? "rotate(180deg)"
+                : "rotate(0deg)",
+            }}
+          >
             expand_more
           </span>
         </button>
         {isProfileDropdownOpen && (
           <div className="mt-1 bg-white rounded-xl shadow-lg py-2 animate-in fade-in slide-in-from-top-2 duration-200">
             <div className="px-4 py-2 border-b border-gray-100">
-              <p className="font-bold text-gray-900 text-sm truncate">{profile.name || 'Admin'}</p>
-              <p className="text-xs text-gray-500 truncate">{profile.email || 'admin@xpectgroup.com'}</p>
+              <p className="font-bold text-gray-900 text-sm truncate">
+                {profile.name || "Admin"}
+              </p>
+              <p className="text-xs text-gray-500 truncate">
+                {profile.email || "admin@xpectgroup.com"}
+              </p>
             </div>
             <button
-              onClick={() => { setIsProfileModalOpen(true); setIsProfileDropdownOpen(false); }}
+              onClick={() => {
+                setIsProfileModalOpen(true);
+                setIsProfileDropdownOpen(false);
+              }}
               className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2 transition-colors"
             >
               <span className="material-symbols-outlined text-base">edit</span>
@@ -172,14 +252,16 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, currentView, onNavi
       <nav className="flex-1 px-3 py-5 space-y-1 overflow-y-auto">
         {/* Dashboard */}
         <button
-          onClick={() => handleNav('DASHBOARD')}
+          onClick={() => handleNav("DASHBOARD")}
           className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all cursor-pointer ${
-            currentView === 'DASHBOARD'
-              ? 'bg-white/20 text-white'
-              : 'text-white/70 hover:bg-white/10 hover:text-white'
+            currentView === "DASHBOARD"
+              ? "bg-white/20 text-white"
+              : "text-white/70 hover:bg-white/10 hover:text-white"
           }`}
         >
-          <span className="material-symbols-outlined text-[20px]">dashboard</span>
+          <span className="material-symbols-outlined text-[20px]">
+            dashboard
+          </span>
           Dashboard
         </button>
 
@@ -188,43 +270,55 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, currentView, onNavi
           {/* Main module button */}
           <button
             type="button"
-            onClick={() => setIsComplianceOpen(o => !o)}
+            onClick={() => setIsComplianceOpen((o) => !o)}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all cursor-pointer ${
               COMPLIANCE_VIEWS.includes(currentView)
-                ? 'bg-white/20 text-white'
-                : 'text-white/70 hover:bg-white/10 hover:text-white'
+                ? "bg-white/20 text-white"
+                : "text-white/70 hover:bg-white/10 hover:text-white"
             }`}
           >
-            <span className="material-symbols-outlined text-[20px]">verified_user</span>
+            <span className="material-symbols-outlined text-[20px]">
+              verified_user
+            </span>
             <span className="flex-1 text-left">Employee Compliance</span>
-            <span className={`material-symbols-outlined text-[18px] opacity-70 transition-transform duration-200 ${isComplianceOpen ? 'rotate-90' : ''}`}>
+            <span
+              className={`material-symbols-outlined text-[18px] opacity-70 transition-transform duration-200 ${isComplianceOpen ? "rotate-90" : ""}`}
+            >
               chevron_right
             </span>
           </button>
 
           {/* Sub-modules — shown when isComplianceOpen is true */}
-          <div className={`overflow-hidden transition-all duration-300 ease-in-out ${isComplianceOpen ? 'max-h-48 opacity-100' : 'max-h-0 opacity-0'}`}>
+          <div
+            className={`overflow-hidden transition-all duration-300 ease-in-out ${isComplianceOpen ? "max-h-48 opacity-100" : "max-h-0 opacity-0"}`}
+          >
             <div className="mt-0.5 ml-3 pl-3 border-l border-white/20 space-y-0.5">
               <button
-                onClick={() => handleNav('CLEANERS_LIST')}
+                onClick={() => handleNav("CLEANERS_LIST")}
                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all cursor-pointer ${
-                  currentView === 'CLEANERS_LIST' || currentView === 'CLEANER_DETAIL' || currentView === 'REPORT'
-                    ? 'bg-white/15 text-white'
-                    : 'text-white/60 hover:bg-white/10 hover:text-white'
+                  currentView === "CLEANERS_LIST" ||
+                  currentView === "CLEANER_DETAIL" ||
+                  currentView === "REPORT"
+                    ? "bg-white/15 text-white"
+                    : "text-white/60 hover:bg-white/10 hover:text-white"
                 }`}
               >
-                <span className="material-symbols-outlined text-[18px]">group</span>
+                <span className="material-symbols-outlined text-[18px]">
+                  group
+                </span>
                 Staff
               </button>
               <button
-                onClick={() => handleNav('TRAINING_CERTIFICATION')}
+                onClick={() => handleNav("TRAINING_CERTIFICATION")}
                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all cursor-pointer text-left ${
-                  currentView === 'TRAINING_CERTIFICATION'
-                    ? 'bg-white/15 text-white '
-                    : 'text-white/60 hover:bg-white/10 hover:text-white'
+                  currentView === "TRAINING_CERTIFICATION"
+                    ? "bg-white/15 text-white "
+                    : "text-white/60 hover:bg-white/10 hover:text-white"
                 }`}
               >
-                <span className="material-symbols-outlined text-[18px]">school</span>
+                <span className="material-symbols-outlined text-[18px]">
+                  school
+                </span>
                 Training &amp; Certification
               </button>
               {/* <button
@@ -246,29 +340,55 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, currentView, onNavi
         <div>
           <button
             type="button"
-            onClick={() => setIsClientSitesOpen(o => !o)}
+            onClick={() => setIsClientSitesOpen((o) => !o)}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all cursor-pointer ${
               CLIENT_SITES_VIEWS.includes(currentView)
-                ? 'bg-white/20 text-white'
-                : 'text-white/70 hover:bg-white/10 hover:text-white'
+                ? "bg-white/20 text-white"
+                : "text-white/70 hover:bg-white/10 hover:text-white"
             }`}
           >
-            <span className="material-symbols-outlined text-[20px]">location_city</span>
+            <span className="material-symbols-outlined text-[20px]">
+              location_city
+            </span>
             <span className="flex-1 text-left">Clients &amp; Sites</span>
-            <span className={`material-symbols-outlined text-[18px] opacity-70 transition-transform duration-200 ${isClientSitesOpen ? 'rotate-90' : ''}`}>
+            <span
+              className={`material-symbols-outlined text-[18px] opacity-70 transition-transform duration-200 ${isClientSitesOpen ? "rotate-90" : ""}`}
+            >
               chevron_right
             </span>
           </button>
 
-          <div className={`overflow-hidden transition-all duration-300 ease-in-out ${isClientSitesOpen ? 'max-h-60 opacity-100' : 'max-h-0 opacity-0'}`}>
+          <div
+            className={`overflow-hidden transition-all duration-300 ease-in-out ${isClientSitesOpen ? "max-h-60 opacity-100" : "max-h-0 opacity-0"}`}
+          >
             <div className="mt-0.5 ml-3 pl-3 border-l border-white/20 space-y-0.5">
               {(
                 [
-                  { csView: 'clients'    as CSView, icon: 'handshake',      label: 'Clients' },
-                  { csView: 'sites'      as CSView, icon: 'location_on',    label: 'Sites' },
-                  { csView: 'allocation' as CSView, icon: 'assignment_ind', label: 'Site Allocation' },
-                  { csView: 'inspection' as CSView, icon:"fact_check", label: 'Site Inspection' },
-                  { csView: 'PPE_LIST' as CSView, icon:"safety_check", label: 'PPE Invoice' },
+                  {
+                    csView: "clients" as CSView,
+                    icon: "handshake",
+                    label: "Clients",
+                  },
+                  {
+                    csView: "sites" as CSView,
+                    icon: "location_on",
+                    label: "Sites",
+                  },
+                  {
+                    csView: "allocation" as CSView,
+                    icon: "assignment_ind",
+                    label: "Site Allocation",
+                  },
+                  {
+                    csView: "inspection" as CSView,
+                    icon: "fact_check",
+                    label: "Site Inspection",
+                  },
+                  {
+                    csView: "PPE_LIST" as CSView,
+                    icon: "safety_check",
+                    label: "PPE Invoice",
+                  },
                 ] as { csView: CSView; icon: string; label: string }[]
               ).map(({ csView, icon, label }) => (
                 <button
@@ -280,21 +400,24 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, currentView, onNavi
                     setActiveCSView(csView);
 
                     // 2. Tell App.tsx to render ClientSitesModule if not already
-                    onNavigate('CLIENTS_SITES');
+                    onNavigate("CLIENTS_SITES");
                   }}
                   className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all cursor-pointer ${
-                    currentView === 'CLIENTS_SITES' && (
-                      activeCSView === csView ||
-                      (csView === 'clients' && activeCSView === 'client-detail') ||
-                      (csView === 'sites' && activeCSView === 'site-detail') ||
-                      (csView === 'inspection' && activeCSView === 'inspection-detail') ||
-                      (csView === 'PPE_LIST' && activeCSView === 'PPE_LIST')
-                    )
-                      ? 'bg-white/15 text-white'
-                      : 'text-white/60 hover:bg-white/10 hover:text-white'
+                    currentView === "CLIENTS_SITES" &&
+                    (activeCSView === csView ||
+                      (csView === "clients" &&
+                        activeCSView === "client-detail") ||
+                      (csView === "sites" && activeCSView === "site-detail") ||
+                      (csView === "inspection" &&
+                        activeCSView === "inspection-detail") ||
+                      (csView === "PPE_LIST" && activeCSView === "PPE_LIST"))
+                      ? "bg-white/15 text-white"
+                      : "text-white/60 hover:bg-white/10 hover:text-white"
                   }`}
                 >
-                  <span className="material-symbols-outlined text-[18px]">{icon}</span>
+                  <span className="material-symbols-outlined text-[18px]">
+                    {icon}
+                  </span>
                   {label}
                 </button>
               ))}
@@ -318,41 +441,59 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, currentView, onNavi
         <div>
           <button
             type="button"
-            onClick={() => setIsIncidentsOpen(o => !o)}
+            onClick={() => setIsIncidentsOpen((o) => !o)}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all cursor-pointer ${
               INCIDENTS_VIEWS.includes(currentView)
-                ? 'bg-white/20 text-white'
-                : 'text-white/70 hover:bg-white/10 hover:text-white'
+                ? "bg-white/20 text-white"
+                : "text-white/70 hover:bg-white/10 hover:text-white"
             }`}
           >
-            <span className="material-symbols-outlined text-[20px]">report_problem</span>
+            <span className="material-symbols-outlined text-[20px]">
+              report_problem
+            </span>
             <span className="flex-1 text-left">Incidents</span>
-            <span className={`material-symbols-outlined text-[18px] opacity-70 transition-transform duration-200 ${isIncidentsOpen ? 'rotate-90' : ''}`}>
+            <span
+              className={`material-symbols-outlined text-[18px] opacity-70 transition-transform duration-200 ${isIncidentsOpen ? "rotate-90" : ""}`}
+            >
               chevron_right
             </span>
           </button>
 
-          <div className={`overflow-hidden transition-all duration-300 ease-in-out ${isIncidentsOpen ? 'max-h-56 opacity-100' : 'max-h-0 opacity-0'}`}>
+          <div
+            className={`overflow-hidden transition-all duration-300 ease-in-out ${isIncidentsOpen ? "max-h-56 opacity-100" : "max-h-0 opacity-0"}`}
+          >
             <div className="mt-0.5 ml-3 pl-3 border-l border-white/20 space-y-0.5">
               {(
                 [
-                  { incView: 'list'    as IncidentView, icon: 'format_list_bulleted', label: 'All Incidents' },
-                  { incView: 'create'  as IncidentView, icon: 'add_circle',           label: 'Report Incident' },
+                  {
+                    incView: "list" as IncidentView,
+                    icon: "format_list_bulleted",
+                    label: "All Incidents",
+                  },
+                  {
+                    incView: "create" as IncidentView,
+                    icon: "add_circle",
+                    label: "Report Incident",
+                  },
                 ] as { incView: IncidentView; icon: string; label: string }[]
               ).map(({ incView, icon, label }) => (
                 <button
                   key={incView}
                   onClick={() => {
                     incidentNavigate(incView);
-                    onNavigate('INCIDENTS');
+                    onNavigate("INCIDENTS");
                   }}
                   className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all cursor-pointer ${
-                    currentView === 'INCIDENTS' && (activeIncidentView === incView || (incView === 'list' && activeIncidentView === 'detail'))
-                      ? 'bg-white/15 text-white'
-                      : 'text-white/60 hover:bg-white/10 hover:text-white'
+                    currentView === "INCIDENTS" &&
+                    (activeIncidentView === incView ||
+                      (incView === "list" && activeIncidentView === "detail"))
+                      ? "bg-white/15 text-white"
+                      : "text-white/60 hover:bg-white/10 hover:text-white"
                   }`}
                 >
-                  <span className="material-symbols-outlined text-[18px]">{icon}</span>
+                  <span className="material-symbols-outlined text-[18px]">
+                    {icon}
+                  </span>
                   {label}
                 </button>
               ))}
@@ -364,26 +505,40 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, currentView, onNavi
         <div>
           <button
             type="button"
-            onClick={() => setIsRiskCoshhOpen(o => !o)}
+            onClick={() => setIsRiskCoshhOpen((o) => !o)}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all cursor-pointer ${
               RISK_COSHH_VIEWS.includes(currentView)
-                ? 'bg-white/20 text-white'
-                : 'text-white/70 hover:bg-white/10 hover:text-white'
+                ? "bg-white/20 text-white"
+                : "text-white/70 hover:bg-white/10 hover:text-white"
             }`}
           >
-            <span className="material-symbols-outlined text-[20px]">health_and_safety</span>
+            <span className="material-symbols-outlined text-[20px]">
+              health_and_safety
+            </span>
             <span className="flex-1 text-left">Risk &amp; COSHH</span>
-            <span className={`material-symbols-outlined text-[18px] opacity-70 transition-transform duration-200 ${isRiskCoshhOpen ? 'rotate-90' : ''}`}>
+            <span
+              className={`material-symbols-outlined text-[18px] opacity-70 transition-transform duration-200 ${isRiskCoshhOpen ? "rotate-90" : ""}`}
+            >
               chevron_right
             </span>
           </button>
 
-          <div className={`overflow-hidden transition-all duration-300 ease-in-out ${isRiskCoshhOpen ? 'max-h-80 opacity-100' : 'max-h-0 opacity-0'}`}>
+          <div
+            className={`overflow-hidden transition-all duration-300 ease-in-out ${isRiskCoshhOpen ? "max-h-80 opacity-100" : "max-h-0 opacity-0"}`}
+          >
             <div className="mt-0.5 ml-3 pl-3 border-l border-white/20 space-y-0.5">
               {(
                 [
-                  { riskView: 'risk-list'       as RiskView, icon: 'assignment',      label: 'Risk Assessments' },
-                  { riskView: 'rams-list'       as RiskView, icon: 'assignment_add',  label: 'RAMS' },
+                  {
+                    riskView: "risk-list" as RiskView,
+                    icon: "assignment",
+                    label: "Risk Assessments",
+                  },
+                  {
+                    riskView: "rams-list" as RiskView,
+                    icon: "assignment_add",
+                    label: "RAMS",
+                  },
                   // { riskView: 'coshh-register'  as RiskView, icon: 'science',         label: 'COSHH Register' },
                   // { riskView: 'sds-library'     as RiskView, icon: 'menu_book',       label: 'SDS Library' },
                 ] as { riskView: RiskView; icon: string; label: string }[]
@@ -392,15 +547,24 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, currentView, onNavi
                   key={riskView}
                   onClick={() => {
                     riskNavigate(riskView);
-                    onNavigate('RISK_COSHH');
+                    onNavigate("RISK_COSHH");
                   }}
                   className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all cursor-pointer ${
-                    currentView === 'RISK_COSHH' && (activeRiskView === riskView || (riskView === 'risk-list' && activeRiskView === 'risk-detail') || (riskView === 'rams-list' && activeRiskView === 'rams-detail') || (riskView === 'coshh-register' && activeRiskView === 'coshh-detail'))
-                      ? 'bg-white/15 text-white'
-                      : 'text-white/60 hover:bg-white/10 hover:text-white'
+                    currentView === "RISK_COSHH" &&
+                    (activeRiskView === riskView ||
+                      (riskView === "risk-list" &&
+                        activeRiskView === "risk-detail") ||
+                      (riskView === "rams-list" &&
+                        activeRiskView === "rams-detail") ||
+                      (riskView === "coshh-register" &&
+                        activeRiskView === "coshh-detail"))
+                      ? "bg-white/15 text-white"
+                      : "text-white/60 hover:bg-white/10 hover:text-white"
                   }`}
                 >
-                  <span className="material-symbols-outlined text-[18px]">{icon}</span>
+                  <span className="material-symbols-outlined text-[18px]">
+                    {icon}
+                  </span>
                   {label}
                 </button>
               ))}
@@ -412,42 +576,64 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, currentView, onNavi
         <div>
           <button
             type="button"
-            onClick={() => setIsDocControlOpen(o => !o)}
+            onClick={() => setIsDocControlOpen((o) => !o)}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all cursor-pointer ${
               DOC_CONTROL_VIEWS.includes(currentView)
-                ? 'bg-white/20 text-white'
-                : 'text-white/70 hover:bg-white/10 hover:text-white'
+                ? "bg-white/20 text-white"
+                : "text-white/70 hover:bg-white/10 hover:text-white"
             }`}
           >
-            <span className="material-symbols-outlined text-[20px]">folder_managed</span>
+            <span className="material-symbols-outlined text-[20px]">
+              folder_managed
+            </span>
             <span className="flex-1 text-left">Document Control</span>
-            <span className={`material-symbols-outlined text-[18px] opacity-70 transition-transform duration-200 ${isDocControlOpen ? 'rotate-90' : ''}`}>
+            <span
+              className={`material-symbols-outlined text-[18px] opacity-70 transition-transform duration-200 ${isDocControlOpen ? "rotate-90" : ""}`}
+            >
               chevron_right
             </span>
           </button>
 
-          <div className={`overflow-hidden transition-all duration-300 ease-in-out ${isDocControlOpen ? 'max-h-56 opacity-100' : 'max-h-0 opacity-0'}`}>
+          <div
+            className={`overflow-hidden transition-all duration-300 ease-in-out ${isDocControlOpen ? "max-h-56 opacity-100" : "max-h-0 opacity-0"}`}
+          >
             <div className="mt-0.5 ml-3 pl-3 border-l border-white/20 space-y-0.5">
               {(
                 [
-                  { docView: 'library'   as DocView, icon: 'library_books',  label: 'Documents Library' },
-                  { docView: 'approvals' as DocView, icon: 'task_alt',       label: 'Approvals' },
-                  { docView: 'reviews'   as DocView, icon: 'event',          label: 'Review Calendar' },
+                  {
+                    docView: "library" as DocView,
+                    icon: "library_books",
+                    label: "Documents Library",
+                  },
+                  {
+                    docView: "approvals" as DocView,
+                    icon: "task_alt",
+                    label: "Approvals",
+                  },
+                  {
+                    docView: "reviews" as DocView,
+                    icon: "event",
+                    label: "Review Calendar",
+                  },
                 ] as { docView: DocView; icon: string; label: string }[]
               ).map(({ docView, icon, label }) => (
                 <button
                   key={docView}
                   onClick={() => {
                     docNavigate(docView);
-                    onNavigate('DOCUMENT_CONTROL');
+                    onNavigate("DOCUMENT_CONTROL");
                   }}
                   className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all cursor-pointer ${
-                    currentView === 'DOCUMENT_CONTROL' && (activeDocView === docView || (docView === 'library' && activeDocView === 'detail'))
-                      ? 'bg-white/15 text-white'
-                      : 'text-white/60 hover:bg-white/10 hover:text-white'
+                    currentView === "DOCUMENT_CONTROL" &&
+                    (activeDocView === docView ||
+                      (docView === "library" && activeDocView === "detail"))
+                      ? "bg-white/15 text-white"
+                      : "text-white/60 hover:bg-white/10 hover:text-white"
                   }`}
                 >
-                  <span className="material-symbols-outlined text-[18px]">{icon}</span>
+                  <span className="material-symbols-outlined text-[18px]">
+                    {icon}
+                  </span>
                   {label}
                 </button>
               ))}
@@ -460,16 +646,18 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, currentView, onNavi
           <button
             type="button"
             onClick={() => {
-              onNavigate('FINANCE');
+              onNavigate("FINANCE");
               setIsSidebarOpen(false);
             }}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all cursor-pointer ${
               FINANCE_VIEWS.includes(currentView)
-                ? 'bg-white/20 text-white'
-                : 'text-white/70 hover:bg-white/10 hover:text-white'
+                ? "bg-white/20 text-white"
+                : "text-white/70 hover:bg-white/10 hover:text-white"
             }`}
           >
-            <span className="material-symbols-outlined text-[20px]">account_balance</span>
+            <span className="material-symbols-outlined text-[20px]">
+              account_balance
+            </span>
             <span className="flex-1 text-left">Finance</span>
           </button>
         </div>
@@ -479,25 +667,26 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, currentView, onNavi
       <div className="px-3 py-3 border-t border-white/10 shrink-0">
         <button
           onClick={() => {
-            userNavigate('list');
-            onNavigate('USER_ACCESS');
+            userNavigate("list");
+            onNavigate("USER_ACCESS");
             setIsSidebarOpen(false);
           }}
           className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all cursor-pointer ${
-            currentView === 'USER_ACCESS'
-              ? 'bg-white/20 text-white'
-              : 'text-white/70 hover:bg-white/10 hover:text-white'
+            currentView === "USER_ACCESS"
+              ? "bg-white/20 text-white"
+              : "text-white/70 hover:bg-white/10 hover:text-white"
           }`}
         >
-          <span className="material-symbols-outlined text-[20px]">manage_accounts</span>
+          <span className="material-symbols-outlined text-[20px]">
+            manage_accounts
+          </span>
           User Access
         </button>
       </div>
-
     </div>
   );
 
-  const isFinanceRoute = currentView === 'FINANCE';
+  const isFinanceRoute = currentView === "FINANCE";
 
   return (
     <div className="flex min-h-screen bg-[#f2f6f9]">
@@ -522,23 +711,62 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, currentView, onNavi
       )}
 
       {/* Content area — no left margin when sidebar hidden */}
-      <div className={`flex flex-col flex-1 min-h-screen content-area ${!isFinanceRoute ? 'lg:ml-64' : ''}`}>
+      <div
+        className={`flex flex-col flex-1 min-h-screen content-area ${!isFinanceRoute ? "lg:ml-64" : ""}`}
+      >
         {/* Finance route: Back button bar at top (replaces sidebar and mobile menu) */}
-        {isFinanceRoute && (
+        {/* {isFinanceRoute && (
           <div className="flex items-center justify-between px-4 py-3 bg-white border-b border-[#e7ebf3] sticky top-0 z-30 shadow-sm">
             <button
               type="button"
-              onClick={() => handleNav('DASHBOARD')}
+              onClick={() => handleNav("DASHBOARD")}
               className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-[#4c669a] hover:bg-[#f2f6f9] transition-colors"
             >
-              <span className="material-symbols-outlined text-[20px]">arrow_back</span>
+              <span className="material-symbols-outlined text-[20px]">
+                arrow_back
+              </span>
               Back
             </button>
             <img
               src="/logo.webp"
               alt="Xpect Group"
               className="h-[40px] w-auto cursor-pointer"
-              onClick={() => handleNav('DASHBOARD')}
+              onClick={() => handleNav("DASHBOARD")}
+            />
+          </div>
+        )} */}
+
+        {isFinanceRoute && (
+          <div className="flex items-center justify-between px-4 py-3 bg-white border-b border-[#e7ebf3] sticky top-0 z-30 shadow-sm">
+            {/* LEFT: Menu + Back */}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setIsSidebarOpen(true)}
+                className="lg:hidden p-2 rounded-lg bg-[#2e4150]"
+              >
+                <span className="material-symbols-outlined text-white">
+                  menu
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleNav("DASHBOARD")}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold text-[#4c669a] hover:bg-[#f2f6f9]"
+              >
+                <span className="material-symbols-outlined text-[20px]">
+                  arrow_back
+                </span>
+                Back
+              </button>
+            </div>
+
+            {/* RIGHT: Logo */}
+            <img
+              src="/logo.webp"
+              alt="Xpect Group"
+              className="h-[40px] w-auto cursor-pointer"
+              onClick={() => handleNav("DASHBOARD")}
             />
           </div>
         )}
@@ -557,17 +785,18 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, currentView, onNavi
               src="/logo.webp"
               alt="Xpect Group"
               className="h-[50px] w-auto cursor-pointer"
-              onClick={() => handleNav('DASHBOARD')}
+              onClick={() => handleNav("DASHBOARD")}
             />
           </div>
         )}
 
-        <main className="flex-1 bg-[#f2f6f9]">
-          {children}
-        </main>
+        <main className="flex-1 bg-[#f2f6f9]">{children}</main>
 
         <footer className="py-2 px-4 text-center text-[#4c669a] text-sm border-t border-[#e7ebf3] bg-white">
-          <p>© 2026 Xpect Group. All worker records are encrypted and stored in compliance with GDPR regulations.</p>
+          <p>
+            © 2026 Xpect Group. All worker records are encrypted and stored in
+            compliance with GDPR regulations.
+          </p>
         </footer>
       </div>
 

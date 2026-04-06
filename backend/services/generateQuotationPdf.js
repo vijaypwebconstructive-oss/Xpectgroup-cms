@@ -195,6 +195,28 @@ export const generateQuotationPdf = async (quotation) => {
 
       <div style="clear: both;"></div>
 
+      <!-- SERVICE DETAILS -->
+      <div class="card">
+        <div class="card-title">SERVICE DETAILS</div>
+
+        <div class="row">
+          <div class="label">Service Period</div>
+          <div class="value">${quotation.servicePeriod || "-"}</div>
+        </div>
+
+        <div class="row two">
+          <div>
+            <div class="label">Site Location</div>
+            <div class="value">${quotation.siteLocation || "-"}</div>
+          </div>
+
+          <div>
+            <div class="label">Site Type</div>
+            <div class="value">${quotation.siteType || "-"}</div>
+          </div>
+        </div>
+      </div>
+
       <!-- NOTES -->
       <div class="card">
         <div class="card-title">NOTES</div>
