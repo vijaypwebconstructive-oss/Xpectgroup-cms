@@ -32,6 +32,7 @@ interface AdminLayoutProps {
   children: React.ReactNode;
   currentView: AppView;
   onNavigate: (view: AppView, cleaner?: any) => void;
+  handleSidebar?: () => void;
 }
 
 interface AdminProfile {
@@ -61,6 +62,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
   children,
   currentView,
   onNavigate,
+  handleSidebar,
 }) => {
   const [profile, setProfile] = useState<AdminProfile>({});
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
@@ -697,7 +699,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
         </div>
       )}
 
-      {/* Mobile sidebar overlay — hidden for Finance module */}
+      {/* Mobile sidebar overlay — hidden maine module */}
       {!isFinanceRoute && isSidebarOpen && (
         <div className="fixed inset-0 z-50 lg:hidden">
           <div
@@ -736,12 +738,17 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
           </div>
         )} */}
 
+        {/* header finance dashboard */}
+
         {isFinanceRoute && (
           <div className="flex items-center justify-between px-4 py-3 bg-white border-b border-[#e7ebf3] sticky top-0 z-30 shadow-sm">
             {/* LEFT: Menu + Back */}
             <div className="flex items-center gap-2">
               <button
-                onClick={() => setIsSidebarOpen(true)}
+                onClick={() => {
+                  console.log("clicked");
+                  handleSidebar?.();
+                }}
                 className="lg:hidden p-2 rounded-lg bg-[#2e4150]"
               >
                 <span className="material-symbols-outlined text-white">

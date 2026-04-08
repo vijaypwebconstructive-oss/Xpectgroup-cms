@@ -38,6 +38,7 @@ const App: React.FC = () => {
   const [onboardingInviteToken, setOnboardingInviteToken] = useState<
     string | null
   >(null);
+  const [showSidebar, setShowSidebar] = useState<boolean>(false);
 
   // Initialize state from URL on mount
   const initializeState = () => {
@@ -258,6 +259,11 @@ const App: React.FC = () => {
     navigateToUrl(`/onboarding/auth/${token}`, true);
   };
 
+  const handlefinancesidebar = () => {
+    setShowSidebar((prev) => !prev);
+    console.log("sidebar executed");
+  };
+
   const renderView = () => {
     // Employee onboarding routes - use EmployeeLayout
     if (currentView === "ONBOARDING_AUTH") {
@@ -272,7 +278,11 @@ const App: React.FC = () => {
         );
       }
       return (
-        <AdminLayout currentView={currentView} onNavigate={navigateTo}>
+        <AdminLayout
+          currentView={currentView}
+          onNavigate={navigateTo}
+          handleSidebar={handlefinancesidebar}
+        >
           <ComplianceDashboardView onNavigate={navigateTo} />
         </AdminLayout>
       );
@@ -363,7 +373,11 @@ const App: React.FC = () => {
 
     // Admin routes - use AdminLayout
     return (
-      <AdminLayout currentView={currentView} onNavigate={navigateTo}>
+      <AdminLayout
+        currentView={currentView}
+        onNavigate={navigateTo}
+        handleSidebar={handlefinancesidebar}
+      >
         {(() => {
           switch (currentView) {
             case "DASHBOARD":
@@ -440,7 +454,12 @@ const App: React.FC = () => {
             case "INCIDENTS":
               return <IncidentsModule />;
             case "FINANCE":
-              return <FinanceModule />;
+              return (
+                <FinanceModule
+                  sidebar={showSidebar}
+                  handlesidebar={handlefinancesidebar}
+                />
+              );
             case "USER_ACCESS":
               return <UserAccessModule />;
             default:

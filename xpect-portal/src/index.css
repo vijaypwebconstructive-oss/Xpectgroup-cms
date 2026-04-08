@@ -5,11 +5,12 @@
   --color-background-light: #f6f6f8;
   --color-background-dark: #101622;
 } */
-html, body {
+html,
+body {
   font-family: "Inter Tight", system-ui, sans-serif;
 }
 
-body{
+body {
   /* overflow-x: hidden; */
   overflow-y: scroll !important;
 }
@@ -31,7 +32,11 @@ body{
 }; */
 
 .material-symbols-outlined {
-  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  font-variation-settings:
+    "FILL" 0,
+    "wght" 400,
+    "GRAD" 0,
+    "opsz" 24;
 }
 
 /* Custom scrollbar for better aesthetics */
@@ -51,7 +56,6 @@ body{
 ::-webkit-scrollbar-thumb:hover {
   background: #555;
 }
-
 
 /* span.dot {
   width: 14px;
@@ -73,10 +77,9 @@ body{
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.group{
+.group {
   position: relative;
 }
-
 
 .td-verifcation {
   min-width: 154px;
@@ -101,21 +104,18 @@ body{
   }
 }
 
-p{
+p {
   font-family: "Montserrat", sans-serif;
 }
 
 @media (max-width: 1024px) {
+  .employee-list {
+    overflow-x: scroll;
+  }
 
-
-.employee-list {
-  overflow-x: scroll;
-}
-
-.employee-list::-webkit-scrollbar {
-  height: 6px;
-}
-
+  .employee-list::-webkit-scrollbar {
+    height: 6px;
+  }
 }
 
 /* Print styles for PDF generation */
@@ -123,15 +123,15 @@ p{
   .no-print {
     display: none !important;
   }
-  
+
   body {
     background: white;
   }
-  
+
   .bg-white {
     background: white !important;
   }
-  
+
   @page {
     margin: 1cm;
   }
@@ -165,4 +165,22 @@ p{
     top: 0;
     width: 100%;
   }
+}
+
+.Closesidebar {
+  padding: 2px 9px;
+  background-color: #f2f6f9;
+  color: #000;
+  position: absolute;
+  border-radius: 50%;
+  top: 5px;
+  left: 10px;
+}
+
+aside.financeSidebar {
+  position: fixed;
+  top: 0;
+  z-index: 999;
+  height: 100%;
+  padding-top: 50px;
 }

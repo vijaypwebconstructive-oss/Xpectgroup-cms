@@ -27,7 +27,12 @@ import ProspectListPage from "../prospect/ProspectListPage";
 import ProspectCreate from "../prospect/ProspectCreate";
 import ProspectDetailPage from "../prospect/ProspectDetailPage";
 
-const FinanceModule: React.FC = () => {
+type Props = {
+  sidebar: boolean;
+  handlesidebar: () => void;
+};
+
+const FinanceModule: React.FC<Props> = ({ sidebar, handlesidebar }) => {
   const [navState, setNavState] = useState<FinanceNavState>(() => {
     syncFinanceFromPathname(window.location.pathname);
     return getFinanceState();
@@ -247,6 +252,7 @@ const FinanceModule: React.FC = () => {
   return (
     <div className="flex flex-1 w-full min-h-[calc(100vh-160px)]">
       {/* Secondary sidebar */}
+
       <aside className="hidden lg:block w-48 shrink-0 bg-white border-r border-[#e7ebf3] py-6 px-3">
         <nav className="space-y-1">
           {/* Payroll - collapsible */}
@@ -485,6 +491,252 @@ const FinanceModule: React.FC = () => {
           ))}
         </nav>
       </aside>
+
+      {sidebar && (
+        <aside
+          className={`${sidebar ? "financeSidebar" : ""} lg:block w-48 shrink-0 bg-white border-r border-[#e7ebf3] py-6 px-3`}
+        >
+          <div className="Closesidebar" onClick={() => handlesidebar()}>
+            X
+          </div>
+          <nav className="space-y-1">
+            {/* Payroll - collapsible */}
+            <div>
+              <button
+                type="button"
+                onClick={() => setIsPayrollOpen((o) => !o)}
+                className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all cursor-pointer ${
+                  isPayrollView(navState.view)
+                    ? "bg-[#2e4150] text-white"
+                    : "text-[#4c669a] hover:bg-[#f2f6f9]"
+                }`}
+              >
+                <span className="material-symbols-outlined text-[18px]">
+                  payments
+                </span>
+                <span className="flex-1 text-left">Payroll</span>
+                <span
+                  className={`material-symbols-outlined text-[16px] transition-transform duration-200 ${
+                    isPayrollOpen ? "rotate-90" : ""
+                  }`}
+                >
+                  chevron_right
+                </span>
+              </button>
+              <div
+                className={`overflow-hidden transition-all duration-300 ease-in-out ${
+                  isPayrollOpen ? "max-h-64 opacity-100" : "max-h-0 opacity-0"
+                }`}
+              >
+                <div className="mt-1 ml-2 pl-3 border-l border-[#e7ebf3] space-y-0.5">
+                  {PAYROLL_ITEMS.map(({ view, label, icon }) => {
+                    const isActive =
+                      navState.view === view ||
+                      (view === "payslip" && navState.view === "payslip-view");
+                    const onClick =
+                      view === "payslip"
+                        ? () => financeNavigate("payslip-view", "sample")
+                        : () => financeNavigate(view);
+                    return (
+                      <button
+                        key={view}
+                        onClick={onClick}
+                        className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer text-left ${
+                          isActive
+                            ? "bg-[#2e4150]/10 text-[#2e4150]"
+                            : "text-[#4c669a] hover:bg-[#f2f6f9]"
+                        }`}
+                      >
+                        <span className="material-symbols-outlined text-[16px]">
+                          {icon}
+                        </span>
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            {/* Invoice - collapsible */}
+            <div>
+              <button
+                type="button"
+                onClick={() => setIsInvoiceOpen((o) => !o)}
+                className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all cursor-pointer ${
+                  isInvoiceView(navState.view)
+                    ? "bg-[#2e4150] text-white"
+                    : "text-[#4c669a] hover:bg-[#f2f6f9]"
+                }`}
+              >
+                <span className="material-symbols-outlined text-[18px]">
+                  description
+                </span>
+                <span className="flex-1 text-left">Invoice</span>
+                <span
+                  className={`material-symbols-outlined text-[16px] transition-transform duration-200 ${
+                    isInvoiceOpen ? "rotate-90" : ""
+                  }`}
+                >
+                  chevron_right
+                </span>
+              </button>
+              <div
+                className={`overflow-hidden transition-all duration-300 ease-in-out ${
+                  isInvoiceOpen ? "max-h-64 opacity-100" : "max-h-0 opacity-0"
+                }`}
+              >
+                <div className="mt-1 ml-2 pl-3 border-l border-[#e7ebf3] space-y-0.5">
+                  {INVOICE_ITEMS.map(({ view, label, icon, needsId }) => {
+                    const isActive = navState.view === view;
+                    const onClick = needsId
+                      ? () => financeNavigate(view, "sample")
+                      : () => financeNavigate(view);
+                    return (
+                      <button
+                        key={view}
+                        onClick={onClick}
+                        className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer text-left ${
+                          isActive
+                            ? "bg-[#2e4150]/10 text-[#2e4150]"
+                            : "text-[#4c669a] hover:bg-[#f2f6f9]"
+                        }`}
+                      >
+                        <span className="material-symbols-outlined text-[16px]">
+                          {icon}
+                        </span>
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            {/* Quotation - collapsible */}
+            <div>
+              <button
+                type="button"
+                onClick={() => setIsQuotationOpen((o) => !o)}
+                className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all cursor-pointer ${
+                  isQuotationView(navState.view)
+                    ? "bg-[#2e4150] text-white"
+                    : "text-[#4c669a] hover:bg-[#f2f6f9]"
+                }`}
+              >
+                <span className="material-symbols-outlined text-[18px]">
+                  request_quote
+                </span>
+                <span className="flex-1 text-left">Quotation</span>
+                <span
+                  className={`material-symbols-outlined text-[16px] transition-transform duration-200 ${
+                    isQuotationOpen ? "rotate-90" : ""
+                  }`}
+                >
+                  chevron_right
+                </span>
+              </button>
+              <div
+                className={`overflow-hidden transition-all duration-300 ease-in-out ${
+                  isQuotationOpen ? "max-h-64 opacity-100" : "max-h-0 opacity-0"
+                }`}
+              >
+                <div className="mt-1 ml-2 pl-3 border-l border-[#e7ebf3] space-y-0.5">
+                  {QUOTATION_ITEMS.map(({ view, label, icon, needsId }) => {
+                    const isActive = navState.view === view;
+                    const onClick = needsId
+                      ? () => financeNavigate(view, "sample")
+                      : () => financeNavigate(view);
+                    return (
+                      <button
+                        key={view}
+                        onClick={onClick}
+                        className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer text-left ${
+                          isActive
+                            ? "bg-[#2e4150]/10 text-[#2e4150]"
+                            : "text-[#4c669a] hover:bg-[#f2f6f9]"
+                        }`}
+                      >
+                        <span className="material-symbols-outlined text-[16px]">
+                          {icon}
+                        </span>
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            {/* Prospect - collapsible */}
+            <div>
+              <button
+                type="button"
+                onClick={() => setIsProspectOpen((o) => !o)}
+                className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all cursor-pointer ${
+                  isProspectView(navState.view)
+                    ? "bg-[#2e4150] text-white"
+                    : "text-[#4c669a] hover:bg-[#f2f6f9]"
+                }`}
+              >
+                <span className="material-symbols-outlined text-[18px]">
+                  person_search
+                </span>
+                <span className="flex-1 text-left">Prospect</span>
+                <span
+                  className={`material-symbols-outlined text-[16px] transition-transform duration-200 ${
+                    isProspectOpen ? "rotate-90" : ""
+                  }`}
+                >
+                  chevron_right
+                </span>
+              </button>
+              <div
+                className={`overflow-hidden transition-all duration-300 ease-in-out ${
+                  isProspectOpen ? "max-h-64 opacity-100" : "max-h-0 opacity-0"
+                }`}
+              >
+                <div className="mt-1 ml-2 pl-3 border-l border-[#e7ebf3] space-y-0.5">
+                  {PROSPECT_ITEMS.map(({ view, label, icon }) => (
+                    <button
+                      key={view}
+                      onClick={() => financeNavigate(view)}
+                      className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer text-left ${
+                        navState.view === view
+                          ? "bg-[#2e4150]/10 text-[#2e4150]"
+                          : "text-[#4c669a] hover:bg-[#f2f6f9]"
+                      }`}
+                    >
+                      <span className="material-symbols-outlined text-[16px]">
+                        {icon}
+                      </span>
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Expense - top-level button */}
+            {SIDEBAR_ITEMS.map(({ view, label, icon }) => (
+              <button
+                key={view}
+                onClick={() => financeNavigate(view)}
+                className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all cursor-pointer ${
+                  navState.view === view
+                    ? "bg-[#2e4150] text-white"
+                    : "text-[#4c669a] hover:bg-[#f2f6f9]"
+                }`}
+              >
+                <span className="material-symbols-outlined text-[18px]">
+                  {icon}
+                </span>
+                Performance
+              </button>
+            ))}
+          </nav>
+        </aside>
+      )}
 
       {/* Content area */}
       <div className="flex-1 flex flex-col min-w-0 py-[15px] sm:py-8 px-4 sm:px-6 md:px-10">

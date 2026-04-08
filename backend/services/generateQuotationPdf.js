@@ -1,231 +1,142 @@
-import html_to_pdf from "html-pdf-node";
+import { createRequire } from "module";
+const require = createRequire(import.meta.url);
 
-export const generateQuotationPdf = async (quotation) => {
-  const formatDate = (date) => new Date(date).toLocaleDateString("en-GB");
+const PDFDocument = require("pdfkit");
 
-  const html = `
-  <html>
-    <head>
-      <style>
-        body {
-          font-family: Arial, sans-serif;
-          font-size: 12px;
-          padding: 30px;
-          color: #000;
-        }
+export const generateQuotationPdf = async (data) => {
+  return new Promise((resolve, reject) => {
+    const doc = new PDFDocument({ margin: 40 });
 
-        .header {
-          display: flex;
-          justify-content: space-between;
-          margin-bottom: 20px;
-        }
+    const chunks = [];
+    doc.on("data", (c) => chunks.push(c));
+    doc.on("end", () => resolve(Buffer.concat(chunks)));
+    doc.on("error", reject);
 
-        .company {
-          line-height: 1.5;
-        }
+    // ===== HEADER =====
+    doc
+      .fontSize(10)
+      .text(data.billBy?.companyName || "", 40, 40)
+      .text(data.billBy?.companyAddress || "")
+      .text(data.billBy?.email || "")
+      .text(data.billBy?.phone || "");
 
-        .title {
-          font-size: 28px;
-          font-weight: bold;
-        }
+    doc.fontSize(22).text("QUOTATION", 400, 40, { align: "right" });
 
-        .section {
-          margin-top: 20px;
-        }
+    doc.moveDown(2);
 
-        .grid {
-          display: flex;
-          justify-content: space-between;
-        }
+    // ===== META =====
+    doc.fontSize(10);
+    doc.text(`Quotation Number: ${data.quotationNumber || data.id}`);
+    doc.text(
+      `Issue Date: ${new Date(data.issueDate).toLocaleDateString("en-GB")}`,
+    );
+    doc.text(
+      `Valid Until: ${new Date(data.validUntil || data.dueDate).toLocaleDateString("en-GB")}`,
+    );
 
-        .box {
-          width: 48%;
-        }
+    doc.moveDown();
 
-        table {
-          width: 100%;
-          border-collapse: collapse;
-          margin-top: 20px;
-        }
+    // ===== BILL =====
+    const y = doc.y;
 
-        th, td {
-          border: 1px solid #000;
-          padding: 8px;
-        }
+    doc.text("BILL BY", 40, y);
+    doc.text("BILL TO", 300, y);
 
-        th {
-          background: #f2f2f2;
-        }
+    doc.moveDown();
 
-        .totals {
-          margin-top: 15px;
-          width: 300px;
-          float: right;
-        }
+    doc.text(data.billBy?.companyName || "", 40);
+    doc.text(data.billTo?.clientName || "", 300);
 
-        .totals div {
-          display: flex;
-          justify-content: space-between;
-          margin: 4px 0;
-        }
+    doc.text(data.billBy?.companyAddress || "", 40);
+    doc.text(data.billTo?.clientAddress || "", 300);
 
-        .bold {
-          font-weight: bold;
-        }
+    doc.text(data.billBy?.email || "", 40);
+    doc.text(data.billTo?.email || "", 300);
 
-        .card {
-          margin-top: 30px;
-          background: #f3f5f9;
-          border: 1px solid #e5e7eb;
-          border-radius: 10px;
-          padding: 20px;
-        }
+    doc.text(data.billBy?.phone || "", 40);
+    doc.text(data.billTo?.phone || "", 300);
 
-        .card-title {
-          font-weight: bold;
-          font-size: 13px;
-          margin-bottom: 15px;
-          color: #4b5563;
-        }
+    doc.moveDown(2);
 
-        .row {
-          margin-bottom: 12px;
-        }
+    // ===== TABLE =====
+    const tableTop = doc.y;
+    const col = [40, 80, 260, 320, 380, 450];
 
-        .row.two {
-          display: flex;
-          justify-content: space-between;
-        }
+    const drawRow = (y, row) => {
+      row.forEach((text, i) => doc.text(text, col[i], y));
+    };
 
-        .row.two > div {
-          width: 48%;
-        }
+    drawRow(tableTop, ["No", "Service", "Qty", "Rate", "Disc", "Amount"]);
+    doc
+      .moveTo(40, tableTop + 15)
+      .lineTo(550, tableTop + 15)
+      .stroke();
 
-        .label {
-          font-size: 11px;
-          color: #6b7280;
-        }
+    let yPos = tableTop + 25;
 
-        .value {
-          font-size: 13px;
-          font-weight: 500;
-        }
+    data.serviceItems.forEach((item, i) => {
+      drawRow(yPos, [
+        String(i + 1).padStart(2, "0"),
+        item.serviceDescription,
+        item.quantity.toString(),
+        `£${item.rate}`,
+        `${item.discount}%`,
+        `£${item.amount}`,
+      ]);
+      yPos += 20;
+    });
 
-      </style>
-    </head>
+    // ===== TOTALS =====
+    const totalsY = yPos + 20;
 
-    <body>
+    const totals = [
+      ["Subtotal", data.subtotal],
+      ["Discount", data.discount],
+      ["Total", data.totalAmount],
+    ];
 
-      <!-- HEADER -->
-      <div class="header">
-        <div class="company">
-          <strong>${quotation.billBy?.companyName}</strong><br/>
-          ${quotation.billBy?.companyAddress}<br/>
-          ${quotation.billBy?.email}<br/>
-          ${quotation.billBy?.phone}
-        </div>
+    totals.forEach(([label, value], i) => {
+      doc.text(label, 350, totalsY + i * 15);
+      doc.text(`£${value}`, 500, totalsY + i * 15, { align: "right" });
+    });
 
-        <div class="title">QUOTATION</div>
-      </div>
+    // ===== RIGHT SIDE PANEL =====
+    const rightX = 350;
+    let rightY = totalsY + 120;
 
-      <!-- META -->
-      <div class="section">
-        <strong>Quotation Number:</strong> ${quotation.quotationNumber || quotation.id}<br/>
-        <strong>Issue Date:</strong> ${formatDate(quotation.issueDate)}<br/>
-        <strong>Valid Until:</strong> ${formatDate(quotation.validUntil || quotation.dueDate)}
-      </div>
+    doc
+      .fontSize(12)
+      .text("SERVICE DETAILS", rightX, rightY, { underline: true });
 
-      <!-- BILL -->
-      <div class="section grid">
-        <div class="box">
-          <strong>BILL BY</strong><br/>
-          ${quotation.billBy?.companyName}<br/>
-          ${quotation.billBy?.companyAddress}<br/>
-          ${quotation.billBy?.email}<br/>
-          ${quotation.billBy?.phone}
-        </div>
+    rightY += 20;
 
-        <div class="box">
-          <strong>BILL TO</strong><br/>
-          ${quotation.billTo?.clientName}<br/>
-          ${quotation.billTo?.clientAddress}<br/>
-          Contact: ${quotation.billTo?.contactPerson}<br/>
-          ${quotation.billTo?.email}<br/>
-          ${quotation.billTo?.phone}
-        </div>
-      </div>
+    doc.fontSize(10);
+    doc.text(`Service Period: ${data.servicePeriod || "-"}`, rightX, rightY);
 
-      <!-- TABLE -->
-      <table>
-        <thead>
-          <tr>
-            <th>No</th>
-            <th>Service Description</th>
-            <th>Qty</th>
-            <th>Rate</th>
-            <th>Discount</th>
-            <th>Amount</th>
-          </tr>
-        </thead>
+    rightY += 15;
 
-        <tbody>
-          ${quotation.serviceItems
-            .map(
-              (item, i) => `
-            <tr>
-              <td>${String(i + 1).padStart(2, "0")}</td>
-              <td>${item.serviceDescription}</td>
-              <td>${item.quantity}</td>
-              <td>£${item.rate}</td>
-              <td>${item.discount}%</td>
-              <td>£${item.amount}</td>
-            </tr>
-          `,
-            )
-            .join("")}
-        </tbody>
-      </table>
+    doc.text(`Site Location: ${data.siteLocation || "-"}`, rightX, rightY);
 
-      <!-- TOTAL -->
-      <div class="totals">
-        <div><span>Subtotal</span><span>£${quotation.subtotal}</span></div>
-        <div><span>Discount</span><span>£${quotation.discount}</span></div>
-        <div class="bold"><span>Total</span><span>£${quotation.totalAmount}</span></div>
-      </div>
+    rightY += 15;
 
-      <div style="clear: both;"></div>
+    doc.text(`Site Type: ${data.siteType || "-"}`, rightX, rightY);
 
-      <!-- SERVICE DETAILS -->
-      <div class="card">
-        <div class="card-title">SERVICE DETAILS</div>
+    rightY += 25;
 
-        <div class="row">
-          <div class="label">Service Period</div>
-          <div class="value">${quotation.servicePeriod || "-"}</div>
-        </div>
+    doc.fontSize(12).text("NOTES", rightX, rightY, { underline: true });
 
-        <div class="row two">
-          <div>
-            <div class="label">Site Location</div>
-            <div class="value">${quotation.siteLocation || "-"}</div>
-          </div>
+    rightY += 20;
 
-          <div>
-            <div class="label">Site Type</div>
-            <div class="value">${quotation.siteType || "-"}</div>
-          </div>
-        </div>
-      </div>
+    doc
+      .fontSize(10)
+      .text(
+        data.notes ||
+          "Thank you for your business. Please make payment within the specified terms.",
+        rightX,
+        rightY,
+        { width: 200 },
+      );
 
-      <!-- NOTES -->
-      <div class="card">
-        <div class="card-title">NOTES</div>
-        <div>${quotation.notes || ""}</div>
-      </div>
-
-    </body>
-  </html>
-  `;
-
-  return await html_to_pdf.generatePdf({ content: html }, { format: "A4" });
+    doc.end();
+  });
 };
