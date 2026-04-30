@@ -40,6 +40,8 @@ const allowedOrigins = [
   "http://localhost:3000",
   "http://localhost:3001",
   "http://localhost:5173",
+  "http://localhost", // Required for Capacitor Android
+  "capacitor://localhost", // Required for Capacitor iOS
   process.env.FRONTEND_URL,
 ].filter(Boolean);
 app.use(
@@ -78,12 +80,12 @@ app.use("/api/inspections", inspectionRoutes);
 app.use("/uploads", express.static("uploads"));
 app.use("/api/performance", performanceRoutes);
 // ✅ Serve frontend (React build)
-app.use(express.static(path.join(__dirname, "../public_html")));
+// app.use(express.static(path.join(__dirname, "../public_html")));
 
-// ✅ Catch-all route for React (MUST BE LAST ROUTE)
-app.get("*", (req, res) => {
-  res.sendFile(path.join(__dirname, "../public_html", "index.html"));
-});
+// // ✅ Catch-all route for React (MUST BE LAST ROUTE)
+// app.get("*", (req, res) => {
+//   res.sendFile(path.join(__dirname, "../public_html", "index.html"));
+// });
 app.use(express.json());
 // Health check
 app.get("/api/health", (req, res) => {
