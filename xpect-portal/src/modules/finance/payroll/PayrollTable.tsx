@@ -14,8 +14,9 @@ export interface PayrollTableRow {
   totalPayable: string;
   paymentStatus: 'Pending' | 'Paid';
   salarySlip: {
-    id: string;
-    type: 'generated' | 'uploaded';
+    _id?: string;
+    id?: string;
+    type?: 'generated' | 'uploaded';
     fileUrl?: string;
   } | null;
 }
@@ -31,7 +32,7 @@ interface PayrollTableProps {
   onView?: (id: string) => void;
   onEdit?: (id: string) => void;
   onDelete?: (id: string) => void;
-  onDownloadPayslip?: (slipId: string) => void;
+  onDownloadPayslip?: (slip: NonNullable<PayrollTableRow['salarySlip']>) => void;
   onSendPayslip?: (slipId: string) => void;
 }
 
@@ -158,9 +159,10 @@ const PayrollTable: React.FC<PayrollTableProps> = ({
   <div className="flex items-center gap-3">
 
     {/* VIEW PAYSLIP */}
-    {row.salarySlip && (
+    {row.salarySlip && onDownloadPayslip && (
       <button
-        onClick={() => onDownloadPayslip(row.salarySlip.fileUrl)}
+        type="button"
+        onClick={() => onDownloadPayslip(row.salarySlip!)}
         className="text-[#4c669a] hover:text-[#2e4150] text-sm font-medium"
       >
         View

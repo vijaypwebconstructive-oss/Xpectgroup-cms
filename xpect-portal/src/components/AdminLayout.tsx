@@ -27,6 +27,11 @@ import {
   subscribeIncident,
 } from "../modules/incidents/incidentNavStore";
 import { userNavigate } from "../modules/user-access/userNavStore";
+// import { useCurrentUser } from "../context/AuthContext";
+import { canAccessModule } from "../utils/moduleAccess";
+// import type { ModuleKey } from "../modules/user-access/types";
+// import { canAccess } from "../utils/rbac.js";
+// import { getCurrentUser } from "../utils/auth.js";
 
 interface AdminLayoutProps {
   children: React.ReactNode;
@@ -181,6 +186,42 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
     setIsSidebarOpen(false);
   };
 
+  const [user, setUser] = useState<any>(null);
+
+  useEffect(() => {
+    const loadUser = () => {
+      const stored = localStorage.getItem("xpect_user");
+      setUser(stored ? JSON.parse(stored) : null);
+    };
+
+    loadUser();
+
+    window.addEventListener("storage", loadUser);
+    return () => window.removeEventListener("storage", loadUser);
+  }, []);
+  // const canMod = (key: ModuleKey) =>
+  //   user ? canAccessModule(user, key) : false;
+  console.log("userrrr", user);
+
+  // if (!user) {
+  //   return <div>Loading...</div>;
+  // }
+
+  const handleLogout = () => {
+    // remove auth data
+    localStorage.removeItem("xpect_authToken");
+    localStorage.removeItem("xpect_user");
+
+    // optional: clear everything (if you prefer)
+    // localStorage.clear();
+
+    // redirect to login page
+    window.location.href = "/login";
+
+    // OR reload app (if no routing setup)
+    // window.location.reload();
+  };
+
   const sidebarContent = (
     <div className="flex flex-col h-full bg-[#2e4150] w-64">
       {/* Admin profile — top of sidebar */}
@@ -209,10 +250,10 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-white text-sm font-bold truncate">
-              {profile.name || "Admin"}
+              {user?.role || "Admin"}
             </p>
             <p className="text-white/50 text-xs truncate">
-              {profile.role || "Administrator"}
+              {user?.role || "Administrator"}
             </p>
           </div>
           <span
@@ -228,15 +269,15 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
         </button>
         {isProfileDropdownOpen && (
           <div className="mt-1 bg-white rounded-xl shadow-lg py-2 animate-in fade-in slide-in-from-top-2 duration-200">
-            <div className="px-4 py-2 border-b border-gray-100">
+            {/* <div className="px-4 py-2 border-b border-gray-100">
               <p className="font-bold text-gray-900 text-sm truncate">
-                {profile.name || "Admin"}
+                {user.username || "Admin"}
               </p>
               <p className="text-xs text-gray-500 truncate">
-                {profile.email || "admin@xpectgroup.com"}
+                {user.email || "admin@xpectgroup.com"}
               </p>
-            </div>
-            <button
+            </div> */}
+            {/* <button
               onClick={() => {
                 setIsProfileModalOpen(true);
                 setIsProfileDropdownOpen(false);
@@ -245,6 +286,15 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
             >
               <span className="material-symbols-outlined text-base">edit</span>
               Edit Profile
+            </button> */}
+            <button
+              onClick={handleLogout}
+              className={`w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2 transition-colors`}
+            >
+              <span className="material-symbols-outlined text-[18px]">
+                Logout
+              </span>
+              Logout
             </button>
           </div>
         )}
@@ -252,78 +302,80 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
 
       {/* Nav links */}
       <nav className="flex-1 px-3 py-5 space-y-1 overflow-y-auto">
-        {/* Dashboard */}
-        <button
-          onClick={() => handleNav("DASHBOARD")}
-          className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all cursor-pointer ${
-            currentView === "DASHBOARD"
-              ? "bg-white/20 text-white"
-              : "text-white/70 hover:bg-white/10 hover:text-white"
-          }`}
-        >
-          <span className="material-symbols-outlined text-[20px]">
-            dashboard
-          </span>
-          Dashboard
-        </button>
-
-        {/* Employee Compliance — click to expand/collapse sub-modules */}
-        <div>
-          {/* Main module button */}
+        {/* Dashboard (Compliance Dashboard) */}
+        {canAccessModule(user, "dashboard") && (
           <button
-            type="button"
-            onClick={() => setIsComplianceOpen((o) => !o)}
+            onClick={() => handleNav("DASHBOARD")}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all cursor-pointer ${
-              COMPLIANCE_VIEWS.includes(currentView)
+              currentView === "DASHBOARD"
                 ? "bg-white/20 text-white"
                 : "text-white/70 hover:bg-white/10 hover:text-white"
             }`}
           >
             <span className="material-symbols-outlined text-[20px]">
-              verified_user
+              dashboard
             </span>
-            <span className="flex-1 text-left">Employee Compliance</span>
-            <span
-              className={`material-symbols-outlined text-[18px] opacity-70 transition-transform duration-200 ${isComplianceOpen ? "rotate-90" : ""}`}
-            >
-              chevron_right
-            </span>
+            Dashboard
           </button>
+        )}
+        {/* Employee Compliance — click to expand/collapse sub-modules */}
+        {canAccessModule(user, "compliance") && (
+          <div>
+            {/* Main module button */}
+            <button
+              type="button"
+              onClick={() => setIsComplianceOpen((o) => !o)}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all cursor-pointer ${
+                COMPLIANCE_VIEWS.includes(currentView)
+                  ? "bg-white/20 text-white"
+                  : "text-white/70 hover:bg-white/10 hover:text-white"
+              }`}
+            >
+              <span className="material-symbols-outlined text-[20px]">
+                verified_user
+              </span>
+              <span className="flex-1 text-left">Employee Compliance</span>
+              <span
+                className={`material-symbols-outlined text-[18px] opacity-70 transition-transform duration-200 ${isComplianceOpen ? "rotate-90" : ""}`}
+              >
+                chevron_right
+              </span>
+            </button>
 
-          {/* Sub-modules — shown when isComplianceOpen is true */}
-          <div
-            className={`overflow-hidden transition-all duration-300 ease-in-out ${isComplianceOpen ? "max-h-48 opacity-100" : "max-h-0 opacity-0"}`}
-          >
-            <div className="mt-0.5 ml-3 pl-3 border-l border-white/20 space-y-0.5">
-              <button
-                onClick={() => handleNav("CLEANERS_LIST")}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all cursor-pointer ${
-                  currentView === "CLEANERS_LIST" ||
-                  currentView === "CLEANER_DETAIL" ||
-                  currentView === "REPORT"
-                    ? "bg-white/15 text-white"
-                    : "text-white/60 hover:bg-white/10 hover:text-white"
-                }`}
-              >
-                <span className="material-symbols-outlined text-[18px]">
-                  group
-                </span>
-                Staff
-              </button>
-              <button
-                onClick={() => handleNav("TRAINING_CERTIFICATION")}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all cursor-pointer text-left ${
-                  currentView === "TRAINING_CERTIFICATION"
-                    ? "bg-white/15 text-white "
-                    : "text-white/60 hover:bg-white/10 hover:text-white"
-                }`}
-              >
-                <span className="material-symbols-outlined text-[18px]">
-                  school
-                </span>
-                Training &amp; Certification
-              </button>
-              {/* <button
+            {/* Sub-modules — shown when isComplianceOpen is true */}
+            <div
+              className={`overflow-hidden transition-all duration-300 ease-in-out ${isComplianceOpen ? "max-h-48 opacity-100" : "max-h-0 opacity-0"}`}
+            >
+              <div className="mt-0.5 ml-3 pl-3 border-l border-white/20 space-y-0.5">
+                <button
+                  onClick={() => handleNav("CLEANERS_LIST")}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all cursor-pointer ${
+                    currentView === "CLEANERS_LIST" ||
+                    currentView === "CLEANER_DETAIL" ||
+                    currentView === "REPORT"
+                      ? "bg-white/15 text-white"
+                      : "text-white/60 hover:bg-white/10 hover:text-white"
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-[18px]">
+                    group
+                  </span>
+                  Staff
+                </button>
+                <button
+                  onClick={() => handleNav("TRAINING_CERTIFICATION")}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all cursor-pointer text-left ${
+                    currentView === "TRAINING_CERTIFICATION"
+                      ? "bg-white/15 text-white "
+                      : "text-white/60 hover:bg-white/10 hover:text-white"
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-[18px]">
+                    school
+                  </span>
+                  Training &amp; Certification
+                </button>
+                {/* <button
                 onClick={() => handleNav('PPE_LIST')}
                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all cursor-pointer ${
                   currentView === 'PPE_LIST'
@@ -334,96 +386,98 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
                 <span className="material-symbols-outlined text-[18px]">safety_check</span>
                 PPE Invoices
               </button> */}
+              </div>
             </div>
           </div>
-        </div>
-
+        )}
         {/* Client & Site Management — click to expand/collapse */}
-        <div>
-          <button
-            type="button"
-            onClick={() => setIsClientSitesOpen((o) => !o)}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all cursor-pointer ${
-              CLIENT_SITES_VIEWS.includes(currentView)
-                ? "bg-white/20 text-white"
-                : "text-white/70 hover:bg-white/10 hover:text-white"
-            }`}
-          >
-            <span className="material-symbols-outlined text-[20px]">
-              location_city
-            </span>
-            <span className="flex-1 text-left">Clients &amp; Sites</span>
-            <span
-              className={`material-symbols-outlined text-[18px] opacity-70 transition-transform duration-200 ${isClientSitesOpen ? "rotate-90" : ""}`}
+        {canAccessModule(user, "sites") && (
+          <div>
+            <button
+              type="button"
+              onClick={() => setIsClientSitesOpen((o) => !o)}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all cursor-pointer ${
+                CLIENT_SITES_VIEWS.includes(currentView)
+                  ? "bg-white/20 text-white"
+                  : "text-white/70 hover:bg-white/10 hover:text-white"
+              }`}
             >
-              chevron_right
-            </span>
-          </button>
+              <span className="material-symbols-outlined text-[20px]">
+                location_city
+              </span>
+              <span className="flex-1 text-left">Clients &amp; Sites</span>
+              <span
+                className={`material-symbols-outlined text-[18px] opacity-70 transition-transform duration-200 ${isClientSitesOpen ? "rotate-90" : ""}`}
+              >
+                chevron_right
+              </span>
+            </button>
 
-          <div
-            className={`overflow-hidden transition-all duration-300 ease-in-out ${isClientSitesOpen ? "max-h-60 opacity-100" : "max-h-0 opacity-0"}`}
-          >
-            <div className="mt-0.5 ml-3 pl-3 border-l border-white/20 space-y-0.5">
-              {(
-                [
-                  {
-                    csView: "clients" as CSView,
-                    icon: "handshake",
-                    label: "Clients",
-                  },
-                  {
-                    csView: "sites" as CSView,
-                    icon: "location_on",
-                    label: "Sites",
-                  },
-                  {
-                    csView: "allocation" as CSView,
-                    icon: "assignment_ind",
-                    label: "Site Allocation",
-                  },
-                  {
-                    csView: "inspection" as CSView,
-                    icon: "fact_check",
-                    label: "Site Inspection",
-                  },
-                  {
-                    csView: "PPE_LIST" as CSView,
-                    icon: "safety_check",
-                    label: "PPE Invoice",
-                  },
-                ] as { csView: CSView; icon: string; label: string }[]
-              ).map(({ csView, icon, label }) => (
-                <button
-                  key={csView}
-                  onClick={() => {
-                    // 1. Navigate the CS store + push URL (csNavigate handles pushState)
-                    csNavigate(csView);
-                    // 🔥 force sync immediately
-                    setActiveCSView(csView);
+            <div
+              className={`overflow-hidden transition-all duration-300 ease-in-out ${isClientSitesOpen ? "max-h-60 opacity-100" : "max-h-0 opacity-0"}`}
+            >
+              <div className="mt-0.5 ml-3 pl-3 border-l border-white/20 space-y-0.5">
+                {(
+                  [
+                    {
+                      csView: "clients" as CSView,
+                      icon: "handshake",
+                      label: "Clients",
+                    },
+                    {
+                      csView: "sites" as CSView,
+                      icon: "location_on",
+                      label: "Sites",
+                    },
+                    {
+                      csView: "allocation" as CSView,
+                      icon: "assignment_ind",
+                      label: "Site Allocation",
+                    },
+                    {
+                      csView: "inspection" as CSView,
+                      icon: "fact_check",
+                      label: "Site Inspection",
+                    },
+                    {
+                      csView: "PPE_LIST" as CSView,
+                      icon: "safety_check",
+                      label: "PPE Invoice",
+                    },
+                  ] as { csView: CSView; icon: string; label: string }[]
+                ).map(({ csView, icon, label }) => (
+                  <button
+                    key={csView}
+                    onClick={() => {
+                      // 1. Navigate the CS store + push URL (csNavigate handles pushState)
+                      csNavigate(csView);
+                      // 🔥 force sync immediately
+                      setActiveCSView(csView);
 
-                    // 2. Tell App.tsx to render ClientSitesModule if not already
-                    onNavigate("CLIENTS_SITES");
-                  }}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all cursor-pointer ${
-                    currentView === "CLIENTS_SITES" &&
-                    (activeCSView === csView ||
-                      (csView === "clients" &&
-                        activeCSView === "client-detail") ||
-                      (csView === "sites" && activeCSView === "site-detail") ||
-                      (csView === "inspection" &&
-                        activeCSView === "inspection-detail") ||
-                      (csView === "PPE_LIST" && activeCSView === "PPE_LIST"))
-                      ? "bg-white/15 text-white"
-                      : "text-white/60 hover:bg-white/10 hover:text-white"
-                  }`}
-                >
-                  <span className="material-symbols-outlined text-[18px]">
-                    {icon}
-                  </span>
-                  {label}
-                </button>
-              ))}
-              {/* <button
+                      // 2. Tell App.tsx to render ClientSitesModule if not already
+                      onNavigate("CLIENTS_SITES");
+                    }}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all cursor-pointer ${
+                      currentView === "CLIENTS_SITES" &&
+                      (activeCSView === csView ||
+                        (csView === "clients" &&
+                          activeCSView === "client-detail") ||
+                        (csView === "sites" &&
+                          activeCSView === "site-detail") ||
+                        (csView === "inspection" &&
+                          activeCSView === "inspection-detail") ||
+                        (csView === "PPE_LIST" && activeCSView === "PPE_LIST"))
+                        ? "bg-white/15 text-white"
+                        : "text-white/60 hover:bg-white/10 hover:text-white"
+                    }`}
+                  >
+                    <span className="material-symbols-outlined text-[18px]">
+                      {icon}
+                    </span>
+                    {label}
+                  </button>
+                ))}
+                {/* <button
                 onClick={() => {handleNav('PPE_LIST')
                   
                 }}
@@ -436,255 +490,263 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
                 <span className="material-symbols-outlined text-[18px]">safety_check</span>
                 PPE Invoices
               </button> */}
+              </div>
             </div>
           </div>
-        </div>
+        )}
         {/* Incidents — click to expand/collapse */}
-        <div>
-          <button
-            type="button"
-            onClick={() => setIsIncidentsOpen((o) => !o)}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all cursor-pointer ${
-              INCIDENTS_VIEWS.includes(currentView)
-                ? "bg-white/20 text-white"
-                : "text-white/70 hover:bg-white/10 hover:text-white"
-            }`}
-          >
-            <span className="material-symbols-outlined text-[20px]">
-              report_problem
-            </span>
-            <span className="flex-1 text-left">Incidents</span>
-            <span
-              className={`material-symbols-outlined text-[18px] opacity-70 transition-transform duration-200 ${isIncidentsOpen ? "rotate-90" : ""}`}
+        {canAccessModule(user, "incident") && (
+          <div>
+            <button
+              type="button"
+              onClick={() => setIsIncidentsOpen((o) => !o)}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all cursor-pointer ${
+                INCIDENTS_VIEWS.includes(currentView)
+                  ? "bg-white/20 text-white"
+                  : "text-white/70 hover:bg-white/10 hover:text-white"
+              }`}
             >
-              chevron_right
-            </span>
-          </button>
+              <span className="material-symbols-outlined text-[20px]">
+                report_problem
+              </span>
+              <span className="flex-1 text-left">Incidents</span>
+              <span
+                className={`material-symbols-outlined text-[18px] opacity-70 transition-transform duration-200 ${isIncidentsOpen ? "rotate-90" : ""}`}
+              >
+                chevron_right
+              </span>
+            </button>
 
-          <div
-            className={`overflow-hidden transition-all duration-300 ease-in-out ${isIncidentsOpen ? "max-h-56 opacity-100" : "max-h-0 opacity-0"}`}
-          >
-            <div className="mt-0.5 ml-3 pl-3 border-l border-white/20 space-y-0.5">
-              {(
-                [
-                  {
-                    incView: "list" as IncidentView,
-                    icon: "format_list_bulleted",
-                    label: "All Incidents",
-                  },
-                  {
-                    incView: "create" as IncidentView,
-                    icon: "add_circle",
-                    label: "Report Incident",
-                  },
-                ] as { incView: IncidentView; icon: string; label: string }[]
-              ).map(({ incView, icon, label }) => (
-                <button
-                  key={incView}
-                  onClick={() => {
-                    incidentNavigate(incView);
-                    onNavigate("INCIDENTS");
-                  }}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all cursor-pointer ${
-                    currentView === "INCIDENTS" &&
-                    (activeIncidentView === incView ||
-                      (incView === "list" && activeIncidentView === "detail"))
-                      ? "bg-white/15 text-white"
-                      : "text-white/60 hover:bg-white/10 hover:text-white"
-                  }`}
-                >
-                  <span className="material-symbols-outlined text-[18px]">
-                    {icon}
-                  </span>
-                  {label}
-                </button>
-              ))}
+            <div
+              className={`overflow-hidden transition-all duration-300 ease-in-out ${isIncidentsOpen ? "max-h-56 opacity-100" : "max-h-0 opacity-0"}`}
+            >
+              <div className="mt-0.5 ml-3 pl-3 border-l border-white/20 space-y-0.5">
+                {(
+                  [
+                    {
+                      incView: "list" as IncidentView,
+                      icon: "format_list_bulleted",
+                      label: "All Incidents",
+                    },
+                    {
+                      incView: "create" as IncidentView,
+                      icon: "add_circle",
+                      label: "Report Incident",
+                    },
+                  ] as { incView: IncidentView; icon: string; label: string }[]
+                ).map(({ incView, icon, label }) => (
+                  <button
+                    key={incView}
+                    onClick={() => {
+                      incidentNavigate(incView);
+                      onNavigate("INCIDENTS");
+                    }}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all cursor-pointer ${
+                      currentView === "INCIDENTS" &&
+                      (activeIncidentView === incView ||
+                        (incView === "list" && activeIncidentView === "detail"))
+                        ? "bg-white/15 text-white"
+                        : "text-white/60 hover:bg-white/10 hover:text-white"
+                    }`}
+                  >
+                    <span className="material-symbols-outlined text-[18px]">
+                      {icon}
+                    </span>
+                    {label}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
-        </div>
-
+        )}
         {/* Risk & COSHH — click to expand/collapse */}
-        <div>
-          <button
-            type="button"
-            onClick={() => setIsRiskCoshhOpen((o) => !o)}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all cursor-pointer ${
-              RISK_COSHH_VIEWS.includes(currentView)
-                ? "bg-white/20 text-white"
-                : "text-white/70 hover:bg-white/10 hover:text-white"
-            }`}
-          >
-            <span className="material-symbols-outlined text-[20px]">
-              health_and_safety
-            </span>
-            <span className="flex-1 text-left">Risk &amp; COSHH</span>
-            <span
-              className={`material-symbols-outlined text-[18px] opacity-70 transition-transform duration-200 ${isRiskCoshhOpen ? "rotate-90" : ""}`}
+        {canAccessModule(user, "risk") && (
+          <div>
+            <button
+              type="button"
+              onClick={() => setIsRiskCoshhOpen((o) => !o)}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all cursor-pointer ${
+                RISK_COSHH_VIEWS.includes(currentView)
+                  ? "bg-white/20 text-white"
+                  : "text-white/70 hover:bg-white/10 hover:text-white"
+              }`}
             >
-              chevron_right
-            </span>
-          </button>
+              <span className="material-symbols-outlined text-[20px]">
+                health_and_safety
+              </span>
+              <span className="flex-1 text-left">Risk &amp; COSHH</span>
+              <span
+                className={`material-symbols-outlined text-[18px] opacity-70 transition-transform duration-200 ${isRiskCoshhOpen ? "rotate-90" : ""}`}
+              >
+                chevron_right
+              </span>
+            </button>
 
-          <div
-            className={`overflow-hidden transition-all duration-300 ease-in-out ${isRiskCoshhOpen ? "max-h-80 opacity-100" : "max-h-0 opacity-0"}`}
-          >
-            <div className="mt-0.5 ml-3 pl-3 border-l border-white/20 space-y-0.5">
-              {(
-                [
-                  {
-                    riskView: "risk-list" as RiskView,
-                    icon: "assignment",
-                    label: "Risk Assessments",
-                  },
-                  {
-                    riskView: "rams-list" as RiskView,
-                    icon: "assignment_add",
-                    label: "RAMS",
-                  },
-                  // { riskView: 'coshh-register'  as RiskView, icon: 'science',         label: 'COSHH Register' },
-                  // { riskView: 'sds-library'     as RiskView, icon: 'menu_book',       label: 'SDS Library' },
-                ] as { riskView: RiskView; icon: string; label: string }[]
-              ).map(({ riskView, icon, label }) => (
-                <button
-                  key={riskView}
-                  onClick={() => {
-                    riskNavigate(riskView);
-                    onNavigate("RISK_COSHH");
-                  }}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all cursor-pointer ${
-                    currentView === "RISK_COSHH" &&
-                    (activeRiskView === riskView ||
-                      (riskView === "risk-list" &&
-                        activeRiskView === "risk-detail") ||
-                      (riskView === "rams-list" &&
-                        activeRiskView === "rams-detail") ||
-                      (riskView === "coshh-register" &&
-                        activeRiskView === "coshh-detail"))
-                      ? "bg-white/15 text-white"
-                      : "text-white/60 hover:bg-white/10 hover:text-white"
-                  }`}
-                >
-                  <span className="material-symbols-outlined text-[18px]">
-                    {icon}
-                  </span>
-                  {label}
-                </button>
-              ))}
+            <div
+              className={`overflow-hidden transition-all duration-300 ease-in-out ${isRiskCoshhOpen ? "max-h-80 opacity-100" : "max-h-0 opacity-0"}`}
+            >
+              <div className="mt-0.5 ml-3 pl-3 border-l border-white/20 space-y-0.5">
+                {(
+                  [
+                    {
+                      riskView: "risk-list" as RiskView,
+                      icon: "assignment",
+                      label: "Risk Assessments",
+                    },
+                    {
+                      riskView: "rams-list" as RiskView,
+                      icon: "assignment_add",
+                      label: "RAMS",
+                    },
+                    // { riskView: 'coshh-register'  as RiskView, icon: 'science',         label: 'COSHH Register' },
+                    // { riskView: 'sds-library'     as RiskView, icon: 'menu_book',       label: 'SDS Library' },
+                  ] as { riskView: RiskView; icon: string; label: string }[]
+                ).map(({ riskView, icon, label }) => (
+                  <button
+                    key={riskView}
+                    onClick={() => {
+                      riskNavigate(riskView);
+                      onNavigate("RISK_COSHH");
+                    }}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all cursor-pointer ${
+                      currentView === "RISK_COSHH" &&
+                      (activeRiskView === riskView ||
+                        (riskView === "risk-list" &&
+                          activeRiskView === "risk-detail") ||
+                        (riskView === "rams-list" &&
+                          activeRiskView === "rams-detail") ||
+                        (riskView === "coshh-register" &&
+                          activeRiskView === "coshh-detail"))
+                        ? "bg-white/15 text-white"
+                        : "text-white/60 hover:bg-white/10 hover:text-white"
+                    }`}
+                  >
+                    <span className="material-symbols-outlined text-[18px]">
+                      {icon}
+                    </span>
+                    {label}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
-        </div>
-
+        )}
         {/* Document Control — click to expand/collapse */}
-        <div>
-          <button
-            type="button"
-            onClick={() => setIsDocControlOpen((o) => !o)}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all cursor-pointer ${
-              DOC_CONTROL_VIEWS.includes(currentView)
-                ? "bg-white/20 text-white"
-                : "text-white/70 hover:bg-white/10 hover:text-white"
-            }`}
-          >
-            <span className="material-symbols-outlined text-[20px]">
-              folder_managed
-            </span>
-            <span className="flex-1 text-left">Document Control</span>
-            <span
-              className={`material-symbols-outlined text-[18px] opacity-70 transition-transform duration-200 ${isDocControlOpen ? "rotate-90" : ""}`}
+        {canAccessModule(user, "document") && (
+          <div>
+            <button
+              type="button"
+              onClick={() => setIsDocControlOpen((o) => !o)}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all cursor-pointer ${
+                DOC_CONTROL_VIEWS.includes(currentView)
+                  ? "bg-white/20 text-white"
+                  : "text-white/70 hover:bg-white/10 hover:text-white"
+              }`}
             >
-              chevron_right
-            </span>
-          </button>
+              <span className="material-symbols-outlined text-[20px]">
+                folder_managed
+              </span>
+              <span className="flex-1 text-left">Document Control</span>
+              <span
+                className={`material-symbols-outlined text-[18px] opacity-70 transition-transform duration-200 ${isDocControlOpen ? "rotate-90" : ""}`}
+              >
+                chevron_right
+              </span>
+            </button>
 
-          <div
-            className={`overflow-hidden transition-all duration-300 ease-in-out ${isDocControlOpen ? "max-h-56 opacity-100" : "max-h-0 opacity-0"}`}
-          >
-            <div className="mt-0.5 ml-3 pl-3 border-l border-white/20 space-y-0.5">
-              {(
-                [
-                  {
-                    docView: "library" as DocView,
-                    icon: "library_books",
-                    label: "Documents Library",
-                  },
-                  {
-                    docView: "approvals" as DocView,
-                    icon: "task_alt",
-                    label: "Approvals",
-                  },
-                  {
-                    docView: "reviews" as DocView,
-                    icon: "event",
-                    label: "Review Calendar",
-                  },
-                ] as { docView: DocView; icon: string; label: string }[]
-              ).map(({ docView, icon, label }) => (
-                <button
-                  key={docView}
-                  onClick={() => {
-                    docNavigate(docView);
-                    onNavigate("DOCUMENT_CONTROL");
-                  }}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all cursor-pointer ${
-                    currentView === "DOCUMENT_CONTROL" &&
-                    (activeDocView === docView ||
-                      (docView === "library" && activeDocView === "detail"))
-                      ? "bg-white/15 text-white"
-                      : "text-white/60 hover:bg-white/10 hover:text-white"
-                  }`}
-                >
-                  <span className="material-symbols-outlined text-[18px]">
-                    {icon}
-                  </span>
-                  {label}
-                </button>
-              ))}
+            <div
+              className={`overflow-hidden transition-all duration-300 ease-in-out ${isDocControlOpen ? "max-h-56 opacity-100" : "max-h-0 opacity-0"}`}
+            >
+              <div className="mt-0.5 ml-3 pl-3 border-l border-white/20 space-y-0.5">
+                {(
+                  [
+                    {
+                      docView: "library" as DocView,
+                      icon: "library_books",
+                      label: "Documents Library",
+                    },
+                    {
+                      docView: "approvals" as DocView,
+                      icon: "task_alt",
+                      label: "Approvals",
+                    },
+                    {
+                      docView: "reviews" as DocView,
+                      icon: "event",
+                      label: "Review Calendar",
+                    },
+                  ] as { docView: DocView; icon: string; label: string }[]
+                ).map(({ docView, icon, label }) => (
+                  <button
+                    key={docView}
+                    onClick={() => {
+                      docNavigate(docView);
+                      onNavigate("DOCUMENT_CONTROL");
+                    }}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all cursor-pointer ${
+                      currentView === "DOCUMENT_CONTROL" &&
+                      (activeDocView === docView ||
+                        (docView === "library" && activeDocView === "detail"))
+                        ? "bg-white/15 text-white"
+                        : "text-white/60 hover:bg-white/10 hover:text-white"
+                    }`}
+                  >
+                    <span className="material-symbols-outlined text-[18px]">
+                      {icon}
+                    </span>
+                    {label}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
-        </div>
-
+        )}
         {/* Finance — new module, last in nav */}
-        <div>
-          <button
-            type="button"
-            onClick={() => {
-              onNavigate("FINANCE");
-              setIsSidebarOpen(false);
-            }}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all cursor-pointer ${
-              FINANCE_VIEWS.includes(currentView)
-                ? "bg-white/20 text-white"
-                : "text-white/70 hover:bg-white/10 hover:text-white"
-            }`}
-          >
-            <span className="material-symbols-outlined text-[20px]">
-              account_balance
-            </span>
-            <span className="flex-1 text-left">Finance</span>
-          </button>
-        </div>
+        {canAccessModule(user, "finance") && (
+          <div>
+            <button
+              type="button"
+              onClick={() => {
+                onNavigate("FINANCE");
+                setIsSidebarOpen(false);
+              }}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all cursor-pointer ${
+                FINANCE_VIEWS.includes(currentView)
+                  ? "bg-white/20 text-white"
+                  : "text-white/70 hover:bg-white/10 hover:text-white"
+              }`}
+            >
+              <span className="material-symbols-outlined text-[20px]">
+                account_balance
+              </span>
+              <span className="flex-1 text-left">Finance</span>
+            </button>
+          </div>
+        )}
       </nav>
 
       {/* User Access — fixed bottom */}
-      <div className="px-3 py-3 border-t border-white/10 shrink-0">
-        <button
-          onClick={() => {
-            userNavigate("list");
-            onNavigate("USER_ACCESS");
-            setIsSidebarOpen(false);
-          }}
-          className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all cursor-pointer ${
-            currentView === "USER_ACCESS"
-              ? "bg-white/20 text-white"
-              : "text-white/70 hover:bg-white/10 hover:text-white"
-          }`}
-        >
-          <span className="material-symbols-outlined text-[20px]">
-            manage_accounts
-          </span>
-          User Access
-        </button>
-      </div>
+      {canAccessModule(user, "users") && (
+        <div className="px-3 py-3 border-t border-white/10 shrink-0">
+          <button
+            onClick={() => {
+              userNavigate("list");
+              onNavigate("USER_ACCESS");
+              setIsSidebarOpen(false);
+            }}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all cursor-pointer ${
+              currentView === "USER_ACCESS"
+                ? "bg-white/20 text-white"
+                : "text-white/70 hover:bg-white/10 hover:text-white"
+            }`}
+          >
+            <span className="material-symbols-outlined text-[20px]">
+              manage_accounts
+            </span>
+            User Access
+          </button>
+        </div>
+      )}
     </div>
   );
 

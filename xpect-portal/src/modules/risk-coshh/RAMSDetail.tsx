@@ -46,18 +46,87 @@ const RAMSDetail: React.FC<Props> = ({ ramsId, onBack }) => {
     }
   };
 
+  const loadDocumentData = async (): Promise<string | null> => {
+    if (!rams?.documentAvailable) return null;
+    try {
+      const full = (await api.riskCoshh.rams.getById(ramsId)) as {
+        documentData?: string;
+      };
+      return full.documentData ?? null;
+    } catch {
+      return null;
+    }
+  };
+
   const handleViewDoc = async () => {
     if (rams?.documentAvailable) {
-      try {
-        const full = await api.riskCoshh.rams.getById(ramsId) as { documentData?: string };
-        setDocData(full.documentData ?? null);
-      } catch {
-        setDocData(null);
-      }
+      const data = await loadDocumentData();
+      setDocData(data);
     } else {
       setDocData(null);
     }
     setShowDocViewer(true);
+  };
+
+  const handleDownloadPdf = async () => {
+    let data = docData;
+    if (!data && rams?.documentAvailable) {
+      data = await loadDocumentData();
+      setDocData(data);
+    }
+    if (!data) {
+      await handleViewDoc();
+      return;
+    }
+    const name = rams?.signedDocumentFileName || "rams-document.pdf";
+    const link = document.createElement("a");
+    link.href = data;
+    link.download = name;
+    link.rel = "noopener";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handlePrint = async () => {
+    let data = docData;
+    if (!data && rams?.documentAvailable) {
+      data = await loadDocumentData();
+      setDocData(data);
+    }
+    if (!data) {
+      window.print();
+      return;
+    }
+    const w = window.open("", "_blank");
+    if (!w) return;
+    if (isPdf(rams?.signedDocumentFileName || "", data)) {
+      w.document.write(
+        `<!DOCTYPE html><html><head><title>Print</title></head><body style="margin:0"><iframe src="${data}" style="border:0;width:100%;height:100vh"></iframe></body></html>`,
+      );
+      w.document.close();
+      w.onload = () => {
+        try {
+          w.focus();
+          w.print();
+        } catch {
+          /* ignore */
+        }
+      };
+    } else {
+      w.document.write(
+        `<!DOCTYPE html><html><head><title>Print</title></head><body style="margin:0;text-align:center"><img src="${data}" style="max-width:100%" alt="" /></body></html>`,
+      );
+      w.document.close();
+      w.onload = () => {
+        try {
+          w.focus();
+          w.print();
+        } catch {
+          /* ignore */
+        }
+      };
+    }
   };
 
   const handleReplaceDoc = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -122,11 +191,19 @@ const RAMSDetail: React.FC<Props> = ({ ramsId, onBack }) => {
             </div>
           </div>
           <div className="flex gap-2">
-            <button className="flex items-center gap-2 px-4 py-2 rounded-xl border border-[#e7ebf3] text-sm font-semibold text-[#2e4150] bg-white hover:bg-[#f6f7fb] transition-colors">
+            {/* <button
+              type="button"
+              onClick={() => void handlePrint()}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl border border-[#e7ebf3] text-sm font-semibold text-[#2e4150] bg-white hover:bg-[#f6f7fb] transition-colors"
+            >
               <span className="material-symbols-outlined text-[18px]">print</span>
               Print
-            </button>
-            <button className="flex items-center gap-2 px-4 py-2 rounded-xl border border-[#e7ebf3] text-sm font-semibold text-[#2e4150] bg-white hover:bg-[#f6f7fb] transition-colors">
+            </button> */}
+            <button
+              type="button"
+              onClick={() => void handleDownloadPdf()}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl border border-[#e7ebf3] text-sm font-semibold text-[#2e4150] bg-white hover:bg-[#f6f7fb] transition-colors"
+            >
               <span className="material-symbols-outlined text-[18px]">download</span>
               Download PDF
             </button>

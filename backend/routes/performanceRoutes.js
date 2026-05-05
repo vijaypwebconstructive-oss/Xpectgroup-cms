@@ -1,14 +1,12 @@
 import express from "express";
 import { getDashboardData,getMonthlyMetrics,recentTransation,getSalesTransactions} from "../services/performanceService.js";
 import PerformanceGoal from "../models/PerformanceGoal.js";
-import { error } from "pdf-lib";
-
 const router = express.Router();
 
 router.get("/dashboard", async (req, res) => {
   try {
-    const { filter } = req.query;
-    const data = await getDashboardData(filter);
+    const { filter, offset } = req.query;
+    const data = await getDashboardData(filter, Number(offset) || 0);
     res.json(data);
   } catch (error) {
     console.error(error);
@@ -51,8 +49,8 @@ router.get("/goals", async (req, res) => {
 
 router.get("/charts", async (req, res) => {
   try {
-    const { filter } = req.query;
-    const data = await getMonthlyMetrics(filter);
+    const { filter, offset } = req.query;
+    const data = await getMonthlyMetrics(filter, Number(offset) || 0);
     res.json(data);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -61,9 +59,9 @@ router.get("/charts", async (req, res) => {
 
 router.get("/monthly", async (req, res) => {
   try {
-    const { filter } = req.query;
+    const { filter, offset } = req.query;
 
-    const data = await getMonthlyMetricsTable(filter);
+    const data = await getMonthlyMetrics(filter, Number(offset) || 0);
     res.json(data);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -73,9 +71,9 @@ router.get("/monthly", async (req, res) => {
 
 router.get("/tractions", async (req, res) => {
   try {
-    const { filter } = req.query;
+    const { filter, offset } = req.query;
 
-    const data = await recentTransation(filter);
+    const data = await recentTransation(filter, Number(offset) || 0);
     res.json(data);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -84,9 +82,9 @@ router.get("/tractions", async (req, res) => {
 
 router.get("/sales", async (req, res) => {
   try {
-    const { filter } = req.query;
+    const { filter, offset } = req.query;
 
-    const data = await getSalesTransactions(filter);
+    const data = await getSalesTransactions(filter, Number(offset) || 0);
     res.json(data);
   } catch (err) {
     res.status(500).json({ error: err.message });

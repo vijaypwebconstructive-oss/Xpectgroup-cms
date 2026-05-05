@@ -20,9 +20,12 @@ const COMPLIANCE_STYLES = {
 };
 
 const COMPLIANCE_DOCS = [
-  { key: 'rams',   label: 'RAMS Document',        icon: 'health_and_safety' },
-  { key: 'emergency', label: 'Emergency Procedures', icon: 'emergency' },
-  { key: 'siteInstructions', label: 'Site Instructions', icon: 'list_alt' },
+  { key: 'riskAssessment', label: 'Risk Assessment', icon: 'assignment_late' },
+  { key: 'floorPlan', label: 'Floor Plan / Layout', icon: 'map' },
+  { key: 'accessPermit', label: 'Access Permit', icon: 'key' },
+  { key: 'fireSafety', label: 'Fire Safety Certificate', icon: 'local_fire_department' },
+  { key: 'coshhAssessment', label: 'COSHH Assessment', icon: 'science' },
+  { key: 'siteInduction', label: 'Site Induction Pack', icon: 'menu_book' },
 ] as const;
 
 const PREVIEWABLE_EXT = /\.(pdf|png|jpg|jpeg)$/i;

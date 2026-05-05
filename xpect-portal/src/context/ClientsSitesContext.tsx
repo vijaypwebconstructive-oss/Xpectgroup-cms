@@ -113,8 +113,14 @@ export const ClientsSitesProvider: React.FC<ClientsSitesProviderProps> = ({ chil
 
   const addSite = useCallback(async (s: Omit<Site, 'id'>): Promise<Site> => {
     const created = await api.clientsSites.createSite(s);
-    setSites(prev => [created, ...prev]);
-    return created;
+    const fromRequest = s.complianceDocuments?.filter(Boolean) ?? [];
+    const fromApi = created.complianceDocuments?.filter(Boolean) ?? [];
+    const merged: Site = {
+      ...created,
+      complianceDocuments: fromApi.length > 0 ? fromApi : fromRequest,
+    };
+    setSites(prev => [merged, ...prev]);
+    return merged;
   }, []);
 
   const updateSiteCompliance = useCallback(async (siteId: string, complianceDocuments: SiteComplianceDocument[]): Promise<Site> => {

@@ -14,6 +14,7 @@ import { ProspectsProvider } from './context/ProspectContext';
 import { UserAccessProvider } from './context/UserAccessContext';
 import { FinanceProvider } from './context/FinanceContext';
 import {InspectionProvider} from "./context/InspectionContext"
+import { AuthProvider } from "./context/AuthContext";
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
@@ -23,6 +24,7 @@ if (!rootElement) {
 const root = ReactDOM.createRoot(rootElement);
 root.render(
   <React.StrictMode>
+    <AuthProvider>
     <CleanersProvider>
       <TrainingProvider>
         <PPEInvoiceProvider>
@@ -48,5 +50,6 @@ root.render(
         </PPEInvoiceProvider>
       </TrainingProvider>
     </CleanersProvider>
+    </AuthProvider>
   </React.StrictMode>
 );

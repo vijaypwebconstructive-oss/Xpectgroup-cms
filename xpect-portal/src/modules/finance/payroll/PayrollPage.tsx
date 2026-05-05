@@ -1,23 +1,45 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { financeNavigate } from '../financeNavStore';
-import { useFinance } from '../../../context/FinanceContext';
-import api from '../../../services/api';
-import type { SalarySlip } from '../../finance-payroll/types';
-import PayrollStatsCards from './PayrollStatsCards';
-import PayrollActionsBar from './PayrollActionsBar';
-import PayrollTable from './PayrollTable';
-import PayrollPagination from './PayrollPagination';
-import UploadPayslipModal from './UploadPayslipModal';
-import PayslipPreviewModal from './PayslipPreviewModal';
+import React, { useState, useEffect, useMemo } from "react";
+import { financeNavigate } from "../financeNavStore";
+import { useFinance } from "../../../context/FinanceContext";
+import api, { getSalarySlipViewUrl } from "../../../services/api";
+import type { SalarySlip } from "../../finance-payroll/types";
+import PayrollStatsCards from "./PayrollStatsCards";
+import PayrollActionsBar from "./PayrollActionsBar";
+import PayrollTable from "./PayrollTable";
+import PayrollPagination from "./PayrollPagination";
+import UploadPayslipModal from "./UploadPayslipModal";
+import PayslipPreviewModal from "./PayslipPreviewModal";
 
-const MONTHS = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const MONTHS = [
+  "",
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+];
 
 const PayrollPage: React.FC = () => {
-  const { payrollRecords, salarySlips, refreshPayroll, refreshSalarySlips, updatePayroll, deletePayroll, loading } = useFinance();
-  const [sortValue, setSortValue] = useState('');
+  const {
+    payrollRecords,
+    salarySlips,
+    refreshPayroll,
+    refreshSalarySlips,
+    updatePayroll,
+    deletePayroll,
+    loading,
+  } = useFinance();
+  const [sortValue, setSortValue] = useState("");
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkLoading, setBulkLoading] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
@@ -32,7 +54,7 @@ const PayrollPage: React.FC = () => {
     setSelectedIds(new Set());
   }, [searchQuery, sortValue]);
 
-  console.log("selected",selectedIds)
+  console.log("selected", selectedIds);
 
   const payrollIdToSlip = useMemo(() => {
     const map = new Map<string, SalarySlip>();
@@ -43,23 +65,37 @@ const PayrollPage: React.FC = () => {
   }, [salarySlips]);
 
   const tableRows = useMemo(() => {
-    return payrollRecords.map(p => {
-      const payType = (p.payType === 'Monthly' ? 'Monthly' : 'Hourly') as 'Hourly' | 'Monthly';
-      console.log("prow",p)
+    return payrollRecords.map((p) => {
+      const payType = (p.payType === "Monthly" ? "Monthly" : "Hourly") as
+        | "Hourly"
+        | "Monthly";
+      console.log("prow", p);
       return {
         id: p._id,
-        employeeId: p.workerId || '',
-        cleanerName: p.workerName || 'Unknown',
-        role: p.role || 'Cleaner',
-        siteName: p.siteName || '',
+        employeeId: p.workerId || "",
+        cleanerName: p.workerName || "Unknown",
+        role: p.role || "Cleaner",
+        siteName: p.siteName || "",
         payType,
         period: `${MONTHS[p.month] || p.month} ${p.year}`,
         hoursWorked: String(p.hoursWorked ?? 0),
         hourlyRate: (p.hourlyRate ?? 0).toFixed(2),
         monthlySalary: (p.monthlySalary ?? 0).toFixed(2),
         totalPayable: (p.totalSalary ?? 0).toFixed(2),
-        paymentStatus: (p.paymentStatus || 'Pending') as 'Pending' | 'Paid',
-        salarySlip: payrollIdToSlip.get(String(p._id)) ?? null,
+        paymentStatus: (p.paymentStatus || "Pending") as "Pending" | "Paid",
+        salarySlip: (() => {
+          // Generated slips use payroll custom `id`; uploaded slips often use Mongo `_id`
+          const s =
+            payrollIdToSlip.get(String(p._id)) ??
+            (p.id != null ? payrollIdToSlip.get(String(p.id)) : undefined);
+          if (!s) return null;
+          return {
+            _id: s._id,
+            id: s.id,
+            type: s.type,
+            fileUrl: s.fileUrl,
+          };
+        })(),
       };
     });
   }, [payrollRecords, payrollIdToSlip]);
@@ -68,19 +104,24 @@ const PayrollPage: React.FC = () => {
     let rows = tableRows;
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim();
-      rows = rows.filter(r =>
-        r.cleanerName.toLowerCase().includes(q) ||
-        r.period.toLowerCase().includes(q) ||
-        r.employeeId.toLowerCase().includes(q) ||
-        (r.siteName && r.siteName.toLowerCase().includes(q))
+      rows = rows.filter(
+        (r) =>
+          r.cleanerName.toLowerCase().includes(q) ||
+          r.period.toLowerCase().includes(q) ||
+          r.employeeId.toLowerCase().includes(q) ||
+          (r.siteName && r.siteName.toLowerCase().includes(q)),
       );
     }
-    if (sortValue === 'name') {
-      rows = [...rows].sort((a, b) => a.cleanerName.localeCompare(b.cleanerName));
-    } else if (sortValue === 'period') {
+    if (sortValue === "name") {
+      rows = [...rows].sort((a, b) =>
+        a.cleanerName.localeCompare(b.cleanerName),
+      );
+    } else if (sortValue === "period") {
       rows = [...rows].sort((a, b) => a.period.localeCompare(b.period));
-    } else if (sortValue === 'status') {
-      rows = [...rows].sort((a, b) => a.paymentStatus.localeCompare(b.paymentStatus));
+    } else if (sortValue === "status") {
+      rows = [...rows].sort((a, b) =>
+        a.paymentStatus.localeCompare(b.paymentStatus),
+      );
     }
     return rows;
   }, [tableRows, searchQuery, sortValue]);
@@ -92,19 +133,24 @@ const PayrollPage: React.FC = () => {
   }, [filteredRows, currentPage, pageSize]);
 
   const stats = useMemo(() => {
-    const paid = tableRows.filter(r => r.paymentStatus === 'Paid').length;
-    const pending = tableRows.filter(r => r.paymentStatus === 'Pending').length;
-    const totalSalary = tableRows.reduce((sum, r) => sum + parseFloat(r.totalPayable || '0'), 0);
+    const paid = tableRows.filter((r) => r.paymentStatus === "Paid").length;
+    const pending = tableRows.filter(
+      (r) => r.paymentStatus === "Pending",
+    ).length;
+    const totalSalary = tableRows.reduce(
+      (sum, r) => sum + parseFloat(r.totalPayable || "0"),
+      0,
+    );
     return {
-      totalPayroll: tableRows.length ,
-      employees: tableRows.length || '—',
-      processed: paid || '—',
-      pending: pending || '—',
+      totalPayroll: tableRows.length,
+      employees: tableRows.length || "—",
+      processed: paid || "—",
+      pending: pending || "—",
     };
   }, [tableRows]);
 
   const handleToggleSelect = (id: string) => {
-    setSelectedIds(prev => {
+    setSelectedIds((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
@@ -114,140 +160,147 @@ const PayrollPage: React.FC = () => {
 
   const handleToggleSelectAll = (checked: boolean) => {
     if (checked) {
-      setSelectedIds(new Set(paginatedRows.map(r => r.id)));
+      setSelectedIds(new Set(paginatedRows.map((r) => r.id)));
     } else {
       setSelectedIds(new Set());
     }
   };
 
-  const handleDownloadPayslip = (slipId: string) => {
-    const url = api.finance.salarySlips.getDownloadUrl(slipId);
-    setPreviewUrl(url);
+  const handleDownloadPayslip = (
+    slip: NonNullable<(typeof tableRows)[number]["salarySlip"]>,
+  ) => {
+    setPreviewUrl(getSalarySlipViewUrl(slip));
   };
-  console.log("download", handleDownloadPayslip)
 
   const handleSendPayslip = async (slipId: string) => {
+    console.log("slip", slipId);
     try {
       await api.finance.salarySlips.send(slipId);
       await refreshSalarySlips();
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to send payslip');
+      alert(err instanceof Error ? err.message : "Failed to send payslip");
     }
   };
 
   const handleBulkMarkAsPaid = async () => {
     if (selectedIds.size === 0) {
-      alert('No rows selected');
+      alert("No rows selected");
       return;
     }
-  
+
     setBulkLoading(true);
-  
+
     try {
-      const paymentDate = new Date().toISOString().split('T')[0];
-  
+      const paymentDate = new Date().toISOString().split("T")[0];
+
       // ✅ Only selected rows
-      const selectedRows = paginatedRows.filter(row =>
-        selectedIds.has(row.id)
+      const selectedRows = paginatedRows.filter((row) =>
+        selectedIds.has(row.id),
       );
-  
+
       if (selectedRows.length === 0) {
-        alert('No rows found');
+        alert("No rows found");
         return;
       }
-  
+
       // ✅ Parallel update
       await Promise.all(
-        selectedRows.map(row =>
+        selectedRows.map((row) =>
           updatePayroll(row.id, {
-            paymentStatus: 'Paid',
+            paymentStatus: "Paid",
             paymentDate,
-          })
-        )
+          }),
+        ),
       );
-  
+
       // ✅ Refresh data
       await refreshPayroll();
       await refreshSalarySlips();
-  
+
       // ✅ Clear selection
       setSelectedIds(new Set());
-  
-      alert('✅ Selected payroll marked as paid');
-  
+
+      alert("✅ Selected payroll marked as paid");
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to mark as paid');
+      alert(err instanceof Error ? err.message : "Failed to mark as paid");
     } finally {
       setBulkLoading(false);
     }
   };
 
+  console.log("paginated", paginatedRows);
 
-  
-
-  console.log("paginated", paginatedRows)
-
-  
-  
   const handleBulkSendPayslip = async () => {
     if (selectedIds.size === 0) {
-      alert('No rows selected');
+      alert("No rows selected");
       return;
     }
-  
+
     setBulkLoading(true);
-  
+
     try {
       // ✅ Get selected rows only
-      const selectedRows = paginatedRows.filter(row =>
-        selectedIds.has(row.id)
-      );     
- 
-  
+      const selectedRows = paginatedRows.filter((row) =>
+        selectedIds.has(row.id),
+      );
+
       if (selectedRows.length === 0) {
-        alert('No payslips found');
+        alert("No payslips found");
         return;
       }
-  
+
       // ✅ Send emails in parallel
       const results = await Promise.allSettled(
         selectedRows.map((slipId) => {
           console.log("Sending slip:", slipId);
           return api.finance.salarySlips.send(slipId); // ✅ return promise
-        })
+        }),
       );
-      
-  
+
       // ✅ Feedback
-      const success = results.filter(r => r.status === 'fulfilled').length;
-      const failed = results.filter(r => r.status === 'rejected').length;
-  
+      const success = results.filter((r) => r.status === "fulfilled").length;
+      const failed = results.filter((r) => r.status === "rejected").length;
+
       alert(`✅ ${success} sent\n❌ ${failed} failed`);
-  
+
       setSelectedIds(new Set());
     } catch (err) {
-      alert('Failed to send payslips');
+      alert("Failed to send payslips");
     } finally {
       setBulkLoading(false);
     }
   };
-  
 
   const handleDelete = async (id: string) => {
     console.log("Deleting ID:", id);
-    if (!window.confirm('Are you sure you want to delete this payroll record?')) return;
+    if (!window.confirm("Are you sure you want to delete this payroll record?"))
+      return;
     try {
-      await api.finance.payroll.delete(id)
-      await refreshPayroll();   
+      await api.finance.payroll.delete(id);
+      await refreshPayroll();
       await refreshSalarySlips();
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to delete payroll record');
+      alert(
+        err instanceof Error ? err.message : "Failed to delete payroll record",
+      );
     }
   };
 
   const handleExportCsv = () => {
-    const headers = ['Employee ID', 'Cleaner Name', 'Role', 'Site', 'Pay Type', 'Period', 'Hours Worked', 'Hourly Rate', 'Monthly Salary', 'Total Payable', 'Payment Status'];
-    const rows = filteredRows.map(r => [
+    const headers = [
+      "Employee ID",
+      "Cleaner Name",
+      "Role",
+      "Site",
+      "Pay Type",
+      "Period",
+      "Hours Worked",
+      "Hourly Rate",
+      "Monthly Salary",
+      "Total Payable",
+      "Payment Status",
+    ];
+    const rows = filteredRows.map((r) => [
       r.employeeId,
       r.cleanerName,
       r.role,
@@ -260,11 +313,17 @@ const PayrollPage: React.FC = () => {
       `£${r.totalPayable}`,
       r.paymentStatus,
     ]);
-    const escape = (s: string) => (s.includes(',') || s.includes('"') || s.includes('\n') ? `"${String(s).replace(/"/g, '""')}"` : s);
-    const csv = [headers.map(escape).join(','), ...rows.map(row => row.map(c => escape(String(c))).join(','))].join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const escape = (s: string) =>
+      s.includes(",") || s.includes('"') || s.includes("\n")
+        ? `"${String(s).replace(/"/g, '""')}"`
+        : s;
+    const csv = [
+      headers.map(escape).join(","),
+      ...rows.map((row) => row.map((c) => escape(String(c))).join(",")),
+    ].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
+    const a = document.createElement("a");
     a.href = url;
     a.download = `payroll-export-${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
@@ -272,9 +331,8 @@ const PayrollPage: React.FC = () => {
   };
 
   const handleBulkMarkAndSend = async () => {
-
-    handleBulkSendPayslip()
-    handleBulkMarkAsPaid()
+    handleBulkSendPayslip();
+    handleBulkMarkAsPaid();
     // if (selectedIds.size === 0) return;
     // setBulkLoading(true);
     // try {
@@ -303,12 +361,18 @@ const PayrollPage: React.FC = () => {
       <div>
         <nav className="flex items-center gap-2 text-sm text-[#4c669a] mb-2">
           <span>Home</span>
-          <span className="material-symbols-outlined text-[16px]">chevron_right</span>
+          <span className="material-symbols-outlined text-[16px]">
+            chevron_right
+          </span>
           <span>Payroll</span>
-          <span className="material-symbols-outlined text-[16px]">chevron_right</span>
+          <span className="material-symbols-outlined text-[16px]">
+            chevron_right
+          </span>
           <span className="text-[#0d121b] font-semibold">Payroll List</span>
         </nav>
-        <h1 className="text-[#0d121b] text-[1.6rem] sm:text-2xl font-bold font-black">Payroll</h1>
+        <h1 className="text-[#0d121b] text-[1.6rem] sm:text-2xl font-bold font-black">
+          Payroll
+        </h1>
       </div>
 
       {/* Stats Cards */}
@@ -319,7 +383,7 @@ const PayrollPage: React.FC = () => {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <h2 className="text-[#0d121b] text-lg font-bold">Payroll List</h2>
           <PayrollActionsBar
-          onAddPayrollSlip={() => setShowUploadModal(true)} 
+            onAddPayrollSlip={() => setShowUploadModal(true)}
             onExportCsv={handleExportCsv}
             sortValue={sortValue}
             onSortChange={setSortValue}
@@ -335,7 +399,7 @@ const PayrollPage: React.FC = () => {
         <div className="flex flex-wrap items-center gap-3">
           <select
             value={pageSize}
-            onChange={e => {
+            onChange={(e) => {
               setPageSize(Number(e.target.value));
               setCurrentPage(1);
             }}
@@ -350,7 +414,7 @@ const PayrollPage: React.FC = () => {
             type="text"
             placeholder="Search..."
             value={searchQuery}
-            onChange={e => {
+            onChange={(e) => {
               setSearchQuery(e.target.value);
               setCurrentPage(1);
             }}
@@ -364,11 +428,14 @@ const PayrollPage: React.FC = () => {
           loading={loading}
           rowIndexStart={(currentPage - 1) * pageSize}
           selectedIds={selectedIds}
-          allSelected={paginatedRows.length > 0 && paginatedRows.every(r => selectedIds.has(r.id))}
+          allSelected={
+            paginatedRows.length > 0 &&
+            paginatedRows.every((r) => selectedIds.has(r.id))
+          }
           onToggleSelect={handleToggleSelect}
           onToggleSelectAll={handleToggleSelectAll}
-          onView={id => financeNavigate('payslip-view', id)}
-          onEdit={id => financeNavigate('payslip-edit', id)}
+          onView={(id) => financeNavigate("payslip-view", id)}
+          onEdit={(id) => financeNavigate("payslip-edit", id)}
           onDelete={handleDelete}
           onDownloadPayslip={handleDownloadPayslip}
           onSendPayslip={handleSendPayslip}
@@ -383,20 +450,20 @@ const PayrollPage: React.FC = () => {
           onPageSizeChange={setPageSize}
         />
         {showUploadModal && (
-  <UploadPayslipModal
-    onClose={() => setShowUploadModal(false)}
-    onSuccess={async () => {
-      await refreshPayroll();
-      await refreshSalarySlips();
-    }}
-  />
-)}
-{previewUrl && (
-  <PayslipPreviewModal
-    fileUrl={previewUrl}
-    onClose={() => setPreviewUrl(null)}
-  />
-)}
+          <UploadPayslipModal
+            onClose={() => setShowUploadModal(false)}
+            onSuccess={async () => {
+              await refreshPayroll();
+              await refreshSalarySlips();
+            }}
+          />
+        )}
+        {previewUrl && (
+          <PayslipPreviewModal
+            fileUrl={previewUrl}
+            onClose={() => setPreviewUrl(null)}
+          />
+        )}
       </div>
     </div>
   );

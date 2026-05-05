@@ -761,28 +761,26 @@ export const sendVerificationStatusEmail = async (
 
 const getRejectedTemplate = (cleanerName, rejectedDocs, reasonText) => {
   return `
-  <table width="100%" style="background:#f5f5f5;padding:40px 0;font-family:Arial;">
+ <table width="100%" style="background:#f4f6f9;padding:40px 0;font-family:Arial, sans-serif;">
     <tr>
       <td align="center">
 
-        <table width="520" style="background:#fff;border-radius:12px;padding:30px;">
-          
+        <table width="520" style="background:#ffffff;border-radius:12px;padding:32px;box-shadow:0 4px 12px rgba(0,0,0,0.05);">
+
+          <!-- Header -->
           <tr>
-            <td align="center">
-             <img alt="Xpect Group" class="h-[50px] w-auto cursor-pointer" src="https://xpectgroup.co.uk/wp-content/uploads/2025/08/Xpect-Group-Logo-1-e1741086813440-300x281-1-1.webp">
+            <td align="left" style="padding-bottom:10px;">
+              <h1 style="margin:0;font-size:20px;color:#1f2a37;">
+                Verification Update
+              </h1>
             </td>
           </tr>
 
+          <!-- Status -->
           <tr>
-            <td align="center" style="padding:20px 0;">
-              <h1 style="margin:0;font-size:20px;">Verification Update</h1>
-            </td>
-          </tr>
-
-          <tr>
-            <td style="font-size:14px;color:#555;">
+            <td style="font-size:14px;color:#4b5563;line-height:1.6;">
               Hello <b>${cleanerName}</b>,<br/><br/>
-              Your verification was 
+              Thank you for submitting your documents. After reviewing your submission, we regret to inform you that your verification has been 
               <span style="color:#e53935;font-weight:bold;">rejected</span>.
             </td>
           </tr>
@@ -790,21 +788,46 @@ const getRejectedTemplate = (cleanerName, rejectedDocs, reasonText) => {
           ${
             rejectedDocs.length
               ? `
+          <!-- Rejected Docs -->
           <tr>
             <td style="padding-top:20px;">
-              <b>Rejected Documents</b>
-              <ul>
-                ${rejectedDocs.map((doc) => `<li>${doc}</li>`).join("")}
+              <div style="font-weight:bold;color:#111827;margin-bottom:6px;">
+                Rejected Documents
+              </div>
+              <ul style="padding-left:18px;margin:0;color:#374151;">
+                ${rejectedDocs.map((doc) => `<li style="margin-bottom:4px;">${doc}</li>`).join("")}
               </ul>
             </td>
           </tr>`
               : ""
           }
 
+          <!-- Reason -->
           <tr>
-            <td style="padding-top:10px;">
-              <b>Reason</b>
-              <p>${reasonText}</p>
+            <td style="padding-top:16px;">
+              <div style="font-weight:bold;color:#111827;margin-bottom:6px;">
+                Reason for Rejection
+              </div>
+              <p style="margin:0;color:#4b5563;line-height:1.6;">
+                ${reasonText}
+              </p>
+            </td>
+          </tr>
+
+          <!-- Guidance -->
+          <tr>
+            <td style="padding-top:20px;">
+              <div style="background:#f1f5f9;border-radius:8px;padding:12px;font-size:13px;color:#475569;line-height:1.5;">
+                <b>Next Steps:</b><br/>
+                Please review the above feedback carefully and ensure that all required documents are accurate, clear, and up to date before resubmitting.
+              </div>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="padding-top:24px;font-size:12px;color:#9ca3af;text-align:center;">
+              If you have any questions or need assistance, please contact our support team.
             </td>
           </tr>
 
@@ -818,26 +841,53 @@ const getRejectedTemplate = (cleanerName, rejectedDocs, reasonText) => {
 
 const getVerifiedTemplate = (cleanerName) => {
   return `
-  <table width="100%" style="background:#f5f5f5;padding:40px 0;font-family:Arial;">
-    <tr>
-      <td align="center">
+  <table width="100%" style="background:#f4f6f9;padding:40px 0;font-family:Arial, sans-serif;">
+  <tr>
+    <td align="center">
 
-        <table width="520" style="background:#fff;border-radius:12px;padding:30px;text-align:center;">
-          
-          <img alt="Xpect Group" class="h-[30px] w-auto cursor-pointer" src="https://xpectgroup.co">
+      <table width="520" style="background:#ffffff;border-radius:12px;padding:32px;text-align:center;box-shadow:0 4px 12px rgba(0,0,0,0.05);">
+        
+        <!-- Header -->
+        <tr>
+          <td style="padding-bottom:10px;">
+            <h1 style="margin:0;font-size:20px;color:#2e7d32;">
+              You're Verified 🎉
+            </h1>
+          </td>
+        </tr>
 
-          <h1 style="color:#2e7d32;">You're Verified 🎉</h1>
-
-          <p style="font-size:14px;color:#555;">
+        <!-- Message -->
+        <tr>
+          <td style="font-size:14px;color:#4b5563;line-height:1.6;">
             Hello <b>${cleanerName}</b>,<br/><br/>
-            Your background verification has been approved.<br/>
-            You can now start working.
-          </p>
+            We’re pleased to inform you that your background verification has been 
+            <span style="color:#2e7d32;font-weight:bold;">successfully approved</span>.
+            <br/><br/>
+            You are now eligible to begin your assigned work.
+          </td>
+        </tr>
 
-        </table>
+        <!-- Info Box -->
+        <tr>
+          <td style="padding-top:20px;">
+            <div style="background:#ecfdf5;border-radius:8px;padding:12px;font-size:13px;color:#065f46;line-height:1.5;">
+              <b>Next Steps:</b><br/>
+              Please ensure you stay compliant with all company policies and keep your documents up to date.
+            </div>
+          </td>
+        </tr>
 
-      </td>
-    </tr>
-  </table>
+        <!-- Footer -->
+        <tr>
+          <td style="padding-top:24px;font-size:12px;color:#9ca3af;">
+            If you have any questions, feel free to contact our support team.
+          </td>
+        </tr>
+
+      </table>
+
+    </td>
+  </tr>
+</table>
   `;
 };

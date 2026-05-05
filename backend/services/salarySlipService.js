@@ -100,10 +100,11 @@ export async function regenerateSalarySlipPdf(payrollDoc) {
 }
 
 export const uploadPayslipService = async ({ employeeId, date, file }) => {
-  const [year, month] = date.split("-");
+  console.log("employeeID", employeeId);
+  const [year, month] = String(date).split("-");
 
-  // 🔹 Get cleaner
-  const cleaner = await Cleaner.findById(employeeId);
+  // Staff use custom string `id`, not Mongo _id
+  const cleaner = await Cleaner.findOne({ id: employeeId });
   if (!cleaner) throw new Error("Cleaner not found");
 
   // 🔹 Prevent duplicate
@@ -130,7 +131,7 @@ export const uploadPayslipService = async ({ employeeId, date, file }) => {
     totalSalary: 0,
 
     hoursWorked: 0,
-    hourlyRate: cleaner.hourlyRate || 0,
+    hourlyRate: cleaner.hourlyPayRate ?? cleaner.hourlyRate ?? 0,
 
     paymentStatus: "Pending",
     role: "Cleaner",

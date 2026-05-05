@@ -221,7 +221,7 @@ const PerformanceDashboard: React.FC = () => {
           className="px-3 py-2 rounded-lg border border-gray-300"
         >
           <option value="all">All Time</option>
-          {/* <option value="month">This Month</option> */}
+          <option value="month">This Month</option>
           <option value="quarter">This Quarter</option>
           <option value="year">This Year</option>
         </select>

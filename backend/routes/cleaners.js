@@ -2,7 +2,6 @@ import express from 'express';
 import Cleaner from '../models/Cleaner.js';
 import PayrollRecord from '../models/PayrollRecord.js';
 import { logCleanerActivity, logVerificationActivity, logActivity, logDocumentActivity } from '../services/activityLogger.js';
-import { createPayrollForVerifiedCleaner, createPayrollForVerifiedCleaners } from '../services/payrollOnVerification.js';
 import { sendVerificationStatusEmail } from '../services/emailService.js';
 const router = express.Router();
 
@@ -69,14 +68,6 @@ Promise.all(
       console.error('Failed to log bulk action activity:', logErr);
     }
 
-    if (status === 'Verified') {
-      try {
-        await createPayrollForVerifiedCleaners(validIds);
-      } catch (payrollErr) {
-        console.warn('Auto payroll creation failed for bulk action:', payrollErr.message);
-      }
-    }
-
     res.json({ updatedCount: result.modifiedCount, status });
   } catch (error) {
     res.status(500).json({
@@ -129,14 +120,6 @@ router.patch('/bulk-status', async (req, res) => {
       );
     } catch (logErr) {
       console.error('Failed to log bulk status activity:', logErr);
-    }
-
-    if (status === 'Verified') {
-      try {
-        await createPayrollForVerifiedCleaners(validIds);
-      } catch (payrollErr) {
-        console.warn('Auto payroll creation failed for bulk status:', payrollErr.message);
-      }
     }
 
     res.json({
@@ -363,11 +346,6 @@ router.patch('/:id', async (req, res) => {
         if (newStatus === 'Verified') {
           await logVerificationActivity.verified('admin-001', 'Admin', cleaner.id, cleaner.name);
           sendVerificationStatusEmail(cleaner.email, cleaner.name, newStatus).catch(console.error);
-          try {
-            await createPayrollForVerifiedCleaner(cleaner.id);
-          } catch (payrollErr) {
-            console.warn('Auto payroll creation failed:', payrollErr.message);
-          }
         } else if (newStatus === 'Rejected') {
           await logVerificationActivity.rejected('admin-001', 'Admin', cleaner.id, cleaner.name);
           const rejectedDocs = Array.isArray(cleaner.documents)

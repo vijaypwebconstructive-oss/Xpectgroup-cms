@@ -130,7 +130,8 @@ export type AppView =
   | "RISK_COSHH"
   | "INCIDENTS"
   | "FINANCE"
-  | "USER_ACCESS";
+  | "USER_ACCESS"
+  | "ACCESS_DENIED";
 
 // ── PPE Module ──────────────────────────────────────────────
 export type PPEItemType =

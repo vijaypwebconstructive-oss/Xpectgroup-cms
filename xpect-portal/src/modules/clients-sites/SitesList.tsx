@@ -1,6 +1,14 @@
 import React, { useState } from "react";
-import { Site, RiskLevel } from "./types";
+import { Site, RiskLevel, SiteComplianceDocument } from "./types";
 import { useClientsSites } from "../../context/ClientsSitesContext";
+
+const fileToDataUrl = (file: File): Promise<string> =>
+  new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result));
+    r.onerror = () => reject(new Error("Failed to read file"));
+    r.readAsDataURL(file);
+  });
 
 interface SitesListProps {
   onSelectSite: (siteId: string) => void;
@@ -47,12 +55,6 @@ interface SiteForm {
   emergencyPhone: string;
   accessInstructions: string;
   requiredTrainings: string[];
-  riskAssessmentDoc: string;
-  floorPlanDoc: string;
-  accessPermitDoc: string;
-  fireSafetyDoc: string;
-  coshhAssessmentDoc: string;
-  siteInductionDoc: string;
 }
 
 const emptyForm: SiteForm = {
@@ -65,12 +67,6 @@ const emptyForm: SiteForm = {
   emergencyPhone: "",
   accessInstructions: "",
   requiredTrainings: [],
-  riskAssessmentDoc: "",
-  floorPlanDoc: "",
-  accessPermitDoc: "",
-  fireSafetyDoc: "",
-  coshhAssessmentDoc: "",
-  siteInductionDoc: "",
 };
 
 const SitesList: React.FC<SitesListProps> = ({
@@ -87,6 +83,9 @@ const SitesList: React.FC<SitesListProps> = ({
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [successMsg, setSuccessMsg] = useState("");
   const [saving, setSaving] = useState(false);
+  const [siteDocFiles, setSiteDocFiles] = useState<
+    Record<string, File | null>
+  >({});
 
   const setField = (k: keyof SiteForm, v: string | string[]) => {
     setForm((prev) => ({ ...prev, [k]: v }));
@@ -135,6 +134,20 @@ const SitesList: React.FC<SitesListProps> = ({
     setFormErrors({});
     setSaving(true);
     try {
+      const complianceDocuments: SiteComplianceDocument[] = [];
+      for (const [key, file] of Object.entries(siteDocFiles)) {
+        if (!file) continue;
+        try {
+          const dataUrl = await fileToDataUrl(file);
+          complianceDocuments.push({
+            key,
+            name: file.name,
+            dataUrl,
+          });
+        } catch {
+          /* skip bad file */
+        }
+      }
       const newSite = await addSite({
         clientId: form.clientId,
         name: form.name.trim(),
@@ -146,8 +159,11 @@ const SitesList: React.FC<SitesListProps> = ({
         emergencyPhone: form.emergencyPhone.trim(),
         accessInstructions: form.accessInstructions.trim(),
         activeWorkers: 0,
+        complianceDocuments:
+          complianceDocuments.length > 0 ? complianceDocuments : undefined,
       });
       setForm(emptyForm);
+      setSiteDocFiles({});
       setIsModalOpen(false);
       flash(`Site "${newSite.name}" added successfully.`);
     } catch {
@@ -159,49 +175,60 @@ const SitesList: React.FC<SitesListProps> = ({
 
   const openModal = () => {
     setForm(emptyForm);
+    setSiteDocFiles({});
     setFormErrors({});
     setIsModalOpen(true);
   };
 
-  const docField = (label: string, key: keyof SiteForm, icon: string) => (
-    <div className="flex items-center gap-3 p-3 rounded-xl border border-dashed border-[#c7d2e0] bg-[#fafbfd] hover:border-[#2e4150]/40 transition-colors">
-      <span className="material-symbols-outlined text-[22px] text-[#4c669a]">
-        {icon}
-      </span>
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold text-[#0d121b]">{label}</p>
-        {form[key] ? (
-          <p className="text-xs text-green-600 font-semibold truncate">
-            {form[key] as string}
-          </p>
-        ) : (
-          <p className="text-xs text-[#4c669a]">No file selected</p>
+  const docField = (label: string, storageKey: string, icon: string) => {
+    const selected = siteDocFiles[storageKey];
+    return (
+      <div className="flex items-center gap-3 p-3 rounded-xl border border-dashed border-[#c7d2e0] bg-[#fafbfd] hover:border-[#2e4150]/40 transition-colors">
+        <span className="material-symbols-outlined text-[22px] text-[#4c669a]">
+          {icon}
+        </span>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold text-[#0d121b]">{label}</p>
+          {selected ? (
+            <p className="text-xs text-green-600 font-semibold truncate">
+              {selected.name}
+            </p>
+          ) : (
+            <p className="text-xs text-[#4c669a]">No file selected</p>
+          )}
+        </div>
+        <label className="px-3 py-1.5 rounded-lg bg-[#f2f6f9] text-[#4c669a] text-xs font-bold hover:bg-[#e7ebf3] transition-colors cursor-pointer">
+          Browse
+          <input
+            type="file"
+            className="hidden"
+            accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f)
+                setSiteDocFiles((prev) => ({ ...prev, [storageKey]: f }));
+              e.target.value = "";
+            }}
+          />
+        </label>
+        {selected && (
+          <button
+            type="button"
+            onClick={() =>
+              setSiteDocFiles((prev) => {
+                const n = { ...prev };
+                delete n[storageKey];
+                return n;
+              })
+            }
+            className="text-red-400 hover:text-red-600 transition-colors cursor-pointer"
+          >
+            <span className="material-symbols-outlined text-[18px]">close</span>
+          </button>
         )}
       </div>
-      <label className="px-3 py-1.5 rounded-lg bg-[#f2f6f9] text-[#4c669a] text-xs font-bold hover:bg-[#e7ebf3] transition-colors cursor-pointer">
-        Browse
-        <input
-          type="file"
-          className="hidden"
-          accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-          onChange={(e) => {
-            const f = e.target.files?.[0];
-            if (f) setField(key, f.name);
-            e.target.value = "";
-          }}
-        />
-      </label>
-      {form[key] && (
-        <button
-          type="button"
-          onClick={() => setField(key, "")}
-          className="text-red-400 hover:text-red-600 transition-colors cursor-pointer"
-        >
-          <span className="material-symbols-outlined text-[18px]">close</span>
-        </button>
-      )}
-    </div>
-  );
+    );
+  };
 
   const totalSites = sites.length;
   const highRisk = sites.filter((s) => s.riskLevel === "High").length;
@@ -773,24 +800,24 @@ const SitesList: React.FC<SitesListProps> = ({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {docField(
                     "Risk Assessment",
-                    "riskAssessmentDoc",
+                    "riskAssessment",
                     "assignment_late",
                   )}
-                  {docField("Floor Plan / Layout", "floorPlanDoc", "map")}
-                  {docField("Access Permit", "accessPermitDoc", "key")}
+                  {docField("Floor Plan / Layout", "floorPlan", "map")}
+                  {docField("Access Permit", "accessPermit", "key")}
                   {docField(
                     "Fire Safety Certificate",
-                    "fireSafetyDoc",
+                    "fireSafety",
                     "local_fire_department",
                   )}
                   {docField(
                     "COSHH Assessment",
-                    "coshhAssessmentDoc",
+                    "coshhAssessment",
                     "science",
                   )}
                   {docField(
                     "Site Induction Pack",
-                    "siteInductionDoc",
+                    "siteInduction",
                     "menu_book",
                   )}
                 </div>

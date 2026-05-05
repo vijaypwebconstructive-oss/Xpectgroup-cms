@@ -20,6 +20,7 @@ const URL_TO_VIEW: Record<string, AppView> = {
   "/onboarding": "ONBOARDING",
   "/thank-you": "THANK_YOU",
   "/audit": "DASHBOARD",
+  "/access-denied": "ACCESS_DENIED",
 };
 
 // View to URL mapping
@@ -42,6 +43,7 @@ const VIEW_TO_URL: Record<AppView, string> = {
   ONBOARDING: "/onboarding",
   ONBOARDING_AUTH: "/onboarding/auth", // Will be appended with token
   THANK_YOU: "/thank-you",
+  ACCESS_DENIED: "/access-denied",
 };
 
 // Helper function to get first name from full name

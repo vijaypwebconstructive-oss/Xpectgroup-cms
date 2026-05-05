@@ -1,6 +1,9 @@
-import jwt from 'jsonwebtoken';
+import jwt from "jsonwebtoken";
 
-const JWT_SECRET = process.env.JWT_SECRET || 'xpect-onboarding-secret-key-change-in-production';
+const JWT_SECRET =
+  process.env.JWT_SECRET || "xpect-onboarding-secret-key-change-in-production";
+
+const CMS_ROLES = ["Admin", "Supervisor", "CMS Operator"];
 
 // Verify JWT token
 export const verifyOnboardingToken = (token) => {
@@ -18,11 +21,11 @@ export const verifyOnboardingToken = (token) => {
 export const verifyEmployeeSession = (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
-    
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
       return res.status(401).json({
-        error: 'Unauthorized',
-        message: 'No valid authentication token provided'
+        error: "Unauthorized",
+        message: "No valid authentication token provided",
       });
     }
 
@@ -31,23 +34,23 @@ export const verifyEmployeeSession = (req, res, next) => {
 
     if (!decoded) {
       return res.status(401).json({
-        error: 'Unauthorized',
-        message: 'Invalid or expired authentication token'
+        error: "Unauthorized",
+        message: "Invalid or expired authentication token",
       });
     }
 
     // Verify employee role and onboarding access
-    if (decoded.role !== 'employee') {
+    if (decoded.role !== "employee") {
       return res.status(403).json({
-        error: 'Forbidden',
-        message: 'Access denied. Employee role required.'
+        error: "Forbidden",
+        message: "Access denied. Employee role required.",
       });
     }
 
     if (decoded.onboardingAllowed !== true) {
       return res.status(403).json({
-        error: 'Forbidden',
-        message: 'Onboarding access not granted'
+        error: "Forbidden",
+        message: "Onboarding access not granted",
       });
     }
 
@@ -55,22 +58,54 @@ export const verifyEmployeeSession = (req, res, next) => {
     req.employee = {
       inviteToken: decoded.inviteToken,
       email: decoded.email,
-      role: decoded.role
+      role: decoded.role,
     };
 
     next();
   } catch (error) {
     return res.status(401).json({
-      error: 'Unauthorized',
-      message: 'Token verification failed'
+      error: "Unauthorized",
+      message: "Token verification failed",
     });
   }
 };
 
+// /**
+//  * Middleware to verify onboarding JWT token (legacy - use verifyEmployeeSession)
+//  * Protects onboarding routes from unauthorized access
+//  */
+// export const verifyOnboardingAccess = (req, res, next) => {
+//   return verifyEmployeeSession(req, res, next);
+// };
+
 /**
- * Middleware to verify onboarding JWT token (legacy - use verifyEmployeeSession)
- * Protects onboarding routes from unauthorized access
+ * Verify JWT for CMS (SystemUser) API access.
+ * Rejects employee/onboarding tokens and any role not in CMS_ROLES.
+ * Attaches req.user = { id, role } (id = SystemUser string id from token).
  */
-export const verifyOnboardingAccess = (req, res, next) => {
-  return verifyEmployeeSession(req, res, next);
+export const authenticate = (req, res, next) => {
+  const header = req.headers.authorization || "";
+  if (!header.startsWith("Bearer ")) {
+    return res.status(401).json({
+      error: "Unauthorized",
+      message: "Missing bearer token",
+    });
+  }
+  try {
+    const token = header.slice(7);
+    const decoded = jwt.verify(token, JWT_SECRET);
+    if (!decoded?.id || !CMS_ROLES.includes(decoded.role)) {
+      return res.status(401).json({
+        error: "Unauthorized",
+        message: "Invalid token for CMS API",
+      });
+    }
+    req.user = { id: decoded.id, role: decoded.role };
+    next();
+  } catch {
+    return res.status(401).json({
+      error: "Unauthorized",
+      message: "Invalid or expired token",
+    });
+  }
 };

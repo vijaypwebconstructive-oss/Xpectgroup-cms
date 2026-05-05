@@ -1,59 +1,76 @@
-import express from 'express';
-import RiskAssessment from '../models/RiskAssessment.js';
-import RAMS from '../models/RAMS.js';
-import Chemical from '../models/Chemical.js';
-import SDS from '../models/SDS.js';
+import express from "express";
+import RiskAssessment from "../models/RiskAssessment.js";
+import RAMS from "../models/RAMS.js";
+import Chemical from "../models/Chemical.js";
+import SDS from "../models/SDS.js";
+// import { authenticate } from '../middleware/auth.js';
+// import { checkModuleAccess } from '../middleware/authorize.js';
 
 const router = express.Router();
 
+// router.use(authenticate, checkModuleAccess('rams'));
+
 // ── Risk Assessments ─────────────────────────────────────────────────────────
 
-router.get('/risk-assessments', async (req, res) => {
+router.get("/risk-assessments", async (req, res) => {
   try {
     const docs = await RiskAssessment.find().sort({ createdAt: -1 }).lean();
-    const list = docs.map(doc => toRiskAssessmentRecord(doc));
+    const list = docs.map((doc) => toRiskAssessmentRecord(doc));
     res.json(list);
   } catch (error) {
-    console.error('Error fetching risk assessments:', error);
-    res.status(500).json({ error: 'Failed to fetch risk assessments', message: error.message });
+    console.error("Error fetching risk assessments:", error);
+    res
+      .status(500)
+      .json({
+        error: "Failed to fetch risk assessments",
+        message: error.message,
+      });
   }
 });
 
-router.get('/risk-assessments/:id', async (req, res) => {
+router.get("/risk-assessments/:id", async (req, res) => {
   try {
     const doc = await RiskAssessment.findOne({ id: req.params.id }).lean();
-    if (!doc) return res.status(404).json({ error: 'Risk assessment not found' });
+    if (!doc)
+      return res.status(404).json({ error: "Risk assessment not found" });
     res.json(toRiskAssessmentRecord(doc));
   } catch (error) {
-    console.error('Error fetching risk assessment:', error);
-    res.status(500).json({ error: 'Failed to fetch risk assessment', message: error.message });
+    console.error("Error fetching risk assessment:", error);
+    res
+      .status(500)
+      .json({
+        error: "Failed to fetch risk assessment",
+        message: error.message,
+      });
   }
 });
 
-router.post('/risk-assessments', async (req, res) => {
+router.post("/risk-assessments", async (req, res) => {
   try {
     const body = req.body;
     if (!body.title) {
-      return res.status(400).json({ error: 'Validation error', message: 'title is required' });
+      return res
+        .status(400)
+        .json({ error: "Validation error", message: "title is required" });
     }
     const daysFromNow = (days) => {
       const d = new Date();
       d.setDate(d.getDate() + days);
-      return d.toISOString().split('T')[0];
+      return d.toISOString().split("T")[0];
     };
     const doc = await RiskAssessment.create({
       title: body.title,
-      taskType: body.taskType || 'General',
-      riskLevel: body.riskLevel || 'Low',
-      createdBy: body.createdBy || '—',
+      taskType: body.taskType || "General",
+      riskLevel: body.riskLevel || "Low",
+      createdBy: body.createdBy || "—",
       lastReviewDate: body.lastReviewDate || daysFromNow(0),
       nextReviewDate: body.nextReviewDate || daysFromNow(365),
-      approvalStatus: body.approvalStatus || 'approved',
+      approvalStatus: body.approvalStatus || "approved",
       approvedBy: body.approvedBy,
       approvalDate: body.approvalDate,
-      taskDescription: body.taskDescription || '—',
+      taskDescription: body.taskDescription || "—",
       equipmentUsed: body.equipmentUsed || [],
-      workArea: body.workArea || '—',
+      workArea: body.workArea || "—",
       hazards: body.hazards || [],
       requiredPPE: body.requiredPPE || [],
       complianceRequirements: body.complianceRequirements || [],
@@ -62,34 +79,57 @@ router.post('/risk-assessments', async (req, res) => {
     });
     res.status(201).json(toRiskAssessmentRecord(doc));
   } catch (error) {
-    console.error('Error creating risk assessment:', error);
-    res.status(500).json({ error: 'Failed to create risk assessment', message: error.message });
+    console.error("Error creating risk assessment:", error);
+    res
+      .status(500)
+      .json({
+        error: "Failed to create risk assessment",
+        message: error.message,
+      });
   }
 });
 
-router.patch('/risk-assessments/:id', async (req, res) => {
+router.patch("/risk-assessments/:id", async (req, res) => {
   try {
     const updates = {};
     if (Array.isArray(req.body.hazards)) updates.hazards = req.body.hazards;
-    if (Array.isArray(req.body.requiredPPE)) updates.requiredPPE = req.body.requiredPPE;
-    if (Array.isArray(req.body.complianceRequirements)) updates.complianceRequirements = req.body.complianceRequirements;
-    const doc = await RiskAssessment.findOneAndUpdate({ id: req.params.id }, { $set: updates }, { new: true }).lean();
-    if (!doc) return res.status(404).json({ error: 'Risk assessment not found' });
+    if (Array.isArray(req.body.requiredPPE))
+      updates.requiredPPE = req.body.requiredPPE;
+    if (Array.isArray(req.body.complianceRequirements))
+      updates.complianceRequirements = req.body.complianceRequirements;
+    const doc = await RiskAssessment.findOneAndUpdate(
+      { id: req.params.id },
+      { $set: updates },
+      { new: true },
+    ).lean();
+    if (!doc)
+      return res.status(404).json({ error: "Risk assessment not found" });
     res.json(toRiskAssessmentRecord(doc));
   } catch (error) {
-    console.error('Error updating risk assessment:', error);
-    res.status(500).json({ error: 'Failed to update risk assessment', message: error.message });
+    console.error("Error updating risk assessment:", error);
+    res
+      .status(500)
+      .json({
+        error: "Failed to update risk assessment",
+        message: error.message,
+      });
   }
 });
 
-router.delete('/risk-assessments/:id', async (req, res) => {
+router.delete("/risk-assessments/:id", async (req, res) => {
   try {
     const result = await RiskAssessment.deleteOne({ id: req.params.id });
-    if (result.deletedCount === 0) return res.status(404).json({ error: 'Risk assessment not found' });
+    if (result.deletedCount === 0)
+      return res.status(404).json({ error: "Risk assessment not found" });
     res.status(204).send();
   } catch (error) {
-    console.error('Error deleting risk assessment:', error);
-    res.status(500).json({ error: 'Failed to delete risk assessment', message: error.message });
+    console.error("Error deleting risk assessment:", error);
+    res
+      .status(500)
+      .json({
+        error: "Failed to delete risk assessment",
+        message: error.message,
+      });
   }
 });
 
@@ -119,37 +159,48 @@ function toRiskAssessmentRecord(doc) {
 
 // ── RAMS ─────────────────────────────────────────────────────────────────────
 
-router.get('/rams', async (req, res) => {
+router.get("/rams", async (req, res) => {
   try {
     const docs = await RAMS.find().sort({ createdAt: -1 }).lean();
-    const list = docs.map(doc => toRAMSRecord(doc));
+    const list = docs.map((doc) => toRAMSRecord(doc));
     res.json(list);
   } catch (error) {
-    console.error('Error fetching RAMS:', error);
-    res.status(500).json({ error: 'Failed to fetch RAMS', message: error.message });
+    console.error("Error fetching RAMS:", error);
+    res
+      .status(500)
+      .json({ error: "Failed to fetch RAMS", message: error.message });
   }
 });
 
-router.get('/rams/:id', async (req, res) => {
+router.get("/rams/:id", async (req, res) => {
   try {
     const doc = await RAMS.findOne({ id: req.params.id }).lean();
-    if (!doc) return res.status(404).json({ error: 'RAMS not found' });
+    if (!doc) return res.status(404).json({ error: "RAMS not found" });
     const record = toRAMSRecord(doc);
     if (doc.documentData) record.documentData = doc.documentData;
     res.json(record);
   } catch (error) {
-    console.error('Error fetching RAMS:', error);
-    res.status(500).json({ error: 'Failed to fetch RAMS', message: error.message });
+    console.error("Error fetching RAMS:", error);
+    res
+      .status(500)
+      .json({ error: "Failed to fetch RAMS", message: error.message });
   }
 });
 
-router.post('/rams', async (req, res) => {
+router.post("/rams", async (req, res) => {
   try {
     const body = req.body;
-    if (!body.siteName || !body.clientName || !body.description || !body.workingHours || !body.supervisor) {
+    if (
+      !body.siteName ||
+      !body.clientName ||
+      !body.description ||
+      !body.workingHours ||
+      !body.supervisor
+    ) {
       return res.status(400).json({
-        error: 'Validation error',
-        message: 'siteName, clientName, description, workingHours, and supervisor are required',
+        error: "Validation error",
+        message:
+          "siteName, clientName, description, workingHours, and supervisor are required",
       });
     }
     const doc = await RAMS.create({
@@ -157,31 +208,35 @@ router.post('/rams', async (req, res) => {
       clientName: body.clientName,
       description: body.description,
       workingHours: body.workingHours,
-      status: body.status || 'draft',
-      lastUpdated: body.lastUpdated || new Date().toISOString().split('T')[0],
+      status: body.status || "draft",
+      lastUpdated: body.lastUpdated || new Date().toISOString().split("T")[0],
       supervisor: body.supervisor,
       workMethod: body.workMethod || [],
       emergencyProcedures: body.emergencyProcedures || [],
       linkedRiskAssessmentIds: body.linkedRiskAssessmentIds || [],
       signedCopyAvailable: !!body.documentData,
       signedDocumentFileName: body.signedDocumentFileName,
-      signedDocumentUploadedAt: body.documentData ? new Date().toISOString() : undefined,
+      signedDocumentUploadedAt: body.documentData
+        ? new Date().toISOString()
+        : undefined,
       documentAvailable: !!body.documentData,
       documentData: body.documentData,
     });
     res.status(201).json(toRAMSRecord(doc));
   } catch (error) {
-    console.error('Error creating RAMS:', error);
-    res.status(500).json({ error: 'Failed to create RAMS', message: error.message });
+    console.error("Error creating RAMS:", error);
+    res
+      .status(500)
+      .json({ error: "Failed to create RAMS", message: error.message });
   }
 });
 
-router.patch('/rams/:id', async (req, res) => {
+router.patch("/rams/:id", async (req, res) => {
   try {
     const { id } = req.params;
     const { documentData, signedDocumentFileName } = req.body;
     const doc = await RAMS.findOne({ id });
-    if (!doc) return res.status(404).json({ error: 'RAMS not found' });
+    if (!doc) return res.status(404).json({ error: "RAMS not found" });
     const updates = {};
     if (documentData !== undefined) {
       updates.documentData = documentData;
@@ -189,25 +244,35 @@ router.patch('/rams/:id', async (req, res) => {
       updates.signedCopyAvailable = !!documentData;
       updates.signedDocumentUploadedAt = new Date().toISOString();
     }
-    if (signedDocumentFileName !== undefined) updates.signedDocumentFileName = signedDocumentFileName;
-    const updated = await RAMS.findOneAndUpdate({ id }, { $set: updates }, { new: true }).lean();
+    if (signedDocumentFileName !== undefined)
+      updates.signedDocumentFileName = signedDocumentFileName;
+    const updated = await RAMS.findOneAndUpdate(
+      { id },
+      { $set: updates },
+      { new: true },
+    ).lean();
     const record = toRAMSRecord(updated);
     if (updated.documentData) record.documentData = updated.documentData;
     res.json(record);
   } catch (error) {
-    console.error('Error updating RAMS:', error);
-    res.status(500).json({ error: 'Failed to update RAMS', message: error.message });
+    console.error("Error updating RAMS:", error);
+    res
+      .status(500)
+      .json({ error: "Failed to update RAMS", message: error.message });
   }
 });
 
-router.delete('/rams/:id', async (req, res) => {
+router.delete("/rams/:id", async (req, res) => {
   try {
     const result = await RAMS.deleteOne({ id: req.params.id });
-    if (result.deletedCount === 0) return res.status(404).json({ error: 'RAMS not found' });
+    if (result.deletedCount === 0)
+      return res.status(404).json({ error: "RAMS not found" });
     res.status(204).send();
   } catch (error) {
-    console.error('Error deleting RAMS:', error);
-    res.status(500).json({ error: 'Failed to delete RAMS', message: error.message });
+    console.error("Error deleting RAMS:", error);
+    res
+      .status(500)
+      .json({ error: "Failed to delete RAMS", message: error.message });
   }
 });
 
@@ -234,36 +299,48 @@ function toRAMSRecord(doc) {
 
 // ── Chemicals (COSHH) ───────────────────────────────────────────────────────
 
-router.get('/chemicals', async (req, res) => {
+router.get("/chemicals", async (req, res) => {
   try {
     const docs = await Chemical.find().sort({ createdAt: -1 }).lean();
-    const list = docs.map(doc => toChemicalRecord(doc));
+    const list = docs.map((doc) => toChemicalRecord(doc));
     res.json(list);
   } catch (error) {
-    console.error('Error fetching chemicals:', error);
-    res.status(500).json({ error: 'Failed to fetch chemicals', message: error.message });
+    console.error("Error fetching chemicals:", error);
+    res
+      .status(500)
+      .json({ error: "Failed to fetch chemicals", message: error.message });
   }
 });
 
-router.get('/chemicals/:id', async (req, res) => {
+router.get("/chemicals/:id", async (req, res) => {
   try {
     const doc = await Chemical.findOne({ id: req.params.id }).lean();
-    if (!doc) return res.status(404).json({ error: 'Chemical not found' });
+    if (!doc) return res.status(404).json({ error: "Chemical not found" });
     res.json(toChemicalRecord(doc));
   } catch (error) {
-    console.error('Error fetching chemical:', error);
-    res.status(500).json({ error: 'Failed to fetch chemical', message: error.message });
+    console.error("Error fetching chemical:", error);
+    res
+      .status(500)
+      .json({ error: "Failed to fetch chemical", message: error.message });
   }
 });
 
-router.post('/chemicals', async (req, res) => {
+router.post("/chemicals", async (req, res) => {
   try {
     const body = req.body;
-    if (!body.name || !body.manufacturer || !body.hazardType || !body.storageLocation ||
-        !body.firstAidMeasures || !body.spillResponse || !body.disposalMethod) {
+    if (
+      !body.name ||
+      !body.manufacturer ||
+      !body.hazardType ||
+      !body.storageLocation ||
+      !body.firstAidMeasures ||
+      !body.spillResponse ||
+      !body.disposalMethod
+    ) {
       return res.status(400).json({
-        error: 'Validation error',
-        message: 'name, manufacturer, hazardType, storageLocation, firstAidMeasures, spillResponse, disposalMethod are required',
+        error: "Validation error",
+        message:
+          "name, manufacturer, hazardType, storageLocation, firstAidMeasures, spillResponse, disposalMethod are required",
       });
     }
     const doc = await Chemical.create({
@@ -278,13 +355,15 @@ router.post('/chemicals', async (req, res) => {
       firstAidMeasures: body.firstAidMeasures,
       spillResponse: body.spillResponse,
       disposalMethod: body.disposalMethod,
-      handlingInstructions: body.handlingInstructions || '',
+      handlingInstructions: body.handlingInstructions || "",
       maxExposureLimit: body.maxExposureLimit,
     });
     res.status(201).json(toChemicalRecord(doc));
   } catch (error) {
-    console.error('Error creating chemical:', error);
-    res.status(500).json({ error: 'Failed to create chemical', message: error.message });
+    console.error("Error creating chemical:", error);
+    res
+      .status(500)
+      .json({ error: "Failed to create chemical", message: error.message });
   }
 });
 
@@ -302,53 +381,66 @@ function toChemicalRecord(doc) {
     firstAidMeasures: doc.firstAidMeasures,
     spillResponse: doc.spillResponse,
     disposalMethod: doc.disposalMethod,
-    handlingInstructions: doc.handlingInstructions || '',
+    handlingInstructions: doc.handlingInstructions || "",
     maxExposureLimit: doc.maxExposureLimit,
   };
 }
 
 // ── SDS Library ──────────────────────────────────────────────────────────────
 
-router.get('/sds', async (req, res) => {
+router.get("/sds", async (req, res) => {
   try {
     const docs = await SDS.find().sort({ createdAt: -1 }).lean();
-    const list = docs.map(doc => toSDSRecord(doc));
+    const list = docs.map((doc) => toSDSRecord(doc));
     res.json(list);
   } catch (error) {
-    console.error('Error fetching SDS:', error);
-    res.status(500).json({ error: 'Failed to fetch SDS', message: error.message });
+    console.error("Error fetching SDS:", error);
+    res
+      .status(500)
+      .json({ error: "Failed to fetch SDS", message: error.message });
   }
 });
 
-router.get('/sds/:id', async (req, res) => {
+router.get("/sds/:id", async (req, res) => {
   try {
     const doc = await SDS.findOne({ id: req.params.id }).lean();
-    if (!doc) return res.status(404).json({ error: 'SDS not found' });
+    if (!doc) return res.status(404).json({ error: "SDS not found" });
     const record = toSDSRecord(doc);
     if (doc.documentData) record.documentData = doc.documentData;
     res.json(record);
   } catch (error) {
-    console.error('Error fetching SDS:', error);
-    res.status(500).json({ error: 'Failed to fetch SDS', message: error.message });
+    console.error("Error fetching SDS:", error);
+    res
+      .status(500)
+      .json({ error: "Failed to fetch SDS", message: error.message });
   }
 });
 
-router.post('/sds', async (req, res) => {
+router.post("/sds", async (req, res) => {
   try {
     const body = req.body;
-    if (!body.chemicalName || !body.manufacturer || !body.revision || !body.issueDate || !body.reviewDate ||
-        !body.hazardClassification || !body.ghsSignalWord || !body.documentData) {
+    if (
+      !body.chemicalName ||
+      !body.manufacturer ||
+      !body.revision ||
+      !body.issueDate ||
+      !body.reviewDate ||
+      !body.hazardClassification ||
+      !body.ghsSignalWord ||
+      !body.documentData
+    ) {
       return res.status(400).json({
-        error: 'Validation error',
-        message: 'chemicalName, manufacturer, revision, issueDate, reviewDate, hazardClassification, ghsSignalWord, documentData are required',
+        error: "Validation error",
+        message:
+          "chemicalName, manufacturer, revision, issueDate, reviewDate, hazardClassification, ghsSignalWord, documentData are required",
       });
     }
     const doc = await SDS.create({
-      chemicalId: body.chemicalId || '',
+      chemicalId: body.chemicalId || "",
       chemicalName: body.chemicalName,
       issueDate: body.issueDate,
       reviewDate: body.reviewDate,
-      status: body.status || 'valid',
+      status: body.status || "valid",
       manufacturer: body.manufacturer,
       fileName: body.fileName,
       fileSize: body.fileSize,
@@ -363,8 +455,10 @@ router.post('/sds', async (req, res) => {
     });
     res.status(201).json(toSDSRecord(doc));
   } catch (error) {
-    console.error('Error creating SDS:', error);
-    res.status(500).json({ error: 'Failed to create SDS', message: error.message });
+    console.error("Error creating SDS:", error);
+    res
+      .status(500)
+      .json({ error: "Failed to create SDS", message: error.message });
   }
 });
 

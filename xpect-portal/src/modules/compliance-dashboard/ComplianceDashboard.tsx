@@ -234,7 +234,7 @@ const inspectionAlerts = useMemo(() => {
             <AlertsPanel alerts={alerts} />
 
             {/* Row 4: Site Compliance */}
-            <SiteComplianceWidget issues={siteIssues} />
+            {/* <SiteComplianceWidget issues={siteIssues} /> */}
 
             {/* Compliance score footer */}
             <div className="bg-white rounded-xl border border-[#e7ebf3] p-5">

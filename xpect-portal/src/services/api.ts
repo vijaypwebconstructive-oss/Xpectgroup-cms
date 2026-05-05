@@ -2,6 +2,24 @@
 const API_BASE_URL =
   import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
+/** Origin for static files (e.g. /uploads) — strips trailing `/api` from API base */
+export const getBackendPublicOrigin = (): string =>
+  String(API_BASE_URL).replace(/\/api\/?$/, "");
+
+/** Full URL to view/download a payslip (uploaded file or generated PDF route) */
+export function getSalarySlipViewUrl(slip: {
+  _id?: string;
+  id?: string;
+  fileUrl?: string | null;
+}): string {
+  if (slip?.fileUrl) {
+    const p = slip.fileUrl.startsWith("/") ? slip.fileUrl : `/${slip.fileUrl}`;
+    return `${getBackendPublicOrigin()}${p}`;
+  }
+  const sid = slip._id ?? slip.id;
+  return `${API_BASE_URL}/finance/salary-slips/${encodeURIComponent(String(sid))}/download`;
+}
+
 class ApiError extends Error {
   constructor(
     public status: number,
@@ -26,12 +44,23 @@ async function handleResponse<T>(response: Response): Promise<T> {
   return response.json();
 }
 
+function mergeAuthHeaders(options?: RequestInit): RequestInit {
+  const next: RequestInit = { ...options };
+  const headers = new Headers(options?.headers);
+  if (typeof localStorage !== "undefined") {
+    const token = localStorage.getItem("xpect_authToken");
+    if (token) headers.set("Authorization", `Bearer ${token}`);
+  }
+  next.headers = headers;
+  return next;
+}
+
 async function fetchWithErrorHandling<T>(
   url: string,
   options?: RequestInit,
 ): Promise<T> {
   try {
-    const response = await fetch(url, options);
+    const response = await fetch(url, mergeAuthHeaders(options));
     return handleResponse<T>(response);
   } catch (error: any) {
     // Handle network errors
@@ -51,6 +80,23 @@ async function fetchWithErrorHandling<T>(
 }
 
 export const api = {
+  auth: {
+    login: (body: { username: string; password: string }) =>
+      fetchWithErrorHandling<{
+        token: string;
+        user: {
+          id: string;
+          fullName: string;
+          email: string;
+          role: import("../modules/user-access/types").UserRole;
+        };
+      }>(`${API_BASE_URL}/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      }),
+  },
+
   // Inspection API
   inspections: {
     getAll: () => fetchWithErrorHandling(`${API_BASE_URL}/inspections`),
@@ -795,6 +841,10 @@ export const api = {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(updates),
       }),
+    delete: (id: string) =>
+      fetchWithErrorHandling(`${API_BASE_URL}/users/${id}`, {
+        method: "DELETE",
+      }),
   },
 
   // Training Records API
@@ -1099,7 +1149,8 @@ export const api = {
         fetchWithErrorHandling<
           import("../modules/finance-payroll/types").SalarySlip
         >(`${API_BASE_URL}/finance/salary-slips/${id}`),
-      getDownloadUrl: (id: string) => `${API_BASE_URL}${id}`,
+      getDownloadUrl: (id: string) =>
+        `${API_BASE_URL}/finance/salary-slips/${encodeURIComponent(id)}/download`,
       send: (data: any) =>
         fetchWithErrorHandling<{
           success: boolean;

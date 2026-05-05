@@ -1,15 +1,18 @@
 export interface SalarySlip {
-  id: string;
+  _id?: string;
+  id?: string;
   payrollId: string;
-  cleanerId: string;
-  workerName: string;
-  month: number;
-  year: number;
-  payPeriod: string;
-  salaryAmount: number;
-  paymentStatus: 'Paid';
-  slipNumber: string;
-  pdfPath: string;
+  type?: 'generated' | 'uploaded';
+  fileUrl?: string;
+  cleanerId?: string;
+  workerName?: string;
+  month?: number;
+  year?: number;
+  payPeriod?: string;
+  salaryAmount?: number;
+  paymentStatus?: string;
+  slipNumber?: string;
+  pdfPath?: string;
 }
 
 export interface PayrollRecord {

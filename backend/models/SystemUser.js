@@ -14,7 +14,7 @@ const SystemUserSchema = new mongoose.Schema({
   role: { type: String, enum: ['Admin', 'Supervisor', 'CMS Operator'], required: true },
   status: { type: String, enum: ['active', 'disabled', 'pending'], default: 'active' },
   lastLogin: { type: String, default: '' },
-  passwordHash: { type: String },
+  passwordHash: { type: String, select: false },
 }, { timestamps: true });
 
 const SystemUser = mongoose.model('SystemUser', SystemUserSchema);

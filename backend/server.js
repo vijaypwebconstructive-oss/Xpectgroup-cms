@@ -6,6 +6,7 @@ import mongoose from "mongoose";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 import cors from "cors";
 import dotenv from "dotenv";
+dotenv.config();
 import cleanerRoutes from "./routes/cleaners.js";
 import documentRoutes from "./routes/documents.js";
 import invitationRoutes from "./routes/invitations.js";
@@ -25,8 +26,9 @@ import invoiceSettingsRoutes from "./routes/invoiceSettings.js";
 import prospectsRoutes from "./routes/prospects.js";
 import inspectionRoutes from "./routes/inspectionRoutes.js";
 import performanceRoutes from "./routes/performanceRoutes.js";
-
-dotenv.config();
+import authRoutes from "./routes/auth.js";
+import { authenticate } from "./middleware/auth.js";
+import { allowModule } from "./middleware/rbac.js";
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -40,7 +42,7 @@ const allowedOrigins = [
   "http://localhost:3000",
   "http://localhost:3001",
   "http://localhost:5173",
-  "http://localhost", // Required for Capacitor Android
+  "https://localhost", // Required for Capacitor Android
   "capacitor://localhost", // Required for Capacitor iOS
   process.env.FRONTEND_URL,
 ].filter(Boolean);
@@ -59,6 +61,7 @@ app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 app.use("/api/uploads", express.static(path.join(__dirname, "uploads")));
 
 // Routes
+app.use("/api/auth", authRoutes);
 app.use("/api/cleaners", cleanerRoutes);
 app.use("/api/documents", documentRoutes);
 app.use("/api/invitations", invitationRoutes);
@@ -68,6 +71,12 @@ app.use("/api/training", trainingRoutes);
 app.use("/api/ppe", ppeRoutes);
 app.use("/api/risk-coshh", riskCoshhRoutes);
 app.use("/api/clients-sites", clientsSitesRoutes);
+// app.use(
+//   "/api/clients-sites",
+//   authenticate,
+//   allowModule("sites"),
+//   clientsSitesRoutes,
+// );
 app.use("/api/policy-documents", policyDocumentsRoutes);
 app.use("/api/incidents", incidentsRoutes);
 app.use("/api/users", systemUsersRoutes);

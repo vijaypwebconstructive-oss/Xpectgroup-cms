@@ -30,9 +30,14 @@ import {
   createNameSlug,
 } from "./utils/routing";
 import { isEmployee } from "./utils/auth";
+import { useAuth } from "./context/AuthContext";
+import { canAccessModule, viewToModuleKey } from "./utils/permissions";
+import AccessDenied from "./views/AccessDenied";
+import Login from "./views/Login";
 
 const App: React.FC = () => {
   const { cleaners } = useCleaners();
+  const { user } = useAuth();
   const [currentView, setCurrentView] = useState<AppView>("DASHBOARD");
   const [selectedCleaner, setSelectedCleaner] = useState<Cleaner | null>(null);
   const [onboardingInviteToken, setOnboardingInviteToken] = useState<
@@ -128,6 +133,17 @@ const App: React.FC = () => {
     }
   }, [cleaners.length]); // Re-run when cleaners are loaded
 
+  // RBAC: deep-linked URLs — redirect when role lacks module access
+  useEffect(() => {
+    if (isEmployee()) return;
+    const key = viewToModuleKey(currentView);
+    if (!key || !user?.role) return;
+    if (!canAccessModule(user.role, key)) {
+      setCurrentView("ACCESS_DENIED");
+      navigateToUrl("/access-denied", true);
+    }
+  }, [currentView, user?.role]);
+
   // Listen for URL changes (browser back/forward)
   useEffect(() => {
     const handlePopState = () => {
@@ -168,6 +184,7 @@ const App: React.FC = () => {
     if (currentView === "FINANCE") return;
     if (currentView === "TRAINING_DETAIL") return;
     if (currentView === "USER_ACCESS") return;
+    if (currentView === "ACCESS_DENIED") return;
     if (currentView === "PPE_LIST") return;
 
     const url = getUrlForView(currentView, {
@@ -229,6 +246,15 @@ const App: React.FC = () => {
       }
     }
 
+    if (!isEmployee()) {
+      const key = viewToModuleKey(view);
+      if (key && user?.role && !canAccessModule(user.role, key)) {
+        setCurrentView("ACCESS_DENIED");
+        navigateToUrl("/access-denied");
+        return;
+      }
+    }
+
     setCurrentView(view);
     if (cleaner) setSelectedCleaner(cleaner);
 
@@ -242,6 +268,7 @@ const App: React.FC = () => {
     if (view === "FINANCE") return;
     if (view === "TRAINING_DETAIL") return;
     if (view === "USER_ACCESS") return;
+    if (view === "ACCESS_DENIED") return;
     if (view === "PPE_LIST") return;
 
     // Update URL based on view and cleaner (if applicable)
@@ -380,7 +407,12 @@ const App: React.FC = () => {
       >
         {(() => {
           switch (currentView) {
+            case "ACCESS_DENIED":
+              return <AccessDenied onNavigate={navigateTo} />;
             case "DASHBOARD":
+              if (user?.role && !canAccessModule(user.role, "compliance")) {
+                return <AccessDenied onNavigate={navigateTo} />;
+              }
               return <ComplianceDashboardView onNavigate={navigateTo} />;
             case "EMPLOYEE_COMPLIANCE":
               return <EmployeeCompliance onNavigate={navigateTo} />;
@@ -446,14 +478,23 @@ const App: React.FC = () => {
             case "STAFF_INVITES":
               return <StaffInvites onNavigate={navigateTo} />;
             case "CLIENTS_SITES":
+              if (user?.role && !canAccessModule(user.role, "sites")) {
+                return <AccessDenied onNavigate={navigateTo} />;
+              }
               return <ClientSitesModule />;
             case "DOCUMENT_CONTROL":
               return <DocumentControlModule />;
             case "RISK_COSHH":
+              if (user?.role && !canAccessModule(user.role, "rams")) {
+                return <AccessDenied onNavigate={navigateTo} />;
+              }
               return <RiskCoshhModule />;
             case "INCIDENTS":
               return <IncidentsModule />;
             case "FINANCE":
+              if (user?.role && !canAccessModule(user.role, "payroll")) {
+                return <AccessDenied onNavigate={navigateTo} />;
+              }
               return (
                 <FinanceModule
                   sidebar={showSidebar}
@@ -461,6 +502,9 @@ const App: React.FC = () => {
                 />
               );
             case "USER_ACCESS":
+              if (user?.role && !canAccessModule(user.role, "users")) {
+                return <AccessDenied onNavigate={navigateTo} />;
+              }
               return <UserAccessModule />;
             default:
               return <ComplianceDashboardView onNavigate={navigateTo} />;
@@ -469,6 +513,11 @@ const App: React.FC = () => {
       </AdminLayout>
     );
   };
+  const token = localStorage.getItem("xpect_authToken");
+  // 🚨 Block app if not logged in
+  if (!token) {
+    return <Login />;
+  }
 
   return <>{renderView()}</>;
 };

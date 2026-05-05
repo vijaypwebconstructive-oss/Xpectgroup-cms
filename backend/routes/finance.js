@@ -25,8 +25,12 @@ import {
   createAndSendSalarySlip,
   regenerateSalarySlipPdf,
 } from "../services/salarySlipService.js";
+// import { authenticate } from "../middleware/auth.js";
+// import { checkModuleAccess } from "../middleware/authorize.js";
 
 const router = express.Router();
+
+// router.use(authenticate, checkModuleAccess("payroll"));
 const DEFAULT_HOURS_PER_MONTH = 160;
 const WEEKS_PER_MONTH = 4.33;
 const MONTHS_SHORT = [
@@ -764,26 +768,72 @@ router.get("/salary-slips/:id", async (req, res) => {
 });
 
 router.get("/salary-slips/:id/download", async (req, res) => {
-  console.log("8");
   try {
-    const slip = await SalarySlip.findOne({ id: req.params.id }).lean();
+    const pathModule = await import("path");
+    const fsModule = await import("fs");
+    const { fileURLToPath } = await import("url");
+    const mongoose = (await import("mongoose")).default;
+
+    const routesDir = pathModule.dirname(fileURLToPath(import.meta.url));
+    const backendRoot = pathModule.resolve(routesDir, "..");
+    const cwd = process.cwd();
+
+    let slip = null;
+    if (mongoose.Types.ObjectId.isValid(req.params.id)) {
+      slip = await SalarySlip.findById(req.params.id).lean();
+    }
+    if (!slip) {
+      slip = await SalarySlip.findOne({ id: req.params.id }).lean();
+    }
     if (!slip)
       return res
         .status(404)
         .json({ error: "Not found", message: "Salary slip not found" });
-    const pathModule = await import("path");
-    const fsModule = await import("fs");
-    const { fileURLToPath } = await import("url");
-    const __dirname = pathModule.dirname(fileURLToPath(import.meta.url));
-    const fullPath = pathModule.join(__dirname, slip.pdfPath);
-    if (!fsModule.existsSync(fullPath))
-      return res
-        .status(404)
-        .json({ error: "Not found", message: "PDF file not found" });
-    const filename = `salary-slip-${slip.payPeriod.replace(/\s/g, "-")}.pdf`;
-    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
-    res.setHeader("Content-Type", "application/pdf");
-    res.sendFile(pathModule.resolve(fullPath));
+
+    const sendUpload = (absPath, downloadName, mime) => {
+      if (!fsModule.existsSync(absPath))
+        return res
+          .status(404)
+          .json({ error: "Not found", message: "File not found on server" });
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="${downloadName}"`,
+      );
+      res.setHeader("Content-Type", mime);
+      return res.sendFile(pathModule.resolve(absPath));
+    };
+
+    if (slip.fileUrl) {
+      const rel = String(slip.fileUrl).replace(/^\//, "");
+      let abs = pathModule.join(cwd, rel);
+      if (!fsModule.existsSync(abs)) {
+        abs = pathModule.join(backendRoot, rel);
+      }
+      const ext = pathModule.extname(rel).toLowerCase() || ".pdf";
+      const mime =
+        ext === ".pdf"
+          ? "application/pdf"
+          : ext.match(/\.(png|jpe?g|gif|webp)$/i)
+            ? `image/${ext.slice(1)}`
+            : "application/octet-stream";
+      return sendUpload(abs, `payslip${ext}`, mime);
+    }
+
+    if (slip.pdfPath) {
+      const fullPath = pathModule.isAbsolute(slip.pdfPath)
+        ? slip.pdfPath
+        : pathModule.join(backendRoot, slip.pdfPath);
+      const safePeriod = (slip.payPeriod || "period").replace(/\s/g, "-");
+      return sendUpload(
+        fullPath,
+        `salary-slip-${safePeriod}.pdf`,
+        "application/pdf",
+      );
+    }
+
+    return res
+      .status(404)
+      .json({ error: "Not found", message: "No file attached to this slip" });
   } catch (err) {
     console.error("Error downloading salary slip:", err);
     res
@@ -798,13 +848,13 @@ router.post("/salary-slips/send", async (req, res) => {
     console.log("data", data);
 
     const slip = await SalarySlip.findById(data.salarySlip._id).lean();
-    console.log("slip:", slip);
+
     if (!slip)
       return res
         .status(404)
         .json({ error: "Not found", message: "Salary slip not found" });
 
-    const cleaner = await Cleaner.findById(data.employeeId).lean();
+    const cleaner = await Cleaner.findOne({ id: data.employeeId }).lean();
     const email = cleaner?.email;
     if (!email) {
       return res.status(400).json({

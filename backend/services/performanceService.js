@@ -10,12 +10,13 @@ import Quotation from "../models/Quotation.js";
 import PerformanceGoal from "../models/PerformanceGoal.js";
 
 export const getDashboardData = async (filter, offset = 0) => {
-  const dateFilter = getDateRange(filter, offset, "issueDate");
+  const invoiceFilter = getDateRange(filter, offset, "issueDate");
+  const recordFilter = getDateRange(filter, offset, "createdAt");
 
   // 💰 REVENUE (ONLY PAID)
 
   const paidInvoices = await Invoice.find({
-    ...dateFilter,
+    ...invoiceFilter,
     status: "Paid",
   });
 
@@ -43,17 +44,17 @@ export const getDashboardData = async (filter, offset = 0) => {
 
   const totalRevenue = recurringRevenue + oneTimeRevenue;
 
-  // 💸 PAYROLL
+  // 💸 PAYROLL (PayrollRecord has no issueDate — use createdAt)
   const payroll = await PayrollRecord.aggregate([
-    { $match: dateFilter },
+    { $match: recordFilter },
     { $group: { _id: null, total: { $sum: "$totalSalary" } } },
   ]);
 
   // ⚠️ INCIDENTS
-  const incidents = await Incident.countDocuments(dateFilter);
+  const incidents = await Incident.countDocuments(recordFilter);
 
   // 👷 EMPLOYEES
-  const employees = await Cleaner.countDocuments(dateFilter);
+  const employees = await Cleaner.countDocuments(recordFilter);
 
   // 🏢 SITES
   const sites = await Site.countDocuments();
@@ -63,7 +64,7 @@ export const getDashboardData = async (filter, offset = 0) => {
 
   // 🧹 INSPECTION
   const inspection = await Inspection.aggregate([
-    { $match: dateFilter },
+    { $match: recordFilter },
     { $group: { _id: null, avg: { $avg: "$score" } } },
   ]);
 
@@ -71,15 +72,15 @@ export const getDashboardData = async (filter, offset = 0) => {
   const totalProspects = await Prospect.countDocuments();
 
   const convertedProspects = await Prospect.countDocuments({
-    ...dateFilter,
+    ...recordFilter,
     status: "Converted",
   });
 
-  // 🧾 QUOTATIONS
-  const totalQuotations = await Quotation.countDocuments(dateFilter);
+  // 🧾 QUOTATIONS (issueDate aligned with sales period)
+  const totalQuotations = await Quotation.countDocuments(invoiceFilter);
 
   const acceptedQuotations = await Quotation.countDocuments({
-    ...dateFilter,
+    ...invoiceFilter,
     status: "Accepted",
   });
 
@@ -87,7 +88,7 @@ export const getDashboardData = async (filter, offset = 0) => {
   const pipelineValueAgg = await Quotation.aggregate([
     {
       $match: {
-        ...dateFilter,
+        ...invoiceFilter,
         status: "Sent",
       },
     },
@@ -101,19 +102,20 @@ export const getDashboardData = async (filter, offset = 0) => {
 
   const pipelineValue = pipelineValueAgg[0]?.total || 0;
 
-  // 📊 AVG MONTHLY
+  // 📊 AVG MONTHLY (denominator matches selected period)
+  const localNow = new Date(Date.now() - offset * 60000);
   let months = 12;
-
-  if (filter === "year") months = 12;
+  if (filter === "month") months = 1;
   else if (filter === "quarter") months = 3;
+  else if (filter === "year") months = Math.max(1, localNow.getMonth() + 1);
   else if (filter === "all") months = 12;
 
-  const avgMonthly = totalRevenue / months;
+  const avgMonthly = months ? totalRevenue / months : totalRevenue;
 
   // 📉 TREND CALCULATION (AFTER revenue is ready)
   // 📉 TREND CALCULATION (CLEAN)
 
-  const prevDateFilter = getPreviousDateRange(filter);
+  const prevDateFilter = getPreviousDateRange(filter, offset, "issueDate");
 
   const prevPaidInvoices = await Invoice.find({
     ...prevDateFilter,
@@ -227,9 +229,21 @@ const getDateRange = (filter, offsetMinutes = 0, field = "createdAt") => {
       break;
 
     case "year":
+      // Jan 1 through end of current month (not full calendar year ahead)
       start = new Date(localNow.getFullYear(), 0, 1);
-      end = new Date(localNow.getFullYear(), 11, 31, 23, 59, 59, 999);
+      end = new Date(
+        localNow.getFullYear(),
+        localNow.getMonth() + 1,
+        0,
+        23,
+        59,
+        59,
+        999,
+      );
       break;
+
+    case "all":
+      return {};
 
     case "quarter": {
       // const q = Math.floor(localNow.getMonth() / 3);
@@ -272,7 +286,7 @@ const getDateRange = (filter, offsetMinutes = 0, field = "createdAt") => {
 export const getGoalsData = async (filter) => {
   const goals = await PerformanceGoal.find({ period: filter });
 
-  const dashboard = await getDashboardData(filter);
+  const dashboard = await getDashboardData(filter, 0);
 
   return goals.map((goal) => {
     let actual = 0;
@@ -306,11 +320,12 @@ export const getGoalsData = async (filter) => {
   });
 };
 
-const getPreviousDateRange = (filter, offsetMinutes = 0) => {
+const getPreviousDateRange = (filter, offsetMinutes = 0, field = "issueDate") => {
   const now = new Date();
   const localNow = new Date(now.getTime() - offsetMinutes * 60000);
 
-  let start, end;
+  let start;
+  let end;
 
   switch (filter) {
     case "month":
@@ -326,10 +341,21 @@ const getPreviousDateRange = (filter, offsetMinutes = 0) => {
       );
       break;
 
-    case "year":
-      start = new Date(localNow.getFullYear() - 1, 0, 1);
-      end = new Date(localNow.getFullYear() - 1, 11, 31, 23, 59, 59, 999);
+    case "quarter": {
+      const curStart = new Date(localNow.getFullYear(), localNow.getMonth() - 2, 1);
+      end = new Date(curStart.getTime() - 86400000);
+      end.setHours(23, 59, 59, 999);
+      start = new Date(end.getFullYear(), end.getMonth() - 2, 1);
       break;
+    }
+
+    case "year": {
+      const y = localNow.getFullYear();
+      const m = localNow.getMonth();
+      start = new Date(y - 1, 0, 1);
+      end = new Date(y - 1, m + 1, 0, 23, 59, 59, 999);
+      break;
+    }
 
     case "week":
       end = new Date(localNow);
@@ -343,7 +369,7 @@ const getPreviousDateRange = (filter, offsetMinutes = 0) => {
   }
 
   return {
-    createdAt: {
+    [field]: {
       $gte: new Date(start.getTime() + offsetMinutes * 60000),
       $lte: new Date(end.getTime() + offsetMinutes * 60000),
     },

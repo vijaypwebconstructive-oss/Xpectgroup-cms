@@ -1,7 +1,7 @@
-import PayrollRecord from '../models/PayrollRecord.js';
-import Cleaner from '../models/Cleaner.js';
-import WorkerAssignment from '../models/WorkerAssignment.js';
-import { createAndSendSalarySlip } from './salarySlipService.js';
+import PayrollRecord from "../models/PayrollRecord.js";
+import Cleaner from "../models/Cleaner.js";
+import WorkerAssignment from "../models/WorkerAssignment.js";
+import { createAndSendSalarySlip } from "./salarySlipService.js";
 
 const DEFAULT_HOURS_PER_MONTH = 160;
 const WEEKS_PER_MONTH = 4.33;
@@ -15,7 +15,7 @@ const WEEKS_PER_MONTH = 4.33;
 export async function createPayrollForVerifiedCleaner(cleanerId) {
   try {
     const cleaner = await Cleaner.findOne({ id: cleanerId }).lean();
-    if (!cleaner || cleaner.verificationStatus !== 'Verified') {
+    if (!cleaner || cleaner.verificationStatus !== "Verified") {
       return null;
     }
 
@@ -23,41 +23,48 @@ export async function createPayrollForVerifiedCleaner(cleanerId) {
     const m = now.getMonth() + 1;
     const y = now.getFullYear();
 
-    const existing = await PayrollRecord.findOne({ workerId: cleanerId, month: m, year: y });
+    const existing = await PayrollRecord.findOne({
+      workerId: cleanerId,
+      month: m,
+      year: y,
+    });
     if (existing) {
       return null;
     }
 
-    const assignment = await WorkerAssignment.findOne({ workerId: cleanerId }).lean();
-    const siteId = assignment?.siteId ?? '';
-    const siteName = assignment?.siteName ?? '';
-    const role = assignment?.role ?? 'Cleaner';
+    const assignment = await WorkerAssignment.findOne({
+      workerId: cleanerId,
+    }).lean();
+    const siteId = assignment?.siteId ?? "";
+    const siteName = assignment?.siteName ?? "";
+    const role = assignment?.role ?? "Cleaner";
 
-    const staffPayType = cleaner.payType || 'Hourly';
-    const isMonthly = staffPayType === 'Monthly';
+    const staffPayType = cleaner.payType || "Hourly";
+    const isMonthly = staffPayType === "Monthly";
 
-    let payType = 'Hourly';
+    let payType = "Hourly";
     let hoursWorked = 0;
     let hourlyRate = 0;
     let monthlySalary = null;
     let totalSalary = 0;
 
     if (isMonthly) {
-      payType = 'Monthly';
+      payType = "Monthly";
       monthlySalary = cleaner.monthlySalary ?? 0;
       totalSalary = Math.round((monthlySalary || 0) * 100) / 100;
     } else {
       hourlyRate = cleaner.hourlyPayRate ?? 12;
       hoursWorked = DEFAULT_HOURS_PER_MONTH;
       if (assignment?.hoursPerWeek != null && assignment.hoursPerWeek > 0) {
-        hoursWorked = Math.round(assignment.hoursPerWeek * WEEKS_PER_MONTH * 10) / 10;
+        hoursWorked =
+          Math.round(assignment.hoursPerWeek * WEEKS_PER_MONTH * 10) / 10;
       }
       totalSalary = Math.round(hoursWorked * hourlyRate * 100) / 100;
     }
 
-    const createAsPaid = process.env.AUTO_PAYROLL_CREATE_AS_PAID === 'true';
-    const paymentStatus = createAsPaid ? 'Paid' : 'Pending';
-    const paymentDate = createAsPaid ? now.toISOString().split('T')[0] : null;
+    const createAsPaid = process.env.AUTO_PAYROLL_CREATE_AS_PAID === "true";
+    const paymentStatus = createAsPaid ? "Paid" : "Pending";
+    const paymentDate = createAsPaid ? now.toISOString().split("T")[0] : null;
 
     const doc = await PayrollRecord.create({
       workerId: cleanerId,
@@ -80,13 +87,16 @@ export async function createPayrollForVerifiedCleaner(cleanerId) {
       try {
         await createAndSendSalarySlip(doc);
       } catch (slipErr) {
-        console.warn('Salary slip creation/email failed for auto payroll:', slipErr.message);
+        console.warn(
+          "Salary slip creation/email failed for auto payroll:",
+          slipErr.message,
+        );
       }
     }
 
     return doc.id;
   } catch (err) {
-    console.error('createPayrollForVerifiedCleaner failed:', err.message);
+    console.error("createPayrollForVerifiedCleaner failed:", err.message);
     return null;
   }
 }
