@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Site, RiskLevel, SiteComplianceDocument } from "./types";
 import { useClientsSites } from "../../context/ClientsSitesContext";
+import { useCurrentUser } from "../../hook/useCurrentUser";
 
 const fileToDataUrl = (file: File): Promise<string> =>
   new Promise((resolve, reject) => {
@@ -83,9 +84,10 @@ const SitesList: React.FC<SitesListProps> = ({
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [successMsg, setSuccessMsg] = useState("");
   const [saving, setSaving] = useState(false);
-  const [siteDocFiles, setSiteDocFiles] = useState<
-    Record<string, File | null>
-  >({});
+  const [siteDocFiles, setSiteDocFiles] = useState<Record<string, File | null>>(
+    {},
+  );
+  const { currentUser } = useCurrentUser();
 
   const setField = (k: keyof SiteForm, v: string | string[]) => {
     setForm((prev) => ({ ...prev, [k]: v }));
@@ -97,6 +99,12 @@ const SitesList: React.FC<SitesListProps> = ({
       });
   };
 
+  const assignedSiteIds = currentUser?.cleanerId
+    ? assignments
+        .filter((a) => a.workerId === currentUser.cleanerId)
+        .map((a) => a.siteId)
+    : [];
+  console.log("assigned", assignments);
   const toggleTraining = (t: string) => {
     setForm((prev) => ({
       ...prev,
@@ -110,6 +118,20 @@ const SitesList: React.FC<SitesListProps> = ({
     setSuccessMsg(msg);
     setTimeout(() => setSuccessMsg(""), 3000);
   };
+
+  const visibleClients =
+    !currentUser || currentUser.role === "Admin"
+      ? clients
+      : clients.filter((client: any) =>
+          currentUser.clientAccess?.includes(client.id),
+        );
+
+  const visibleSites =
+    currentUser?.role === "Admin"
+      ? sites
+      : currentUser?.cleanerId
+        ? sites.filter((site) => assignedSiteIds.includes(site.id))
+        : sites.filter((site) => currentUser?.siteAccess?.includes(site.id));
 
   const validate = (): Record<string, string> => {
     const e: Record<string, string> = {};
@@ -205,8 +227,7 @@ const SitesList: React.FC<SitesListProps> = ({
             accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
             onChange={(e) => {
               const f = e.target.files?.[0];
-              if (f)
-                setSiteDocFiles((prev) => ({ ...prev, [storageKey]: f }));
+              if (f) setSiteDocFiles((prev) => ({ ...prev, [storageKey]: f }));
               e.target.value = "";
             }}
           />
@@ -230,16 +251,16 @@ const SitesList: React.FC<SitesListProps> = ({
     );
   };
 
-  const totalSites = sites.length;
-  const highRisk = sites.filter((s) => s.riskLevel === "High").length;
+  const totalSites = visibleSites.length;
+  const highRisk = visibleSites.filter((s) => s.riskLevel === "High").length;
   const nonCompliant = assignments.filter(
     (a) => a.complianceStatus === "Non-Compliant",
   ).length;
   const totalWorkers = assignments.length;
 
-  const allClients = clients;
+  const allClients = visibleClients;
 
-  const enriched = sites.map((s) => {
+  const enriched = visibleSites.map((s) => {
     const client = allClients.find((c) => c.id === s.clientId);
     const siteAssignments = assignments.filter((a) => a.siteId === s.id);
     const nonC = siteAssignments.filter(
@@ -537,7 +558,10 @@ const SitesList: React.FC<SitesListProps> = ({
           <p className="text-xs text-[#4c669a]">
             Showing{" "}
             <span className="font-bold text-[#0d121b]">{filtered.length}</span>{" "}
-            of <span className="font-bold text-[#0d121b]">{sites.length}</span>{" "}
+            of{" "}
+            <span className="font-bold text-[#0d121b]">
+              {visibleSites.length}
+            </span>{" "}
             sites
           </p>
         </div>
@@ -810,11 +834,7 @@ const SitesList: React.FC<SitesListProps> = ({
                     "fireSafety",
                     "local_fire_department",
                   )}
-                  {docField(
-                    "COSHH Assessment",
-                    "coshhAssessment",
-                    "science",
-                  )}
+                  {docField("COSHH Assessment", "coshhAssessment", "science")}
                   {docField(
                     "Site Induction Pack",
                     "siteInduction",

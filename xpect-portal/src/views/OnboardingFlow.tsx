@@ -47,7 +47,11 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
   );
   const [visaType, setVisaType] = useState<string | null>(null);
   const [visaOther, setVisaOther] = useState("");
-
+  const [accountDetails, setAccountDetails] = useState({
+    username: "",
+    password: "",
+    confirmPassword: "",
+  });
   // Passport photo state
   const [passportPhoto, setPassportPhoto] = useState<string | null>(null);
   const [passportPhotoFile, setPassportPhotoFile] = useState<File | null>(null);
@@ -92,6 +96,44 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
     Record<string, string>
   >({});
 
+  const validateUsername = async () => {
+    try {
+      if (!accountDetails.username.trim()) {
+        return false;
+      }
+
+      setCheckingUsername(true);
+
+      const res: any = await api.auth.checkUsername(accountDetails.username);
+
+      if (res.exists) {
+        setUsernameExists(true);
+
+        setValidationErrors((prev) => ({
+          ...prev,
+          username: "Username already exists",
+        }));
+
+        return false;
+      }
+
+      setUsernameExists(false);
+
+      setValidationErrors((prev) => ({
+        ...prev,
+        username: "",
+      }));
+
+      return true;
+    } catch (err) {
+      console.error(err);
+
+      return false;
+    } finally {
+      setCheckingUsername(false);
+    }
+  };
+
   // File upload state
   const [uploadedFiles, setUploadedFiles] = useState<{
     shareCodeScreenshot?: File;
@@ -109,6 +151,9 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
 
   // Track if form is currently being submitted
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [checkingUsername, setCheckingUsername] = useState(false);
+
+  const [usernameExists, setUsernameExists] = useState(false);
 
   // Helper function to convert File to base64 (for autosave)
   const fileToBase64 = (file: File): Promise<string> => {
@@ -218,6 +263,7 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
       employmentType,
       hasDBS,
       declarations,
+      accountDetails,
       ...fileData, // Include all file base64 data
     };
   };
@@ -288,6 +334,10 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
         if (formData.personalDetails) {
           setPersonalDetails(formData.personalDetails);
         }
+        if (formData.accountDetails) {
+          setAccountDetails(formData.accountDetails);
+        }
+
         if (formData.visaType !== undefined) {
           setVisaType(formData.visaType);
         }
@@ -703,6 +753,14 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
 
   const handleNext = async () => {
     // First check if step is valid (without setting errors)
+
+    if (step === 2) {
+      const usernameValid = await validateUsername();
+
+      if (!usernameValid) {
+        return;
+      }
+    }
     if (!checkStepValidity()) {
       // If invalid, run validateStep to show errors
       validateStep();
@@ -912,6 +970,7 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
         passportPhoto ||
         `https://ui-avatars.com/api/?name=${encodeURIComponent(personalDetails.name)}&background=2e4150&color=fff&size=150`,
       documents: documents,
+      accountDetails: accountDetails,
     };
 
     try {
@@ -1070,6 +1129,85 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
             <h2 className="text-l font-semibold border-b pb-4 uppercase tracking-wider text-gray-500 text-base">
               Step 2: Personal Details
             </h2>
+            <div className="col-span-1 md:col-span-2 mt-4">
+              <div className="bg-[#f6f7fb] border border-[#e7ebf3] rounded-2xl p-5">
+                <h3 className="text-sm font-bold text-[#2e4150] mb-4">
+                  Portal Login Credentials
+                </h3>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Username */}
+                  <div className="flex flex-col gap-2">
+                    <label className="text-sm font-semibold text-gray-700">
+                      Username <span className="text-red-500">*</span>
+                    </label>
+
+                    <input
+                      type="text"
+                      placeholder="Enter username"
+                      value={accountDetails.username}
+                      onChange={(e) =>
+                        setAccountDetails((prev) => ({
+                          ...prev,
+                          username: e.target.value,
+                        }))
+                      }
+                      className="h-12 rounded-xl border border-[#e7ebf3] bg-white px-4 outline-none"
+                    />
+                    {validationErrors.username && (
+                      <p className="text-sm text-red-500">
+                        {validationErrors.username}
+                      </p>
+                    )}
+                    {checkingUsername && (
+                      <p className="text-xs text-blue-500">
+                        Checking username...
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Password */}
+                  <div className="flex flex-col gap-2">
+                    <label className="text-sm font-semibold text-gray-700">
+                      Password <span className="text-red-500">*</span>
+                    </label>
+
+                    <input
+                      type="password"
+                      placeholder="Enter password"
+                      value={accountDetails.password}
+                      onChange={(e) =>
+                        setAccountDetails((prev) => ({
+                          ...prev,
+                          password: e.target.value,
+                        }))
+                      }
+                      className="h-12 rounded-xl border border-[#e7ebf3] bg-white px-4 outline-none"
+                    />
+                  </div>
+                </div>
+
+                {/* Confirm Password */}
+                <div className="mt-4 flex flex-col gap-2">
+                  <label className="text-sm font-semibold text-gray-700">
+                    Confirm Password <span className="text-red-500">*</span>
+                  </label>
+
+                  <input
+                    type="password"
+                    placeholder="Confirm password"
+                    value={accountDetails.confirmPassword}
+                    onChange={(e) =>
+                      setAccountDetails((prev) => ({
+                        ...prev,
+                        confirmPassword: e.target.value,
+                      }))
+                    }
+                    className="h-12 rounded-xl border border-[#e7ebf3] bg-white px-4 outline-none"
+                  />
+                </div>
+              </div>
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
               {/* Passport Size Photo Upload */}
               <div className="flex flex-col gap-2 col-span-1 md:col-span-2">
@@ -2558,6 +2696,21 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
         isValid = false;
       }
     } else if (step === 2) {
+      if (!accountDetails.username.trim()) {
+        errors.username = "Username is required";
+      }
+
+      if (!accountDetails.password.trim()) {
+        errors.password = "Password is required";
+      }
+
+      if (accountDetails.password.length < 6) {
+        errors.password = "Password must be at least 6 characters";
+      }
+
+      if (accountDetails.password !== accountDetails.confirmPassword) {
+        errors.confirmPassword = "Passwords do not match";
+      }
       if (!personalDetails.name.trim()) {
         errors.name = "Full name is required";
         isValid = false;

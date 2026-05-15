@@ -71,12 +71,6 @@ app.use("/api/training", trainingRoutes);
 app.use("/api/ppe", ppeRoutes);
 app.use("/api/risk-coshh", riskCoshhRoutes);
 app.use("/api/clients-sites", clientsSitesRoutes);
-// app.use(
-//   "/api/clients-sites",
-//   authenticate,
-//   allowModule("sites"),
-//   clientsSitesRoutes,
-// );
 app.use("/api/policy-documents", policyDocumentsRoutes);
 app.use("/api/incidents", incidentsRoutes);
 app.use("/api/users", systemUsersRoutes);

@@ -67,6 +67,7 @@ export const UserAccessProvider: React.FC<UserAccessProviderProps> = ({
 
   const addUser = useCallback(
     async (data: Omit<SystemUser, "id">): Promise<SystemUser> => {
+      console.log("data", data);
       const created = await api.users.create(data);
       setUsers((prev) => [created, ...prev]);
       return created;

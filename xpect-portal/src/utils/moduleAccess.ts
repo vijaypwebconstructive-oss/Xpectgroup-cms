@@ -1,5 +1,4 @@
 export const canAccessModule = (user: any, module: any) => {
-  console.log("runned");
   if (!user) return false;
 
   // Admin → full access

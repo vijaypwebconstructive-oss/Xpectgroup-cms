@@ -1,17 +1,20 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { useUserAccess } from "../../context/UserAccessContext";
+import api from "../../services/api";
 import {
   SystemUser,
   UserRole,
   AccountStatus,
   ROLE_DESCRIPTIONS,
 } from "./types";
+import { useCleaners } from "../../context/CleanersContext";
+import { useClientsSites } from "../../context/ClientsSitesContext";
 
 interface Props {
   onSelectUser: (id: string) => void;
 }
 
-const ROLES: UserRole[] = ["Admin", "Supervisor", "Custom"];
+const ROLES: UserRole[] = ["Admin", "Supervisor", "Custom", "Default"];
 
 const roleBadge = (role: UserRole) => {
   const map: Record<UserRole, { cls: string; icon: string }> = {
@@ -26,6 +29,10 @@ const roleBadge = (role: UserRole) => {
     Custom: {
       cls: "bg-teal-100 text-teal-700 border border-teal-200",
       icon: "edit_note",
+    },
+    Default: {
+      cls: "bg-orange-100 text-orange-700 border border-orange-200",
+      icon: "badge",
     },
   };
   return map[role];
@@ -81,6 +88,9 @@ interface UserForm {
   confirmPassword: string;
   status: AccountStatus;
   modules: string[]; // ✅
+  clientAccess: string[]; // ✅ NEW
+  siteAccess: string[];
+  cleanerId?: string;
 }
 
 const emptyForm: UserForm = {
@@ -91,6 +101,9 @@ const emptyForm: UserForm = {
   confirmPassword: "",
   modules: [],
   status: "active",
+  clientAccess: [],
+  siteAccess: [],
+  cleanerId: "",
 };
 
 const UsersList: React.FC<Props> = ({ onSelectUser }) => {
@@ -98,12 +111,16 @@ const UsersList: React.FC<Props> = ({ onSelectUser }) => {
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<UserRole | "">("");
   const [statusFilter, setStatusFilter] = useState<AccountStatus | "">("");
+  const { cleaners } = useCleaners();
+  const completedCleaners = cleaners.filter(
+    (c) => (c.onboardingProgress ?? 0) === 100,
+  );
+  const { clients, sites } = useClientsSites();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [form, setForm] = useState<UserForm>({ ...emptyForm });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [successMsg, setSuccessMsg] = useState("");
-
   const setField = (key: keyof UserForm, val: string) => {
     setForm((f) => ({ ...f, [key]: val }));
     setFormErrors((e) => {
@@ -160,6 +177,9 @@ const UsersList: React.FC<Props> = ({ onSelectUser }) => {
       status: form.status,
       password: form.password,
       modules: form.modules, // ✅
+      clientAccess: form.clientAccess,
+      siteAccess: form.siteAccess,
+      cleanerId: form.cleanerId,
     });
     setForm({ ...emptyForm });
     setFormErrors({});
@@ -206,6 +226,22 @@ const UsersList: React.FC<Props> = ({ onSelectUser }) => {
         : "border-[#e7ebf3]"
     }`;
 
+  const filteredSites = sites.filter((site: any) =>
+    form.clientAccess.includes(site.clientId),
+  );
+
+  const hasSiteAccess =
+    form.modules.includes("client") ||
+    form.modules.includes("sites") ||
+    form.modules.includes("site allocation");
+
+  const financeModules = [
+    "payroll",
+    "invoice",
+    "quotation",
+    "prospect",
+    "performance",
+  ];
   return (
     <div className="min-h-full bg-[#f6f7fb] w-screen sm:w-full sm:max-w-full">
       {/* Header */}
@@ -531,6 +567,50 @@ const UsersList: React.FC<Props> = ({ onSelectUser }) => {
                 </div> */}
               </div>
 
+              {/* CLEANER ACCESS (OPTIONAL) */}
+              {/* <div>
+                <label className="block text-xs font-semibold text-[#6b7a99] uppercase mb-2">
+                  Assign Cleaner (Optional)
+                </label>
+
+                <select
+                  value={form.cleanerId || ""}
+                  onChange={(e) => {
+                    const cleanerId = e.target.value;
+                    const cleaner = cleaners.find((c) => c.id === cleanerId);
+
+                    setForm((prev) => ({
+                      ...prev,
+                      cleanerId,
+
+                      // ✅ PRE-FILL BUT NOT OVERRIDE
+                      clientAccess: Array.from(
+                        new Set([
+                          ...(prev.clientAccess || []),
+                          ...(cleaner?.clientIds || []),
+                        ]),
+                      ),
+
+                      siteAccess: Array.from(
+                        new Set([
+                          ...(prev.siteAccess || []),
+                          ...(cleaner?.siteIds || []),
+                        ]),
+                      ),
+                    }));
+                  }}
+                  className="w-full px-3 py-2 border rounded-lg bg-[#f6f7fb]"
+                >
+                  <option value="">No cleaner assigned</option>
+
+                  {cleaners.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </div> */}
+
               {/* Role + Status */}
               <div className="grid grid-cols-1 sm:grid-cols-1 gap-4">
                 <div>
@@ -547,22 +627,41 @@ const UsersList: React.FC<Props> = ({ onSelectUser }) => {
                       if (role === "Admin") {
                         modules = [
                           "dashboard",
-                          "users",
+                          "employee compliance",
+                          "client",
                           "sites",
                           "risk",
-                          "finance",
-                          "compliance",
+                          "site allocation",
+                          "site inspection",
+                          "ppe",
                           "incident",
                           "document",
+                          "users",
+                          "finance",
+                          "payroll",
+                          "invoice",
+                          "quotation",
+                          "timesheet",
+                          "prospect",
+                          "performance",
                         ];
                       }
 
                       if (role === "Supervisor") {
-                        modules = ["sites", "risk", "compliance", "incident"];
+                        modules = [
+                          "sites",
+                          "risk",
+                          "employee compliance",
+                          "incident",
+                        ];
                       }
 
                       if (role === "Custom") {
                         modules = [];
+                      }
+
+                      if (role === "Default") {
+                        modules = ["timesheet"];
                       }
 
                       setForm((prev) => ({
@@ -611,12 +710,18 @@ const UsersList: React.FC<Props> = ({ onSelectUser }) => {
                     <div className="grid grid-cols-2 gap-2">
                       {[
                         "dashboard",
-                        "users",
+                        "employee compliance",
+                        "client",
                         "sites",
                         "risk",
-                        "finance",
-                        "compliance",
+                        "timesheet",
+                        "site allocation",
+                        "site inspection",
+                        "ppe",
                         "incident",
+                        "document",
+                        "users",
+                        "finance",
                       ].map((mod) => (
                         <label
                           key={mod}
@@ -632,7 +737,19 @@ const UsersList: React.FC<Props> = ({ onSelectUser }) => {
                                 ...prev,
                                 modules: checked
                                   ? [...prev.modules, mod]
-                                  : prev.modules.filter((m) => m !== mod),
+                                  : prev.modules.filter((m) => {
+                                      if (m === mod) return false;
+
+                                      // remove finance child permissions
+                                      if (
+                                        mod === "finance" &&
+                                        financeModules.includes(m)
+                                      ) {
+                                        return false;
+                                      }
+
+                                      return true;
+                                    }),
                               }));
                             }}
                           />
@@ -640,12 +757,138 @@ const UsersList: React.FC<Props> = ({ onSelectUser }) => {
                         </label>
                       ))}
                     </div>
+                    {form.modules.includes("finance") && (
+                      <div className="mt-5 border border-[#e7ebf3] rounded-xl p-4 bg-[#f9fafc]">
+                        <label className="block text-xs font-semibold text-[#6b7a99] uppercase mb-3">
+                          Finance Access
+                        </label>
+
+                        <div className="grid grid-cols-2 gap-2">
+                          {financeModules.map((mod) => (
+                            <label
+                              key={mod}
+                              className="flex items-center gap-2 text-sm"
+                            >
+                              <input
+                                type="checkbox"
+                                checked={form.modules.includes(mod)}
+                                onChange={(e) => {
+                                  const checked = e.target.checked;
+
+                                  setForm((prev) => ({
+                                    ...prev,
+                                    modules: checked
+                                      ? [...prev.modules, mod]
+                                      : prev.modules.filter((m) => m !== mod),
+                                  }));
+                                }}
+                              />
+
+                              <span className="capitalize">{mod}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {/* CLIENT ACCESS */}
+                    {form.role === "Custom" &&
+                      hasSiteAccess &&
+                      !form.cleanerId && (
+                        <div className="mt-5 border border-[#e7ebf3] rounded-xl p-4 bg-[#f9fafc]">
+                          <label className="block text-xs font-semibold text-[#6b7a99] uppercase mb-2">
+                            Client Access
+                          </label>
+
+                          <div className="grid grid-cols-2 gap-2">
+                            {clients.map((client: any) => (
+                              <label
+                                key={client.id}
+                                className="flex items-center gap-2 text-sm"
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={form.clientAccess.includes(
+                                    client.id,
+                                  )}
+                                  onChange={(e) => {
+                                    const checked = e.target.checked;
+
+                                    setForm((prev) => ({
+                                      ...prev,
+                                      clientAccess: checked
+                                        ? [...prev.clientAccess, client.id]
+                                        : prev.clientAccess.filter(
+                                            (id) => id !== client.id,
+                                          ),
+
+                                      // 🔥 IMPORTANT: remove sites if client removed
+                                      siteAccess: checked
+                                        ? prev.siteAccess
+                                        : prev.siteAccess.filter(
+                                            (siteId) =>
+                                              !sites.some(
+                                                (s: any) =>
+                                                  s.clientId === client.id &&
+                                                  s.id === siteId,
+                                              ),
+                                          ),
+                                    }));
+                                  }}
+                                />
+                                <span>{client.name}</span>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                    {/* SITE ACCESS */}
+                    {form.clientAccess.length > 0 && !form.cleanerId && (
+                      <div className="mt-5 border border-[#e7ebf3] rounded-xl p-4 bg-[#f9fafc]">
+                        <label className="block text-xs font-semibold text-[#6b7a99] uppercase mb-2">
+                          Site Access
+                        </label>
+
+                        <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto border rounded-lg p-2">
+                          {filteredSites.length === 0 ? (
+                            <p className="text-xs text-gray-400">
+                              No sites available
+                            </p>
+                          ) : (
+                            filteredSites.map((site: any) => (
+                              <label
+                                key={site.id}
+                                className="flex items-center gap-2 text-sm"
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={form.siteAccess.includes(site.id)}
+                                  onChange={(e) => {
+                                    const checked = e.target.checked;
+
+                                    setForm((prev) => ({
+                                      ...prev,
+                                      siteAccess: checked
+                                        ? [...prev.siteAccess, site.id]
+                                        : prev.siteAccess.filter(
+                                            (id) => id !== site.id,
+                                          ),
+                                    }));
+                                  }}
+                                />
+                                <span>{site.name}</span>
+                              </label>
+                            ))
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
 
               {/* Role description */}
-              {form.role && (
+              {/* {form.role && (
                 <div className="p-3 bg-[#f6f7fb] rounded-xl border border-[#e7ebf3] text-xs text-[#6b7a99] flex items-start gap-2">
                   <span className="material-symbols-outlined text-[16px] text-[#4c669a] shrink-0 mt-0.5">
                     info
@@ -655,7 +898,7 @@ const UsersList: React.FC<Props> = ({ onSelectUser }) => {
                     {ROLE_DESCRIPTIONS[form.role as UserRole]}
                   </span>
                 </div>
-              )}
+              )} */}
 
               {/* Password + Confirm */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

@@ -283,7 +283,8 @@ export const getUrlForView = (
         return `/staff/${firstNameSlug}/report`;
       }
       return "/staff";
-
+    case "LOGIN":
+      return "/login";
     default:
       return VIEW_TO_URL[view] || "/dashboard";
   }

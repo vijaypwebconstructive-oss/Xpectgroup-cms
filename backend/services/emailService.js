@@ -891,3 +891,261 @@ const getVerifiedTemplate = (cleanerName) => {
 </table>
   `;
 };
+
+export const sendERPAccessEmail = async (
+  email,
+  cleanerName,
+  username,
+  loginUrl,
+) => {
+  try {
+    if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) {
+      console.warn("⚠️ Email not configured");
+      return { success: false };
+    }
+
+    const transporter = createTransporter();
+
+    const mailOptions = {
+      from: `"Xpect Group" <${process.env.GMAIL_USER}>`,
+      to: email,
+      subject: "Your ERP Portal Access is Ready",
+
+      html: `
+      <table width="100%" style="background:#f4f6f9;padding:40px 0;font-family:Arial,sans-serif;">
+        <tr>
+          <td align="center">
+
+            <table width="600" style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,0.08);">
+
+              <!-- Header -->
+              <tr>
+                <td style="background:#2e4150;padding:30px;text-align:center;">
+                  <h1 style="margin:0;color:#ffffff;font-size:24px;">
+                    Welcome to Xpect Group ERP
+                  </h1>
+                </td>
+              </tr>
+
+              <!-- Body -->
+              <tr>
+                <td style="padding:35px;">
+
+                  <p style="font-size:15px;color:#555;line-height:1.7;margin-top:0;">
+                    Hello <b>${cleanerName}</b>,
+                  </p>
+
+                  <p style="font-size:15px;color:#555;line-height:1.7;">
+                    Your onboarding form has been submitted successfully.
+                  </p>
+
+                  <p style="font-size:15px;color:#555;line-height:1.7;">
+                    You can now login to the Xpect Group ERP Portal using your credentials below.
+                  </p>
+
+                  <table width="100%" style="margin:25px 0;background:#f6f7fb;border-radius:12px;padding:20px;">
+                    <tr>
+                      <td>
+                        <p style="margin:0 0 10px;font-size:14px;color:#777;">
+                          <b>Username:</b> ${username}
+                        </p>
+
+                        <p style="margin:0;font-size:14px;color:#777;">
+                          <b>Password:</b> The password you created during onboarding
+                        </p>
+                      </td>
+                    </tr>
+                  </table>
+
+                  <table cellpadding="0" cellspacing="0" border="0" align="center" style="margin:30px auto;">
+                    <tr>
+                      <td align="center" bgcolor="#2e4150" style="border-radius:10px;">
+                        <a href="${loginUrl}"
+                          style="display:inline-block;padding:14px 28px;font-size:14px;font-weight:bold;color:#ffffff;text-decoration:none;">
+                          Login to ERP Portal
+                        </a>
+                      </td>
+                    </tr>
+                  </table>
+
+                  <p style="font-size:14px;color:#777;line-height:1.7;">
+                    Please keep your login credentials secure and do not share them with anyone.
+                  </p>
+
+                  <p style="font-size:14px;color:#777;line-height:1.7;">
+                    Your ERP access may remain restricted until background verification is completed.
+                  </p>
+
+                  <p style="font-size:14px;color:#555;margin-top:35px;">
+                    Regards,<br/>
+                    <b>Xpect Group Management</b>
+                  </p>
+
+                </td>
+              </tr>
+
+            </table>
+
+          </td>
+        </tr>
+      </table>
+      `,
+
+      text: `
+Welcome to Xpect Group ERP
+
+Hello ${cleanerName},
+
+Your onboarding form has been submitted successfully.
+
+You can now login to the ERP portal.
+
+Username: ${username}
+
+Login URL:
+${loginUrl}
+
+Regards,
+Xpect Group
+      `,
+    };
+
+    const info = await transporter.sendMail(mailOptions);
+
+    console.log("✅ ERP access email sent:", {
+      messageId: info.messageId,
+      to: email,
+    });
+
+    return {
+      success: true,
+      messageId: info.messageId,
+    };
+  } catch (error) {
+    console.error("❌ ERP access email failed:", error);
+
+    return {
+      success: false,
+      error: error.message,
+    };
+  }
+};
+
+export const sendPasswordResetOTP = async (email, username, otp) => {
+  try {
+    if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) {
+      console.warn("⚠️ Email not configured");
+
+      return {
+        success: false,
+      };
+    }
+
+    const transporter = createTransporter();
+
+    const mailOptions = {
+      from: `"Xpect Group" <${process.env.GMAIL_USER}>`,
+
+      to: email,
+
+      subject: "Xpect Group ERP Password Reset OTP",
+
+      html: `
+      <table width="100%" style="background:#f4f6f9;padding:40px 0;font-family:Arial,sans-serif;">
+        <tr>
+          <td align="center">
+
+            <table width="560" style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,0.08);">
+
+              <!-- Header -->
+              <tr>
+                <td style="background:#2e4150;padding:30px;text-align:center;">
+                  <h1 style="margin:0;color:#ffffff;font-size:24px;">
+                    Password Reset Request
+                  </h1>
+                </td>
+              </tr>
+
+              <!-- Body -->
+              <tr>
+                <td style="padding:35px;">
+
+                  <p style="font-size:15px;color:#555;line-height:1.7;margin-top:0;">
+                    Hello <b>${username}</b>,
+                  </p>
+
+                  <p style="font-size:15px;color:#555;line-height:1.7;">
+                    We received a request to reset your ERP account password.
+                  </p>
+
+                  <p style="font-size:15px;color:#555;line-height:1.7;">
+                    Please use the OTP below to verify your identity:
+                  </p>
+
+                  <div style="margin:30px 0;text-align:center;">
+                    <div style="display:inline-block;background:#f6f7fb;padding:18px 30px;border-radius:12px;font-size:32px;font-weight:bold;letter-spacing:8px;color:#2e4150;">
+                      ${otp}
+                    </div>
+                  </div>
+
+                  <div style="background:#fff7ed;border:1px solid #fed7aa;padding:16px;border-radius:12px;margin-top:20px;">
+                    <p style="margin:0;font-size:13px;color:#c2410c;">
+                      ⚠️ This OTP will expire in 10 minutes.
+                    </p>
+                  </div>
+
+                  <p style="font-size:14px;color:#777;line-height:1.7;margin-top:30px;">
+                    If you did not request a password reset, please ignore this email.
+                  </p>
+
+                  <p style="font-size:14px;color:#555;margin-top:35px;">
+                    Regards,<br/>
+                    <b>Xpect Group Management</b>
+                  </p>
+
+                </td>
+              </tr>
+
+            </table>
+
+          </td>
+        </tr>
+      </table>
+      `,
+
+      text: `
+Password Reset Request
+
+Hello ${username},
+
+Your OTP code is:
+
+${otp}
+
+This OTP will expire in 10 minutes.
+
+Regards,
+Xpect Group
+      `,
+    };
+
+    const info = await transporter.sendMail(mailOptions);
+
+    console.log("✅ Password reset OTP sent:", {
+      messageId: info.messageId,
+      to: email,
+    });
+
+    return {
+      success: true,
+      messageId: info.messageId,
+    };
+  } catch (error) {
+    console.error("❌ Password reset OTP failed:", error);
+
+    return {
+      success: false,
+      error: error.message,
+    };
+  }
+};

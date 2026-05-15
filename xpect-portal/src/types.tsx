@@ -77,6 +77,7 @@ export interface Cleaner {
   endDate?: string;
   preferredShiftPattern?: string;
   auditorNotes?: string;
+  accountDetails: object;
 }
 
 export enum InvitationStatus {
@@ -131,6 +132,7 @@ export type AppView =
   | "INCIDENTS"
   | "FINANCE"
   | "USER_ACCESS"
+  | "LOGIN"
   | "ACCESS_DENIED";
 
 // ── PPE Module ──────────────────────────────────────────────

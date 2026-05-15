@@ -189,19 +189,38 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
   const [user, setUser] = useState<any>(null);
 
   useEffect(() => {
-    const loadUser = () => {
-      const stored = localStorage.getItem("xpect_user");
-      setUser(stored ? JSON.parse(stored) : null);
+    const loadUser = async () => {
+      try {
+        const stored = localStorage.getItem("xpect_user");
+
+        if (!stored) return;
+
+        const parsed = JSON.parse(stored);
+
+        if (!parsed?.username) return;
+
+        // fetch latest user from backend
+        const latestUser = await api.auth.getCurrentUser(parsed.username);
+
+        // update state
+        setUser(latestUser);
+
+        // update localstorage
+        localStorage.setItem("xpect_user", JSON.stringify(latestUser));
+      } catch (err) {
+        console.error("Failed to load current user", err);
+      }
     };
 
     loadUser();
 
-    window.addEventListener("storage", loadUser);
-    return () => window.removeEventListener("storage", loadUser);
+    // refresh every 15 sec
+    const interval = setInterval(loadUser, 15000);
+
+    return () => clearInterval(interval);
   }, []);
   // const canMod = (key: ModuleKey) =>
   //   user ? canAccessModule(user, key) : false;
-  console.log("userrrr", user);
 
   // if (!user) {
   //   return <div>Loading...</div>;
@@ -319,7 +338,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
           </button>
         )}
         {/* Employee Compliance — click to expand/collapse sub-modules */}
-        {canAccessModule(user, "compliance") && (
+        {canAccessModule(user, "employee compliance") && (
           <div>
             {/* Main module button */}
             <button
@@ -391,7 +410,11 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
           </div>
         )}
         {/* Client & Site Management — click to expand/collapse */}
-        {canAccessModule(user, "sites") && (
+        {(canAccessModule(user, "client") ||
+          canAccessModule(user, "sites") ||
+          canAccessModule(user, "site allocation") ||
+          canAccessModule(user, "site inspection") ||
+          canAccessModule(user, "ppe")) && (
           <div>
             <button
               type="button"
@@ -423,60 +446,69 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
                       csView: "clients" as CSView,
                       icon: "handshake",
                       label: "Clients",
+                      value: "client",
                     },
                     {
                       csView: "sites" as CSView,
                       icon: "location_on",
                       label: "Sites",
+                      value: "sites",
                     },
                     {
                       csView: "allocation" as CSView,
                       icon: "assignment_ind",
                       label: "Site Allocation",
+                      value: "site allocation",
                     },
                     {
                       csView: "inspection" as CSView,
                       icon: "fact_check",
                       label: "Site Inspection",
+                      value: "site inspection",
                     },
                     {
                       csView: "PPE_LIST" as CSView,
                       icon: "safety_check",
                       label: "PPE Invoice",
+                      value: "ppe",
                     },
                   ] as { csView: CSView; icon: string; label: string }[]
-                ).map(({ csView, icon, label }) => (
-                  <button
-                    key={csView}
-                    onClick={() => {
-                      // 1. Navigate the CS store + push URL (csNavigate handles pushState)
-                      csNavigate(csView);
-                      // 🔥 force sync immediately
-                      setActiveCSView(csView);
+                ).map(({ csView, icon, label, value }) => {
+                  if (!canAccessModule(user, value)) return null;
+                  return (
+                    <button
+                      key={csView}
+                      onClick={() => {
+                        // 1. Navigate the CS store + push URL (csNavigate handles pushState)
+                        csNavigate(csView);
+                        // 🔥 force sync immediately
+                        setActiveCSView(csView);
 
-                      // 2. Tell App.tsx to render ClientSitesModule if not already
-                      onNavigate("CLIENTS_SITES");
-                    }}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all cursor-pointer ${
-                      currentView === "CLIENTS_SITES" &&
-                      (activeCSView === csView ||
-                        (csView === "clients" &&
-                          activeCSView === "client-detail") ||
-                        (csView === "sites" &&
-                          activeCSView === "site-detail") ||
-                        (csView === "inspection" &&
-                          activeCSView === "inspection-detail") ||
-                        (csView === "PPE_LIST" && activeCSView === "PPE_LIST"))
-                        ? "bg-white/15 text-white"
-                        : "text-white/60 hover:bg-white/10 hover:text-white"
-                    }`}
-                  >
-                    <span className="material-symbols-outlined text-[18px]">
-                      {icon}
-                    </span>
-                    {label}
-                  </button>
-                ))}
+                        // 2. Tell App.tsx to render ClientSitesModule if not already
+                        onNavigate("CLIENTS_SITES");
+                      }}
+                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all cursor-pointer ${
+                        currentView === "CLIENTS_SITES" &&
+                        (activeCSView === csView ||
+                          (csView === "clients" &&
+                            activeCSView === "client-detail") ||
+                          (csView === "sites" &&
+                            activeCSView === "site-detail") ||
+                          (csView === "inspection" &&
+                            activeCSView === "inspection-detail") ||
+                          (csView === "PPE_LIST" &&
+                            activeCSView === "PPE_LIST"))
+                          ? "bg-white/15 text-white"
+                          : "text-white/60 hover:bg-white/10 hover:text-white"
+                      }`}
+                    >
+                      <span className="material-symbols-outlined text-[18px]">
+                        {icon}
+                      </span>
+                      {label}
+                    </button>
+                  );
+                })}
                 {/* <button
                 onClick={() => {handleNav('PPE_LIST')
                   
@@ -743,7 +775,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
             <span className="material-symbols-outlined text-[20px]">
               manage_accounts
             </span>
-            User Access
+            User
           </button>
         </div>
       )}

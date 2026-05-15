@@ -14,7 +14,14 @@ router.get("/", async (req, res) => {
       fullName: d.username,
       email: d.email,
       role: d.role,
-      modules: d.modules || [], // ✅ ADD THIS
+
+      modules: d.modules || [],
+
+      clientAccess: d.clientAccess || [],
+      siteAccess: d.siteAccess || [],
+
+      cleanerId: d.cleanerId || "",
+
       createdAt: d.createdAt
         ? new Date(d.createdAt).toISOString().split("T")[0]
         : "",
@@ -37,10 +44,59 @@ router.delete("/:id", async (req, res) => {
   }
 });
 
+router.get("/:id", async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id).lean();
+
+    if (!user) {
+      return res.status(404).json({
+        message: "User not found",
+      });
+    }
+
+    res.json({
+      id: user._id,
+      username: user.username,
+      email: user.email,
+      role: user.role,
+      modules: user.modules || [],
+      clientAccess: user.clientAccess || [],
+      siteAccess: user.siteAccess || [],
+      cleanerId: user.cleanerId || null,
+    });
+  } catch (err) {
+    res.status(500).json({
+      message: err.message,
+    });
+  }
+});
+
+router.patch("/:id", async (req, res) => {
+  try {
+    const updated = await User.findByIdAndUpdate(req.params.id, req.body, {
+      new: true,
+    });
+
+    res.json(updated);
+  } catch (err) {
+    res.status(500).json({
+      message: err.message,
+    });
+  }
+});
+
 router.post("/", async (req, res) => {
   try {
-    const { fullName, email, role, password, modules } = req.body;
-
+    const {
+      fullName,
+      email,
+      role,
+      password,
+      modules,
+      clientAccess,
+      siteAccess,
+      cleanerId,
+    } = req.body;
     if (!fullName || !email || !role || !password) {
       return res.status(400).json({
         error: "fullName, email, role, password are required",
@@ -55,6 +111,9 @@ router.post("/", async (req, res) => {
       passwordHash,
       role, // ✅ use selected role
       modules: modules || [], //
+      clientAccess: clientAccess || [],
+      siteAccess: siteAccess || [],
+      cleanerId: cleanerId,
     });
 
     res.status(201).json({
@@ -62,7 +121,11 @@ router.post("/", async (req, res) => {
       fullName: user.username,
       email: user.email,
       role: user.role,
-      modules: user.modules, // ✅ IMPORTANT
+      modules: user.modules,
+      clientAccess: user.clientAccess || [],
+      siteAccess: user.siteAccess || [],
+
+      cleanerId: user.cleanerId || "", // ✅ IMPORTANT
       createdAt: user.createdAt,
     });
   } catch (err) {

@@ -34,26 +34,88 @@ import { useAuth } from "./context/AuthContext";
 import { canAccessModule, viewToModuleKey } from "./utils/permissions";
 import AccessDenied from "./views/AccessDenied";
 import Login from "./views/Login";
+import { useCurrentUser } from "./hook/useCurrentUser";
+import api from "./services/api";
+const getDefaultView = (user: any): AppView => {
+  if (!user) return "DASHBOARD";
+
+  // Dashboard
+  if (canAccessModule(user.role, "compliance")) {
+    return "DASHBOARD";
+  }
+
+  // Employee Compliance
+  if (canAccessModule(user.role, "employee compliance")) {
+    return "EMPLOYEE_COMPLIANCE";
+  }
+
+  // Client / Sites
+  if (canAccessModule(user.role, "sites")) {
+    return "CLIENTS_SITES";
+  }
+
+  // Risk
+  if (canAccessModule(user.role, "rams")) {
+    return "RISK_COSHH";
+  }
+
+  // Incident
+  if (canAccessModule(user.role, "incident")) {
+    return "INCIDENTS";
+  }
+
+  // Document
+  if (canAccessModule(user.role, "document")) {
+    return "DOCUMENT_CONTROL";
+  }
+
+  // Finance
+  if (canAccessModule(user.role, "payroll")) {
+    return "FINANCE";
+  }
+
+  // Users
+  if (canAccessModule(user.role, "users")) {
+    return "USER_ACCESS";
+  }
+
+  return "ACCESS_DENIED";
+};
 
 const App: React.FC = () => {
   const { cleaners } = useCleaners();
   const { user } = useAuth();
-  const [currentView, setCurrentView] = useState<AppView>("DASHBOARD");
+  const { currentUser, loading } = useCurrentUser();
+  const [currentView, setCurrentView] = useState<AppView>(() =>
+    getDefaultView(user),
+  );
   const [selectedCleaner, setSelectedCleaner] = useState<Cleaner | null>(null);
   const [onboardingInviteToken, setOnboardingInviteToken] = useState<
     string | null
   >(null);
   const [showSidebar, setShowSidebar] = useState<boolean>(false);
+  const [showVerificationPendingModal, setShowVerificationPendingModal] =
+    useState(false);
 
   // Initialize state from URL on mount
   const initializeState = () => {
     const pathname = window.location.pathname;
-
+    if (pathname === "/login") {
+      return {
+        view: "LOGIN" as AppView,
+        token: null,
+      };
+    }
     // Redirect root path to dashboard
     if (pathname === "/") {
-      navigateToUrl("/dashboard", true);
+      const defaultView = getDefaultView(user);
+
+      const defaultUrl = getUrlForView(defaultView);
+
+      navigateToUrl(defaultUrl, true);
+
       return {
-        view: "DASHBOARD" as AppView,
+        view: defaultView,
         token: null,
         cleanerId: undefined,
       };
@@ -84,6 +146,61 @@ const App: React.FC = () => {
       cleaner: undefined,
     };
   };
+  //   let hasCleanerId;
+  // const isVerificationPending =
+  //   currentUser?.verificationStatus
+  //     ?.trim()
+  //     .toLowerCase() === "pending";
+  //   useEffect(() => {
+  //     const fetchCleaner = async () => {
+  //       try {
+  //         const localuser = JSON.parse(
+  //           localStorage.getItem("xpect_user") || "{}",
+  //         );
+
+  //         if (localuser.cleanerId !== "") {
+  //           hasCleanerId == true;
+  //         }
+
+  //         const cleaner = await api.cleaners.getById(localuser.cleanerId);
+  //         console.log("cleanerrrrr", cleaner);
+  //         // if (!localuser?.cleanerId) return;
+  //       } catch (err) {
+  //         console.error(err);
+  //       }
+  //     };
+
+  //     fetchCleaner();
+  //   }, []);
+
+  const localUser = JSON.parse(localStorage.getItem("xpect_user") || "{}");
+  const hasCleanerId = !!localUser?.cleanerId;
+
+  useEffect(() => {
+    const checkVerification = async () => {
+      try {
+        // normal admin/custom users
+        if (!localUser?.cleanerId) {
+          return;
+        }
+
+        // onboarding employee users
+        const cleaner = await api.cleaners.getById(localUser.cleanerId);
+
+        console.log("cleaner", cleaner);
+
+        const status = cleaner?.verificationStatus?.trim().toLowerCase();
+
+        if (status === "pending") {
+          setShowVerificationPendingModal(true);
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    };
+
+    checkVerification();
+  }, []);
 
   // Initialize from URL on mount
   useEffect(() => {
@@ -167,7 +284,7 @@ const App: React.FC = () => {
 
   // Update URL when view changes (but skip initial mount to avoid double navigation)
   const [isInitialMount, setIsInitialMount] = useState(true);
-
+  const token = localStorage.getItem("xpect_authToken");
   useEffect(() => {
     if (isInitialMount) {
       setIsInitialMount(false);
@@ -254,7 +371,6 @@ const App: React.FC = () => {
         return;
       }
     }
-
     setCurrentView(view);
     if (cleaner) setSelectedCleaner(cleaner);
 
@@ -288,11 +404,14 @@ const App: React.FC = () => {
 
   const handlefinancesidebar = () => {
     setShowSidebar((prev) => !prev);
-    console.log("sidebar executed");
   };
 
   const renderView = () => {
     // Employee onboarding routes - use EmployeeLayout
+
+    if (currentView === "LOGIN") {
+      return <Login />;
+    }
     if (currentView === "ONBOARDING_AUTH") {
       if (onboardingInviteToken) {
         return (
@@ -507,16 +626,107 @@ const App: React.FC = () => {
               }
               return <UserAccessModule />;
             default:
-              return <ComplianceDashboardView onNavigate={navigateTo} />;
+              return <AccessDenied onNavigate={navigateTo} />;
           }
         })()}
       </AdminLayout>
     );
   };
-  const token = localStorage.getItem("xpect_authToken");
+
   // 🚨 Block app if not logged in
-  if (!token) {
-    return <Login />;
+  // if (!token) {
+  //   return <Login />;
+  // }
+
+  useEffect(() => {
+    if (!token && currentView !== "LOGIN") {
+      setCurrentView("LOGIN");
+      navigateToUrl("/login", true);
+    }
+  }, [token, currentView]);
+  if (loading) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-white">
+        <div className="text-sm text-gray-500">Loading...</div>
+      </div>
+    );
+  }
+
+  if (showVerificationPendingModal) {
+    return (
+      <div className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+        <div className="w-full max-w-xl rounded-3xl bg-white shadow-2xl overflow-hidden">
+          {/* Header */}
+          <div className="bg-[#2e4150] px-7 py-6 text-white">
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 rounded-2xl bg-white/10 flex items-center justify-center">
+                <span className="material-symbols-outlined text-[30px]">
+                  pending_actions
+                </span>
+              </div>
+
+              <div>
+                <h2 className="text-2xl font-bold">Verification Pending</h2>
+
+                <p className="text-sm text-white/80 mt-1">
+                  ERP access is temporarily restricted
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Body */}
+          <div className="px-7 py-8">
+            <div className="flex items-start gap-4">
+              {/* <div className="w-16 h-16 rounded-2xl bg-amber-100 flex items-center justify-center shrink-0">
+                <span className="material-symbols-outlined text-[34px] text-amber-600">
+                  hourglass_top
+                </span>
+              </div> */}
+
+              <div>
+                <h3 className="text-xl font-bold text-[#0d121b]">
+                  You have successfully logged in to XpectGroup ERP
+                </h3>
+
+                <p className="mt-4 text-base  leading-7 text-[#4c669a]">
+                  Your onboarding form has been submitted successfully.
+                </p>
+
+                <p className="mt-3 text-base leading-7 text-[#4c669a]">
+                  However, your background verification is currently under
+                  review by the administration team.
+                </p>
+
+                <p className="mt-3 text-base leading-7 text-[#4c669a]">
+                  You cannot access the ERP portal until your verification
+                  process has been approved.
+                </p>
+
+                <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4">
+                  <div className="flex items-start gap-3">
+                    <span className="material-symbols-outlined text-amber-600">
+                      schedule
+                    </span>
+
+                    <div>
+                      <p className="text-sm font-semibold text-amber-700">
+                        Please check again after 5 hours.
+                      </p>
+
+                      <p className="mt-1 text-xs text-amber-600 leading-6">
+                        Once your verification has been completed, your ERP
+                        access will automatically become active.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return <>{renderView()}</>;

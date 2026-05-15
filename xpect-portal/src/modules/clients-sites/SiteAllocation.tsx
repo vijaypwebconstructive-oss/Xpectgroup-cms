@@ -4,6 +4,7 @@ import { useCleaners } from "../../context/CleanersContext";
 import { useTraining } from "../../context/TrainingContext";
 import { Site, WorkerAssignment } from "./types";
 import { getInitials } from "../../views/trainingMockData";
+import { useCurrentUser } from "../../hook/useCurrentUser";
 
 interface SiteAllocationProps {
   onBack: () => void;
@@ -102,8 +103,18 @@ const SiteAllocation: React.FC<SiteAllocationProps> = ({ onBack }) => {
     error: cleanersError,
   } = useCleaners();
   const { trainingRecords } = useTraining();
+  const { currentUser } = useCurrentUser();
 
-  const [selectedSiteId, setSelectedSiteId] = useState(allSites[0]?.id ?? "");
+  const visibleSites =
+    !currentUser || currentUser.role === "Admin"
+      ? allSites
+      : allSites.filter((site: any) =>
+          currentUser.siteAccess?.includes(site.id),
+        );
+
+  const [selectedSiteId, setSelectedSiteId] = useState(
+    visibleSites[0]?.id ?? "",
+  );
   const [workerSearch, setWorkerSearch] = useState("");
   const [, setAssignmentsVersion] = useState(0);
   const [confirmWorker, setConfirmWorker] = useState<PersonnelItem | null>(
@@ -150,14 +161,14 @@ const SiteAllocation: React.FC<SiteAllocationProps> = ({ onBack }) => {
 
   useEffect(() => {
     if (
-      allSites.length > 0 &&
-      (!selectedSiteId || !allSites.some((s) => s.id === selectedSiteId))
+      visibleSites.length > 0 &&
+      (!selectedSiteId || !visibleSites.some((s) => s.id === selectedSiteId))
     ) {
-      setSelectedSiteId(allSites[0].id);
+      setSelectedSiteId(visibleSites[0].id);
     }
   }, [allSites, selectedSiteId]);
 
-  const selectedSite = allSites.find((s) => s.id === selectedSiteId);
+  const selectedSite = visibleSites.find((s) => s.id === selectedSiteId);
   const existingWorkers = selectedSite
     ? getAssignmentsBySite(selectedSiteId)
     : [];
@@ -245,7 +256,7 @@ const SiteAllocation: React.FC<SiteAllocationProps> = ({ onBack }) => {
           {/* <p className="text-xs font-bold text-[#6b7a99] uppercase tracking-wider px-1">Select Work Site</p> */}
 
           <div className="rounded-xl border border-[#e7ebf3] overflow-y-scroll h-[560px] bg-white shadow-sm divide-y divide-[#f0f2f7]">
-            {allSites.map((site) => {
+            {visibleSites.map((site) => {
               const cl = allClients.find((c) => c.id === site.clientId);
               const isSelected = site.id === selectedSiteId;
               const RISK_DOT: Record<string, string> = {

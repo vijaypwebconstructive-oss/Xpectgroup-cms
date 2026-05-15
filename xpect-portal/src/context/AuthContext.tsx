@@ -98,13 +98,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     [user, token, setSession, setUser, logout],
   );
 
-  return (
-    <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
 export const useAuth = (): AuthContextValue => {
   const ctx = useContext(AuthContext);
+
   if (!ctx) throw new Error("useAuth must be used within AuthProvider");
   return ctx;
 };

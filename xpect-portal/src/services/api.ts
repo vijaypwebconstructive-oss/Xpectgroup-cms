@@ -81,6 +81,37 @@ async function fetchWithErrorHandling<T>(
 
 export const api = {
   auth: {
+    checkUsername: (username: string) =>
+      fetchWithErrorHandling(`${API_BASE_URL}/auth/check-username`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          username,
+        }),
+      }),
+
+    getCurrentUser: (username: string) =>
+      fetchWithErrorHandling(`${API_BASE_URL}/auth/me/${username}`),
+
+    forgotPassword: (data: any) =>
+      fetchWithErrorHandling(`${API_BASE_URL}/auth/forgot-password`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+      }),
+    resetPassword: (data: any) =>
+      fetchWithErrorHandling(`${API_BASE_URL}/auth/reset-password`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+      }),
+
     login: (body: { username: string; password: string }) =>
       fetchWithErrorHandling<{
         token: string;

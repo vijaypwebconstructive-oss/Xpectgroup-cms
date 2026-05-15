@@ -18,12 +18,30 @@ const userSchema = new mongoose.Schema(
     role: {
       type: String,
       required: true,
-      enum: ["Admin", "Supervisor", "Custom"], // ✅ ADD Custom
+      enum: ["Admin", "Supervisor", "Custom", "Default"], // ✅ ADD Custom
     },
 
     modules: {
       type: [String], // ✅ ADD THIS
       default: [],
+    },
+    clientAccess: {
+      type: [String], // ✅ ADD THIS
+      default: [],
+    },
+    siteAccess: {
+      type: [String], // ✅ ADD THIS
+      default: [],
+    },
+    cleanerId: {
+      type: String,
+    },
+    resetOtp: {
+      type: String,
+    },
+
+    resetOtpExpiry: {
+      type: Date,
     },
   },
   {
