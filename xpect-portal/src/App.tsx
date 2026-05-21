@@ -39,60 +39,74 @@ import { useCurrentUser } from "./hook/useCurrentUser";
 import api from "./services/api";
 import "leaflet/dist/leaflet.css";
 import "leaflet-geosearch/dist/geosearch.css";
+import { MODULE_KEYS } from "./utils/moduleKeys";
 // import AttendanceModule from "./modules/attendance/AttendanceModule";
-const getDefaultView = (user: any): AppView => {
-  if (!user) return "DASHBOARD";
+const getDefaultView = (systemUser: any): AppView => {
+  if (!systemUser) return "LOGIN";
 
-  // Dashboard
-  if (canAccessModule(user.role, "compliance")) {
+  if (canAccessModule(systemUser, "dashboard")) {
     return "DASHBOARD";
   }
 
-  // Employee Compliance
-  if (canAccessModule(user.role, "employee compliance")) {
+  if (canAccessModule(systemUser, "employee compliance")) {
     return "EMPLOYEE_COMPLIANCE";
   }
 
-  // Client / Sites
-  if (canAccessModule(user.role, "sites")) {
+  if (
+    canAccessModule(systemUser, "client") ||
+    canAccessModule(systemUser, "sites")
+  ) {
     return "CLIENTS_SITES";
   }
 
-  // Risk
-  if (canAccessModule(user.role, "rams")) {
+  if (canAccessModule(systemUser, "risk")) {
     return "RISK_COSHH";
   }
 
-  // Incident
-  if (canAccessModule(user.role, "incident")) {
+  if (canAccessModule(systemUser, "incident")) {
     return "INCIDENTS";
   }
 
-  // Document
-  if (canAccessModule(user.role, "document")) {
+  if (canAccessModule(systemUser, "document")) {
     return "DOCUMENT_CONTROL";
   }
 
-  // Finance
-  if (canAccessModule(user.role, "payroll")) {
+  if (canAccessModule(systemUser, "finance")) {
     return "FINANCE";
   }
 
-  // Users
-  if (canAccessModule(user.role, "users")) {
+  if (canAccessModule(systemUser, "users")) {
     return "USER_ACCESS";
   }
 
+  if (
+    canAccessModule(systemUser, "timesheet") ||
+    canAccessModule(systemUser, "admin attendance") ||
+    canAccessModule(systemUser, "regularization") ||
+    canAccessModule(systemUser, "employee attendance")
+  ) {
+    return "ATTENDANCE";
+  }
+
   return "ACCESS_DENIED";
+};
+
+const redirectToFirstAllowedModule = (systemUser: any, setCurrentView: any) => {
+  const firstAllowedView = getDefaultView(systemUser);
+
+  setCurrentView(firstAllowedView);
+
+  const url = getUrlForView(firstAllowedView);
+
+  navigateToUrl(url, true);
 };
 
 const App: React.FC = () => {
   const { cleaners } = useCleaners();
   const { user } = useAuth();
   const { currentUser, loading } = useCurrentUser();
-  const [currentView, setCurrentView] = useState<AppView>(() =>
-    getDefaultView(user),
-  );
+  const [systemUser, setSystemUser] = useState<any>(null);
+  const [currentView, setCurrentView] = useState<AppView>("LOGIN");
   const [selectedCleaner, setSelectedCleaner] = useState<Cleaner | null>(null);
   const [onboardingInviteToken, setOnboardingInviteToken] = useState<
     string | null
@@ -100,6 +114,26 @@ const App: React.FC = () => {
   const [showSidebar, setShowSidebar] = useState<boolean>(false);
   const [showVerificationPendingModal, setShowVerificationPendingModal] =
     useState(false);
+
+  const getViewFromPathname = (pathname: string): AppView => {
+    if (pathname.startsWith("/dashboard")) return "DASHBOARD";
+
+    if (pathname.startsWith("/users")) return "USER_ACCESS";
+
+    if (pathname.startsWith("/clients")) return "CLIENTS_SITES";
+
+    if (pathname.startsWith("/risk")) return "RISK_COSHH";
+
+    if (pathname.startsWith("/finance")) return "FINANCE";
+
+    if (pathname.startsWith("/attendance")) return "ATTENDANCE";
+
+    if (pathname.startsWith("/incidents")) return "INCIDENTS";
+
+    if (pathname.startsWith("/documents")) return "DOCUMENT_CONTROL";
+
+    return "LOGIN";
+  };
 
   // Initialize state from URL on mount
   const initializeState = () => {
@@ -110,16 +144,28 @@ const App: React.FC = () => {
         token: null,
       };
     }
+
     // Redirect root path to dashboard
+    // if (pathname === "/") {
+    //   if (!systemUser) {
+    //     return {
+    //       view: "LOGIN" as AppView,
+    //       token: null,
+    //     };
+    //   }
+
+    //   const defaultView = getDefaultView(systemUser);
+
+    //   return {
+    //     view: defaultView,
+    //     token: null,
+    //     cleanerId: undefined,
+    //   };
+    // }
+
     if (pathname === "/") {
-      const defaultView = getDefaultView(user);
-
-      const defaultUrl = getUrlForView(defaultView);
-
-      navigateToUrl(defaultUrl, true);
-
       return {
-        view: defaultView,
+        view: currentView,
         token: null,
         cleanerId: undefined,
       };
@@ -150,6 +196,8 @@ const App: React.FC = () => {
       cleaner: undefined,
     };
   };
+
+  console.log("system", systemUser);
   //   let hasCleanerId;
   // const isVerificationPending =
   //   currentUser?.verificationStatus
@@ -176,11 +224,48 @@ const App: React.FC = () => {
 
   //     fetchCleaner();
   //   }, []);
+  useEffect(() => {
+    if (!systemUser) return;
+
+    if (isEmployee()) return;
+
+    const key = viewToModuleKey(currentView);
+
+    if (!key) return;
+
+    const hasAccess = canAccessModule(systemUser, key);
+
+    if (!hasAccess) {
+      redirectToFirstAllowedModule(systemUser, setCurrentView);
+    }
+  }, [currentView, systemUser]);
 
   const localUser = JSON.parse(localStorage.getItem("xpect_user") || "{}");
+  console.log("localUser", localUser);
+
   const hasCleanerId = !!localUser?.cleanerId;
 
   useEffect(() => {
+    const fetchSystemUser = async () => {
+      try {
+        const localUser = JSON.parse(
+          localStorage.getItem("xpect_user") || "{}",
+        );
+
+        if (!localUser?.username) return;
+
+        const latestUser = await api.auth.getCurrentUser(localUser.username);
+
+        console.log("latest system user", latestUser);
+
+        setSystemUser(latestUser);
+      } catch (err) {
+        console.error("Failed to fetch system user", err);
+      }
+    };
+
+    fetchSystemUser();
+
     const checkVerification = async () => {
       try {
         // normal admin/custom users
@@ -206,64 +291,77 @@ const App: React.FC = () => {
     checkVerification();
   }, []);
 
-  // Initialize from URL on mount
   useEffect(() => {
-    const initialState = initializeState();
-    console.log("[App] 🚀 Initializing from URL:", {
-      pathname: window.location.pathname,
-      view: initialState.view,
-      hasToken: !!initialState.token,
-    });
+    if (!systemUser) return;
 
-    // For onboarding routes, initialize immediately (don't wait for cleaners)
-    if (
-      initialState.view === "ONBOARDING_AUTH" ||
-      initialState.view === "ONBOARDING" ||
-      initialState.view === "THANK_YOU"
-    ) {
-      setCurrentView(initialState.view);
-      // Get token from URL params or sessionStorage
-      const token =
-        initialState.token || sessionStorage.getItem("onboardingToken");
-      console.log("[App] 📍 Onboarding route detected:", {
-        view: initialState.view,
-        tokenFromURL: !!initialState.token,
-        tokenFromStorage: !!sessionStorage.getItem("onboardingToken"),
-        finalToken: !!token,
-      });
-      if (token) {
-        setOnboardingInviteToken(token);
-      }
+    const pathname = window.location.pathname;
+
+    const view = getViewFromPathname(pathname);
+
+    // If root → redirect to first allowed module
+    if (pathname === "/" || pathname === "/login") {
+      const firstAllowed = getDefaultView(systemUser);
+
+      setCurrentView(firstAllowed);
+
+      navigateToUrl(getUrlForView(firstAllowed), true);
+
       return;
     }
 
-    // For other routes, wait for cleaners to load if needed
-    if (
-      cleaners.length === 0 &&
-      (initialState.view === "CLEANER_DETAIL" || initialState.view === "REPORT")
-    ) {
-      return; // Wait for cleaners to load
-    }
+    // Sync pathname → currentView
+    setCurrentView(view);
+  }, [systemUser]);
 
-    setCurrentView(initialState.view);
-    if (initialState.token) {
-      setOnboardingInviteToken(initialState.token);
-    }
-    if (initialState.cleaner) {
-      setSelectedCleaner(initialState.cleaner);
-    }
-  }, [cleaners.length]); // Re-run when cleaners are loaded
+  // Initialize from URL on mount
+  // useEffect(() => {
+  //   const initialState = initializeState();
+  //   console.log("[App] 🚀 Initializing from URL:", {
+  //     pathname: window.location.pathname,
+  //     view: initialState.view,
+  //     hasToken: !!initialState.token,
+  //   });
+
+  //   // For onboarding routes, initialize immediately (don't wait for cleaners)
+  //   if (
+  //     initialState.view === "ONBOARDING_AUTH" ||
+  //     initialState.view === "ONBOARDING" ||
+  //     initialState.view === "THANK_YOU"
+  //   ) {
+  //     setCurrentView(initialState.view);
+  //     // Get token from URL params or sessionStorage
+  //     const token =
+  //       initialState.token || sessionStorage.getItem("onboardingToken");
+  //     console.log("[App] 📍 Onboarding route detected:", {
+  //       view: initialState.view,
+  //       tokenFromURL: !!initialState.token,
+  //       tokenFromStorage: !!sessionStorage.getItem("onboardingToken"),
+  //       finalToken: !!token,
+  //     });
+  //     if (token) {
+  //       setOnboardingInviteToken(token);
+  //     }
+  //     return;
+  //   }
+
+  //   // For other routes, wait for cleaners to load if needed
+  //   if (
+  //     cleaners.length === 0 &&
+  //     (initialState.view === "CLEANER_DETAIL" || initialState.view === "REPORT")
+  //   ) {
+  //     return; // Wait for cleaners to load
+  //   }
+
+  //   setCurrentView(initialState.view);
+  //   if (initialState.token) {
+  //     setOnboardingInviteToken(initialState.token);
+  //   }
+  //   if (initialState.cleaner) {
+  //     setSelectedCleaner(initialState.cleaner);
+  //   }
+  // }, [cleaners.length]); // Re-run when cleaners are loaded
 
   // RBAC: deep-linked URLs — redirect when role lacks module access
-  useEffect(() => {
-    if (isEmployee()) return;
-    const key = viewToModuleKey(currentView);
-    if (!key || !user?.role) return;
-    if (!canAccessModule(user.role, key)) {
-      setCurrentView("ACCESS_DENIED");
-      navigateToUrl("/access-denied", true);
-    }
-  }, [currentView, user?.role]);
 
   // Listen for URL changes (browser back/forward)
   useEffect(() => {
@@ -370,9 +468,9 @@ const App: React.FC = () => {
 
     if (!isEmployee()) {
       const key = viewToModuleKey(view);
-      if (key && user?.role && !canAccessModule(user.role, key)) {
-        setCurrentView("ACCESS_DENIED");
-        navigateToUrl("/access-denied");
+      if (key && systemUser && !canAccessModule(systemUser, key)) {
+        redirectToFirstAllowedModule(systemUser, setCurrentView);
+
         return;
       }
     }
@@ -535,14 +633,18 @@ const App: React.FC = () => {
             case "ATTENDANCE":
               return <AttendanceModule />;
             case "ACCESS_DENIED":
-              return <AccessDenied onNavigate={navigateTo} />;
+              redirectToFirstAllowedModule(systemUser, setCurrentView);
+
+              return null;
             case "DASHBOARD":
-              if (user?.role && !canAccessModule(user.role, "compliance")) {
-                return <AccessDenied onNavigate={navigateTo} />;
-              }
+              // if (
+              //   systemUser &&
+              //   !canAccessModule(systemUser, MODULE_KEYS.DASHBOARD)
+              // ) {
+              //   return <AccessDenied onNavigate={navigateTo} />;
+              // }
               return <ComplianceDashboardView onNavigate={navigateTo} />;
-            // case "ATTENDANCE":
-            //   return <AttendanceModule />;
+
             case "EMPLOYEE_COMPLIANCE":
               return <EmployeeCompliance onNavigate={navigateTo} />;
             case "TRAINING_CERTIFICATION":
@@ -607,23 +709,29 @@ const App: React.FC = () => {
             case "STAFF_INVITES":
               return <StaffInvites onNavigate={navigateTo} />;
             case "CLIENTS_SITES":
-              if (user?.role && !canAccessModule(user.role, "sites")) {
-                return <AccessDenied onNavigate={navigateTo} />;
-              }
+              // if (user?.role && !canAccessModule(systemUser, "sites")) {
+              //   return <AccessDenied onNavigate={navigateTo} />;
+              // }
               return <ClientSitesModule />;
             case "DOCUMENT_CONTROL":
               return <DocumentControlModule />;
             case "RISK_COSHH":
-              if (user?.role && !canAccessModule(user.role, "rams")) {
-                return <AccessDenied onNavigate={navigateTo} />;
-              }
+              // if (
+              //   systemUser &&
+              //   !canAccessModule(systemUser, MODULE_KEYS.RISK)
+              // ) {
+              //   return <AccessDenied onNavigate={navigateTo} />;
+              // }
               return <RiskCoshhModule />;
             case "INCIDENTS":
               return <IncidentsModule />;
             case "FINANCE":
-              if (user?.role && !canAccessModule(user.role, "payroll")) {
-                return <AccessDenied onNavigate={navigateTo} />;
-              }
+              // if (
+              //   systemUser &&
+              //   !canAccessModule(systemUser, MODULE_KEYS.FINANCE)
+              // ) {
+              //   return <AccessDenied onNavigate={navigateTo} />;
+              // }
               return (
                 <FinanceModule
                   sidebar={showSidebar}
@@ -631,9 +739,9 @@ const App: React.FC = () => {
                 />
               );
             case "USER_ACCESS":
-              if (user?.role && !canAccessModule(user.role, "users")) {
-                return <AccessDenied onNavigate={navigateTo} />;
-              }
+              // if (user?.role && !canAccessModule(systemUser, "users")) {
+              //   return <AccessDenied onNavigate={navigateTo} />;
+              // }
               return <UserAccessModule />;
             default:
               return <AccessDenied onNavigate={navigateTo} />;
@@ -755,6 +863,13 @@ const App: React.FC = () => {
             </div>
           </div>
         </div>
+      </div>
+    );
+  }
+  if (!systemUser && token) {
+    return (
+      <div className="h-screen flex items-center justify-center">
+        Loading...
       </div>
     );
   }

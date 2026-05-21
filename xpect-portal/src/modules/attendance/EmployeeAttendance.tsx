@@ -526,10 +526,10 @@ const EmployeeAttendance = () => {
         </div>
 
         {/* TOP GRID */}
-        <div className="grid grid-cols-1 2xl:grid-cols-[280px_1fr] gap-6">
+        <div className="grid grid-cols-1 xl:grid-cols-[320px_minmax(0,1fr)] gap-6 w-full items-start">
           {/* LEFT PROFILE */}
           {/* LEFT PROFILE */}
-          <div className="min-w-0 bg-white rounded-2xl border border-[#e7ebf3] shadow-sm overflow-hidden">
+          <div className="w-full bg-white rounded-2xl border border-[#e7ebf3] shadow-sm overflow-hidden">
             {/* TOP HEADER */}
             <div
               className={`px-6 py-2 ${
@@ -647,9 +647,9 @@ const EmployeeAttendance = () => {
           </div>
 
           {/* RIGHT */}
-          <div className="space-y-6 min-w-0">
+          <div className="space-y-6 w-full min-w-0">
             {/* KPI */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
+            <div className="grid grid-cols-2 sm:grid-cols-2 2xl:grid-cols-4 gap-5">
               {stats.map((item) => (
                 <div
                   key={item.title}
@@ -675,11 +675,11 @@ const EmployeeAttendance = () => {
 
                   <p className="text-[#4c669a] mt-2 text-sm">{item.title}</p>
 
-                  <div className="border-t border-[#edf2f7] mt-5 pt-4">
+                  {/* <div className="border-t border-[#edf2f7] mt-5 pt-4">
                     <p className="text-sm font-medium text-[#4c669a]">
                       {item.trend}
                     </p>
-                  </div>
+                  </div> */}
                 </div>
               ))}
             </div>
@@ -752,7 +752,7 @@ const EmployeeAttendance = () => {
                     Date
                   </th>
 
-                  <th className="px-6 py-4 text-left text-sm font-bold text-[#0d121b]">
+                  <th className="px-6 py-4 text-left text-sm font-bold text-[#0d121b] whitespace-nowrap">
                     Clock In
                   </th>
 
@@ -760,7 +760,7 @@ const EmployeeAttendance = () => {
                     Status
                   </th>
 
-                  <th className="px-6 py-4 text-left text-sm font-bold text-[#0d121b]">
+                  <th className="px-6 py-4 text-left text-sm font-bold text-[#0d121b] whitespace-nowrap">
                     Clock Out
                   </th>
 

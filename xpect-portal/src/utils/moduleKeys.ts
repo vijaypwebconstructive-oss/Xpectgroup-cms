@@ -1,0 +1,16 @@
+export const MODULE_KEYS = {
+  DASHBOARD: "dashboard",
+  EMPLOYEE_COMPLIANCE: "employee compliance",
+  CLIENT: "client",
+  SITES: "sites",
+  RISK: "risk",
+  INCIDENT: "incident",
+  DOCUMENT: "document",
+  USERS: "users",
+  FINANCE: "finance",
+  PAYROLL: "payroll",
+  PPE: "ppe",
+  TIMESHEET: "timesheet",
+  PROSPECT: "prospect",
+  PERFORMANCE: "performance",
+};

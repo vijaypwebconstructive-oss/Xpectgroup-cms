@@ -370,27 +370,27 @@ const AdminAttendance = () => {
             <table className="w-full border-collapse">
               <thead className="bg-[#f8fafc]">
                 <tr>
-                  <th className="px-6 py-4 text-left text-sm font-bold text-[#0d121b]">
+                  <th className="px-6 py-4 text-left text-sm font-bold text-[#0d121b] whitespace-nowrap">
                     Employee
                   </th>
 
-                  <th className="px-6 py-4 text-left text-sm font-bold text-[#0d121b]">
+                  <th className="px-6 py-4 text-left text-sm font-bold text-[#0d121b] whitespace-nowrap">
                     Status
                   </th>
 
-                  <th className="px-6 py-4 text-left text-sm font-bold text-[#0d121b]">
+                  <th className="px-6 py-4 text-left text-sm font-bold text-[#0d121b] whitespace-nowrap">
                     Check In
                   </th>
 
-                  <th className="px-6 py-4 text-left text-sm font-bold text-[#0d121b]">
+                  <th className="px-6 py-4 text-left text-sm font-bold text-[#0d121b] whitespace-nowrap">
                     Check Out
                   </th>
 
-                  <th className="px-6 py-4 text-left text-sm font-bold text-[#0d121b]">
+                  <th className="px-6 py-4 text-left text-sm font-bold text-[#0d121b] whitespace-nowrap">
                     Site
                   </th>
 
-                  <th className="px-6 py-4 text-left text-sm font-bold text-[#0d121b]">
+                  <th className="px-6 py-4 text-left text-sm font-bold text-[#0d121b] whitespace-nowrap">
                     Working Hours
                   </th>
                 </tr>
@@ -470,12 +470,12 @@ const AdminAttendance = () => {
                       </td>
 
                       {/* CLOCK IN */}
-                      <td className="px-6 py-4 text-sm text-[#4c669a] font-medium">
+                      <td className="px-6 py-4 text-sm text-[#4c669a] font-medium whitespace-nowrap">
                         {formatTime(timesheet.clockIn)}
                       </td>
 
                       {/* CLOCK OUT */}
-                      <td className="px-6 py-4 text-sm text-[#4c669a] font-medium">
+                      <td className="px-6 py-4 text-sm text-[#4c669a] font-medium whitespace-nowrap">
                         {timesheet.clockOut
                           ? formatTime(timesheet.clockOut)
                           : "-"}

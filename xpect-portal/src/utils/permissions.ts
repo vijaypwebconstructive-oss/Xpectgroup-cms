@@ -7,30 +7,57 @@ import {
 import type { AppView } from "../types";
 
 /** Maps main CMS shell views to RBAC module keys (Step 10 modules only). */
-export const viewToModuleKey = (view: AppView): ModuleKey | null => {
+export const viewToModuleKey = (view: AppView): string | null => {
   switch (view) {
     case "DASHBOARD":
-      return "compliance";
+      return "dashboard";
+
+    case "EMPLOYEE_COMPLIANCE":
+    case "CLEANERS_LIST":
+    case "CLEANER_DETAIL":
+    case "REPORT":
+    case "STAFF_INVITES":
+    case "TRAINING_CERTIFICATION":
+      return "employee compliance";
+
     case "CLIENTS_SITES":
       return "sites";
+
     case "RISK_COSHH":
-      return "rams";
+      return "risk";
+
+    case "INCIDENTS":
+      return "incident";
+
+    case "DOCUMENT_CONTROL":
+      return "document";
+
     case "FINANCE":
-      return "payroll";
+      return "finance";
+
     case "USER_ACCESS":
       return "users";
+
+    case "ATTENDANCE":
+      return "timesheet";
+
     default:
       return null;
   }
 };
 
 /** Module-level gate: any access except `no_access` allows the route (fine-grained levels deferred). */
-export const canAccessModule = (
-  role: UserRole | null | undefined,
-  key: ModuleKey,
-): boolean => {
-  if (!role) return false;
-  const label = MODULE_KEY_TO_LABEL[key];
-  const entry = ROLE_PERMISSIONS[role]?.find((p) => p.module === label);
-  return !!entry && entry.access !== "no_access";
+export const canAccessModule = (user: any, moduleKey: string) => {
+  if (!user) return false;
+
+  // Admin full access
+  if (user.role === "Admin") return true;
+
+  console.log("module key", moduleKey);
+  console.log("usermodules", user.module);
+
+  // // Safety check
+  // if (!Array.isArray(user.module)) return false;
+
+  return user.module.includes(moduleKey);
 };
