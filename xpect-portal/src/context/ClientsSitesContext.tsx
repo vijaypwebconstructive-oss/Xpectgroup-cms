@@ -1,6 +1,18 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
-import { Client, Site, SiteComplianceDocument, WorkerAssignment } from '../modules/clients-sites/types';
-import api from '../services/api';
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+  ReactNode,
+} from "react";
+import {
+  Client,
+  Site,
+  SiteComplianceDocument,
+  WorkerAssignment,
+} from "../modules/clients-sites/types";
+import api from "../services/api";
 
 export const daysUntil = (dateStr: string): number => {
   const now = new Date();
@@ -9,12 +21,14 @@ export const daysUntil = (dateStr: string): number => {
   return Math.ceil((target.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
 };
 
-export const contractHealth = (client: Client): 'Valid' | 'Expiring' | 'Expired' => {
+export const contractHealth = (
+  client: Client,
+): "Valid" | "Expiring" | "Expired" => {
   const contractDays = daysUntil(client.contractEnd);
   const insuranceDays = daysUntil(client.insuranceExpiry);
-  if (contractDays < 0 || insuranceDays < 0) return 'Expired';
-  if (contractDays <= 30 || insuranceDays <= 30) return 'Expiring';
-  return 'Valid';
+  if (contractDays < 0 || insuranceDays < 0) return "Expired";
+  if (contractDays <= 30 || insuranceDays <= 30) return "Expiring";
+  return "Valid";
 };
 
 interface ClientsSitesContextType {
@@ -26,11 +40,17 @@ interface ClientsSitesContextType {
   refreshClients: () => Promise<void>;
   refreshSites: () => Promise<void>;
   refreshAssignments: () => Promise<void>;
+  allocationHistoryFilter: string;
+
+  setAllocationHistoryFilter: React.Dispatch<React.SetStateAction<string>>;
   refreshAll: () => Promise<void>;
-  addClient: (c: Omit<Client, 'id'>) => Promise<Client>;
-  addSite: (s: Omit<Site, 'id'>) => Promise<Site>;
-  updateSiteCompliance: (siteId: string, complianceDocuments: SiteComplianceDocument[]) => Promise<Site>;
-  addAssignment: (a: Omit<WorkerAssignment, 'id'>) => Promise<WorkerAssignment>;
+  addClient: (c: Omit<Client, "id">) => Promise<Client>;
+  addSite: (s: Omit<Site, "id">) => Promise<Site>;
+  updateSiteCompliance: (
+    siteId: string,
+    complianceDocuments: SiteComplianceDocument[],
+  ) => Promise<Site>;
+  addAssignment: (a: Omit<WorkerAssignment, "id">) => Promise<WorkerAssignment>;
   removeAssignment: (workerId: string, siteId: string) => Promise<void>;
   deleteClient: (id: string) => Promise<void>;
   deleteSite: (id: string) => Promise<void>;
@@ -41,13 +61,17 @@ interface ClientsSitesContextType {
   getAssignmentsByClient: (clientId: string) => WorkerAssignment[];
   getAssignmentsByWorker: (workerId: string) => WorkerAssignment[];
   getSiteCountByWorker: (workerId: string) => number;
+  updateSite: (id: string, updates: Partial<Site>) => Promise<Site>;
 }
 
-const ClientsSitesContext = createContext<ClientsSitesContextType | undefined>(undefined);
+const ClientsSitesContext = createContext<ClientsSitesContextType | undefined>(
+  undefined,
+);
 
 export const useClientsSites = () => {
   const ctx = useContext(ClientsSitesContext);
-  if (!ctx) throw new Error('useClientsSites must be used within ClientsSitesProvider');
+  if (!ctx)
+    throw new Error("useClientsSites must be used within ClientsSitesProvider");
   return ctx;
 };
 
@@ -55,20 +79,23 @@ interface ClientsSitesProviderProps {
   children: ReactNode;
 }
 
-export const ClientsSitesProvider: React.FC<ClientsSitesProviderProps> = ({ children }) => {
+export const ClientsSitesProvider: React.FC<ClientsSitesProviderProps> = ({
+  children,
+}) => {
   const [clients, setClients] = useState<Client[]>([]);
   const [sites, setSites] = useState<Site[]>([]);
   const [assignments, setAssignments] = useState<WorkerAssignment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
+  const [allocationHistoryFilter, setAllocationHistoryFilter] =
+    useState("current");
   const refreshClients = useCallback(async () => {
     try {
       setError(null);
       const list = await api.clientsSites.getClients();
       setClients(Array.isArray(list) ? list : []);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch clients');
+      setError(err instanceof Error ? err.message : "Failed to fetch clients");
       setClients([]);
     }
   }, []);
@@ -76,13 +103,13 @@ export const ClientsSitesProvider: React.FC<ClientsSitesProviderProps> = ({ chil
   const refreshSites = useCallback(async () => {
     try {
       setError(null);
-      const list = await api.clientsSites.getSites();
+      const list = await api.clientsSites.getSites(allocationHistoryFilter);
       setSites(Array.isArray(list) ? list : []);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch sites');
+      setError(err instanceof Error ? err.message : "Failed to fetch sites");
       setSites([]);
     }
-  }, []);
+  }, [allocationHistoryFilter]);
 
   const refreshAssignments = useCallback(async () => {
     try {
@@ -90,7 +117,9 @@ export const ClientsSitesProvider: React.FC<ClientsSitesProviderProps> = ({ chil
       const list = await api.clientsSites.getAssignments();
       setAssignments(Array.isArray(list) ? list : []);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch assignments');
+      setError(
+        err instanceof Error ? err.message : "Failed to fetch assignments",
+      );
       setAssignments([]);
     }
   }, []);
@@ -102,16 +131,27 @@ export const ClientsSitesProvider: React.FC<ClientsSitesProviderProps> = ({ chil
   }, [refreshClients, refreshSites, refreshAssignments]);
 
   useEffect(() => {
-    refreshAll();
-  }, [refreshAll]);
+    const interval = setInterval(() => {
+      refreshSites();
+    }, 30000);
 
-  const addClient = useCallback(async (c: Omit<Client, 'id'>): Promise<Client> => {
-    const created = await api.clientsSites.createClient(c);
-    setClients(prev => [created, ...prev]);
-    return created;
+    return () => clearInterval(interval);
   }, []);
 
-  const addSite = useCallback(async (s: Omit<Site, 'id'>): Promise<Site> => {
+  useEffect(() => {
+    refreshAll();
+  }, [refreshAll, allocationHistoryFilter]);
+
+  const addClient = useCallback(
+    async (c: Omit<Client, "id">): Promise<Client> => {
+      const created = await api.clientsSites.createClient(c);
+      setClients((prev) => [created, ...prev]);
+      return created;
+    },
+    [],
+  );
+
+  const addSite = useCallback(async (s: Omit<Site, "id">): Promise<Site> => {
     const created = await api.clientsSites.createSite(s);
     const fromRequest = s.complianceDocuments?.filter(Boolean) ?? [];
     const fromApi = created.complianceDocuments?.filter(Boolean) ?? [];
@@ -119,48 +159,98 @@ export const ClientsSitesProvider: React.FC<ClientsSitesProviderProps> = ({ chil
       ...created,
       complianceDocuments: fromApi.length > 0 ? fromApi : fromRequest,
     };
-    setSites(prev => [merged, ...prev]);
+    setSites((prev) => [merged, ...prev]);
     return merged;
   }, []);
+  const updateSite = useCallback(
+    async (id: string, updates: Partial<Site>): Promise<Site> => {
+      const updated = await api.clientsSites.updateSite(id, updates);
 
-  const updateSiteCompliance = useCallback(async (siteId: string, complianceDocuments: SiteComplianceDocument[]): Promise<Site> => {
-    const updated = await api.clientsSites.updateSite(siteId, { complianceDocuments });
-    setSites(prev => prev.map(s => s.id === siteId ? updated : s));
-    return updated;
-  }, []);
+      setSites((prev) => prev.map((s) => (s.id === id ? updated : s)));
 
-  const addAssignment = useCallback(async (a: Omit<WorkerAssignment, 'id'>): Promise<WorkerAssignment> => {
-    const created = await api.clientsSites.createAssignment(a);
-    setAssignments(prev => [created, ...prev]);
-    return created;
-  }, []);
+      return updated;
+    },
+    [],
+  );
+  const updateSiteCompliance = useCallback(
+    async (
+      siteId: string,
+      complianceDocuments: SiteComplianceDocument[],
+    ): Promise<Site> => {
+      const updated = await api.clientsSites.updateSite(siteId, {
+        complianceDocuments,
+      });
+      setSites((prev) => prev.map((s) => (s.id === siteId ? updated : s)));
+      return updated;
+    },
+    [],
+  );
 
-  const removeAssignment = useCallback(async (workerId: string, siteId: string) => {
-    await api.clientsSites.removeAssignment(workerId, siteId);
-    setAssignments(prev => prev.filter(a => !(a.workerId === workerId && a.siteId === siteId)));
-  }, []);
+  const addAssignment = useCallback(
+    async (a: Omit<WorkerAssignment, "id">): Promise<WorkerAssignment> => {
+      const created = await api.clientsSites.createAssignment(a);
+      setAssignments((prev) => [created, ...prev]);
+      return created;
+    },
+    [],
+  );
 
-  const deleteClient = useCallback(async (id: string) => {
-    await api.clientsSites.deleteClient(id);
-    const siteIds = sites.filter(s => s.clientId === id).map(s => s.id);
-    setClients(prev => prev.filter(c => c.id !== id));
-    setSites(prev => prev.filter(s => s.clientId !== id));
-    setAssignments(prev => prev.filter(a => !siteIds.includes(a.siteId)));
-  }, [sites]);
+  const removeAssignment = useCallback(
+    async (workerId: string, siteId: string) => {
+      await api.clientsSites.removeAssignment(workerId, siteId);
+      setAssignments((prev) =>
+        prev.filter((a) => !(a.workerId === workerId && a.siteId === siteId)),
+      );
+    },
+    [],
+  );
+
+  const deleteClient = useCallback(
+    async (id: string) => {
+      await api.clientsSites.deleteClient(id);
+      const siteIds = sites.filter((s) => s.clientId === id).map((s) => s.id);
+      setClients((prev) => prev.filter((c) => c.id !== id));
+      setSites((prev) => prev.filter((s) => s.clientId !== id));
+      setAssignments((prev) => prev.filter((a) => !siteIds.includes(a.siteId)));
+    },
+    [sites],
+  );
 
   const deleteSite = useCallback(async (id: string) => {
     await api.clientsSites.deleteSite(id);
-    setSites(prev => prev.filter(s => s.id !== id));
-    setAssignments(prev => prev.filter(a => a.siteId !== id));
+    setSites((prev) => prev.filter((s) => s.id !== id));
+    setAssignments((prev) => prev.filter((a) => a.siteId !== id));
   }, []);
 
-  const getClientById = useCallback((id: string) => clients.find(c => c.id === id), [clients]);
-  const getSiteById = useCallback((id: string) => sites.find(s => s.id === id), [sites]);
-  const getSitesByClient = useCallback((clientId: string) => sites.filter(s => s.clientId === clientId), [sites]);
-  const getAssignmentsBySite = useCallback((siteId: string) => assignments.filter(a => a.siteId === siteId), [assignments]);
-  const getAssignmentsByClient = useCallback((clientId: string) => assignments.filter(a => a.clientId === clientId), [assignments]);
-  const getAssignmentsByWorker = useCallback((workerId: string) => assignments.filter(a => a.workerId === workerId), [assignments]);
-  const getSiteCountByWorker = useCallback((workerId: string) => new Set(getAssignmentsByWorker(workerId).map(a => a.siteId)).size, [getAssignmentsByWorker]);
+  const getClientById = useCallback(
+    (id: string) => clients.find((c) => c.id === id),
+    [clients],
+  );
+  const getSiteById = useCallback(
+    (id: string) => sites.find((s) => s.id === id),
+    [sites],
+  );
+  const getSitesByClient = useCallback(
+    (clientId: string) => sites.filter((s) => s.clientId === clientId),
+    [sites],
+  );
+  const getAssignmentsBySite = useCallback(
+    (siteId: string) => assignments.filter((a) => a.siteId === siteId),
+    [assignments],
+  );
+  const getAssignmentsByClient = useCallback(
+    (clientId: string) => assignments.filter((a) => a.clientId === clientId),
+    [assignments],
+  );
+  const getAssignmentsByWorker = useCallback(
+    (workerId: string) => assignments.filter((a) => a.workerId === workerId),
+    [assignments],
+  );
+  const getSiteCountByWorker = useCallback(
+    (workerId: string) =>
+      new Set(getAssignmentsByWorker(workerId).map((a) => a.siteId)).size,
+    [getAssignmentsByWorker],
+  );
 
   return (
     <ClientsSitesContext.Provider
@@ -170,6 +260,7 @@ export const ClientsSitesProvider: React.FC<ClientsSitesProviderProps> = ({ chil
         assignments,
         loading,
         error,
+        updateSite,
         refreshClients,
         refreshSites,
         refreshAssignments,
@@ -188,6 +279,8 @@ export const ClientsSitesProvider: React.FC<ClientsSitesProviderProps> = ({ chil
         getAssignmentsByClient,
         getAssignmentsByWorker,
         getSiteCountByWorker,
+        allocationHistoryFilter,
+        setAllocationHistoryFilter,
       }}
     >
       {children}

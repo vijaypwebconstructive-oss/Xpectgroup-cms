@@ -89,7 +89,7 @@ const ComplianceDashboard: React.FC<ComplianceDashboardProps> = ({
   onNavigate,
 }) => {
   const { riskAssessments, ramsList } = useRiskCoshh();
-  const { clients, assignments } = useClientsSites();
+  const { clients, assignments, sites } = useClientsSites();
   const { documents } = usePolicyDocuments();
   const { records: ppeRecords, inventory: ppeInventory } = usePPERecords();
   const { trainingRecords } = useTraining();
@@ -121,6 +121,123 @@ const ComplianceDashboard: React.FC<ComplianceDashboardProps> = ({
       timestamp: i.date ? formatDate(i.date) : "N/A", // ✅ SAFE
     }));
   }, [failedInspections]);
+
+  const inspectionDueAlerts = useMemo(() => {
+    return sites.flatMap((site) => {
+      if (!site.inspectionFrequency) return [];
+
+      // Find inspections for site
+      const siteInspections = inspections.filter((i) => i.siteId === site.id);
+
+      // No inspections yet
+      if (siteInspections.length === 0) {
+        return [
+          {
+            id: `missing-${site.id}`,
+
+            title: "Inspection Missing",
+
+            message: `${site.name} has no inspections`,
+
+            severity: "warning",
+
+            module: "inspection",
+
+            timestamp: "No records",
+          },
+        ];
+      }
+
+      // Latest inspection
+      const latest = [...siteInspections].sort(
+        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
+      )[0];
+
+      const lastDate = new Date(latest.date);
+
+      const nextDue = new Date(lastDate);
+
+      // Weekly or Monthly
+      if (site.inspectionFrequency === "Weekly") {
+        nextDue.setDate(nextDue.getDate() + 7);
+      } else {
+        nextDue.setMonth(nextDue.getMonth() + 1);
+      }
+
+      const today = new Date();
+
+      const daysRemaining = Math.ceil(
+        (nextDue.getTime() - today.getTime()) / (1000 * 60 * 60 * 24),
+      );
+
+      // Default alert days
+      const alertDays = site.inspectionAlertDays || 7;
+
+      // Outside alert range
+      if (daysRemaining > alertDays) {
+        return [];
+      }
+
+      // Overdue
+      if (daysRemaining < 0) {
+        return [
+          {
+            id: `overdue-${site.id}`,
+
+            title: "Inspection Overdue",
+
+            message: `${site.name} inspection overdue by ${Math.abs(
+              daysRemaining,
+            )} day${Math.abs(daysRemaining) !== 1 ? "s" : ""}`,
+
+            severity: "critical",
+
+            module: "inspection",
+
+            timestamp: nextDue.toLocaleDateString("en-GB"),
+          },
+        ];
+      }
+
+      // Due today
+      if (daysRemaining === 0) {
+        return [
+          {
+            id: `today-${site.id}`,
+
+            title: "Inspection Due Today",
+
+            message: `${site.name} inspection is due today`,
+
+            severity: "warning",
+
+            module: "inspection",
+
+            timestamp: nextDue.toLocaleDateString("en-GB"),
+          },
+        ];
+      }
+
+      // Countdown
+      return [
+        {
+          id: `due-${site.id}`,
+
+          title: "Inspection Due Soon",
+
+          message: `${site.name} inspection due in ${daysRemaining} day${
+            daysRemaining !== 1 ? "s" : ""
+          }`,
+
+          severity: "warning",
+
+          module: "inspection",
+
+          timestamp: nextDue.toLocaleDateString("en-GB"),
+        },
+      ];
+    });
+  }, [sites, inspections]);
 
   const recordsForExistingStaff = useMemo(() => {
     const ids = new Set(cleaners.map((c) => c.id));
@@ -181,8 +298,8 @@ const ComplianceDashboard: React.FC<ComplianceDashboardProps> = ({
   );
 
   const alerts = useMemo(() => {
-    return [...baseAlerts, ...inspectionAlerts];
-  }, [baseAlerts, inspectionAlerts]);
+    return [...baseAlerts, ...inspectionAlerts, ...inspectionDueAlerts];
+  }, [baseAlerts, inspectionAlerts, inspectionDueAlerts]);
 
   // console.log("inspection:",inspectionAlerts)
 

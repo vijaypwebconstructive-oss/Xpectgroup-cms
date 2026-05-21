@@ -1,6 +1,7 @@
 import express from "express";
 import Client from "../models/Client.js";
 import Site from "../models/Site.js";
+import Timesheet from "../models/Timesheet.js";
 import WorkerAssignment from "../models/WorkerAssignment.js";
 // import { authenticate } from '../middleware/auth.js';
 // import { checkModuleAccess } from '../middleware/authorize.js';
@@ -69,13 +70,11 @@ router.post("/clients", async (req, res) => {
       !insuranceExpiry ||
       !relation
     ) {
-      return res
-        .status(400)
-        .json({
-          error: "Validation error",
-          message:
-            "name, industry, contactPerson, email, contractStart, contractEnd, insuranceExpiry are required",
-        });
+      return res.status(400).json({
+        error: "Validation error",
+        message:
+          "name, industry, contactPerson, email, contractStart, contractEnd, insuranceExpiry are required",
+      });
     }
     const docsToStore = Array.isArray(documents)
       ? documents
@@ -156,25 +155,350 @@ router.delete("/clients/:id", async (req, res) => {
 router.get("/sites", async (req, res) => {
   try {
     const docs = await Site.find().sort({ createdAt: -1 }).lean();
-    const list = docs.map((d) => ({
-      id: d.id,
-      clientId: d.clientId,
-      name: d.name,
-      address: d.address || "",
-      postcode: d.postcode || "",
-      riskLevel: d.riskLevel || "Low",
-      requiredTrainings: d.requiredTrainings || [],
-      emergencyContact: d.emergencyContact || "",
-      emergencyPhone: d.emergencyPhone || "",
-      accessInstructions: d.accessInstructions || "",
-      activeWorkers: d.activeWorkers ?? 0,
-      relation: d.relation,
-      complianceDocuments: (d.complianceDocuments || []).map((cd) => ({
-        key: cd.key,
-        name: cd.name || "",
-        dataUrl: cd.dataUrl || "",
-      })),
-    }));
+    // //
+    // // GET SITE WORKED HOURS
+    // //
+    // const { period = "current" } = req.query;
+
+    // const list = await Promise.all(
+    //   docs.map(async (d) => {
+    //     //
+    //     // START DATE
+    //     //
+    //     const startDate = new Date();
+
+    //     //
+    //     // END DATE
+    //     //
+    //     const endDate = new Date();
+
+    //     //
+    //     // MONTHLY
+    //     //
+    //     if (d.allocationPeriod === "Monthly") {
+    //       //
+    //       // CURRENT MONTH
+    //       //
+    //       if (period === "current") {
+    //         startDate.setDate(1);
+
+    //         startDate.setHours(0, 0, 0, 0);
+    //       }
+
+    //       //
+    //       // PREVIOUS MONTH
+    //       //
+    //       if (period === "previous-month") {
+    //         startDate.setMonth(startDate.getMonth() - 1);
+
+    //         startDate.setDate(1);
+
+    //         startDate.setHours(0, 0, 0, 0);
+
+    //         endDate.setDate(0);
+
+    //         endDate.setHours(23, 59, 59, 999);
+    //       }
+    //     }
+
+    //     //
+    //     // WEEKLY
+    //     //
+    //     else {
+    //       //
+    //       // CURRENT WEEK
+    //       //
+    //       if (period === "current") {
+    //         const day = startDate.getDay();
+
+    //         const diff = startDate.getDate() - day + (day === 0 ? -6 : 1);
+
+    //         startDate.setDate(diff);
+
+    //         startDate.setHours(0, 0, 0, 0);
+    //       }
+
+    //       //
+    //       // PREVIOUS WEEK
+    //       //
+    //       if (period === "previous-week") {
+    //         const day = startDate.getDay();
+
+    //         const diff = startDate.getDate() - day + (day === 0 ? -6 : 1);
+
+    //         //
+    //         // PREVIOUS MONDAY
+    //         //
+    //         startDate.setDate(diff - 7);
+
+    //         startDate.setHours(0, 0, 0, 0);
+
+    //         //
+    //         // PREVIOUS SUNDAY
+    //         //
+    //         endDate.setDate(diff - 1);
+
+    //         endDate.setHours(23, 59, 59, 999);
+    //       }
+    //     } //
+    //     // GET TIMESHEETS
+    //     //
+    //     const timesheets = await Timesheet.find({
+    //       siteId: d.id,
+
+    //       clockOut: {
+    //         $ne: "",
+    //       },
+
+    //       createdAt: {
+    //         $gte: startDate,
+
+    //         $lte: endDate,
+    //       },
+    //     }).lean();
+
+    //     //
+    //     // TOTAL HOURS
+    //     //
+    //     const totalWorkedHours = timesheets.reduce(
+    //       (sum, t) => sum + Number(t.workedHours || 0),
+    //       0,
+    //     );
+
+    //     return {
+    //       id: d.id,
+
+    //       clientId: d.clientId,
+
+    //       name: d.name,
+
+    //       address: d.address || "",
+
+    //       postcode: d.postcode || "",
+
+    //       riskLevel: d.riskLevel || "Low",
+
+    //       requiredTrainings: d.requiredTrainings || [],
+
+    //       emergencyContact: d.emergencyContact || "",
+
+    //       emergencyPhone: d.emergencyPhone || "",
+
+    //       accessInstructions: d.accessInstructions || "",
+
+    //       activeWorkers: d.activeWorkers ?? 0,
+
+    //       relation: d.relation,
+
+    //       inspectionFrequency: d.inspectionFrequency || "Monthly",
+
+    //       complianceDocuments: (d.complianceDocuments || []).map((cd) => ({
+    //         key: cd.key,
+    //         name: cd.name || "",
+    //         dataUrl: cd.dataUrl || "",
+    //       })),
+
+    //       allocationPeriod: d.allocationPeriod || "Weekly",
+
+    //       allocatedHours: d.allocatedHours ?? 0,
+
+    //       geoFence: d.geoFence || {
+    //         enabled: false,
+    //       },
+
+    //       //
+    //       // IMPORTANT
+    //       //
+    //       totalWorkedHours: Number(totalWorkedHours.toFixed(2)),
+    //     };
+    //   }),
+    // );
+
+    //
+    // GET SITE WORKED HOURS
+    //
+    const { period = "current" } = req.query;
+
+    const list = await Promise.all(
+      docs.map(async (d) => {
+        let startDate = new Date();
+
+        let endDate = new Date();
+
+        //
+        // MONTHLY SITES
+        //
+        if (d.allocationPeriod === "Monthly") {
+          //
+          // CURRENT MONTH
+          //
+          if (period === "current") {
+            startDate = new Date(
+              startDate.getFullYear(),
+              startDate.getMonth(),
+              1,
+              0,
+              0,
+              0,
+              0,
+            );
+
+            endDate = new Date(
+              startDate.getFullYear(),
+              startDate.getMonth() + 1,
+              0,
+              23,
+              59,
+              59,
+              999,
+            );
+          }
+
+          //
+          // PREVIOUS MONTH
+          //
+          if (period === "previous-month") {
+            startDate = new Date(
+              startDate.getFullYear(),
+              startDate.getMonth() - 1,
+              1,
+              0,
+              0,
+              0,
+              0,
+            );
+
+            endDate = new Date(
+              startDate.getFullYear(),
+              startDate.getMonth() + 1,
+              0,
+              23,
+              59,
+              59,
+              999,
+            );
+          }
+        }
+
+        //
+        // WEEKLY SITES
+        //
+        else {
+          const today = new Date();
+
+          const currentDay = today.getDay();
+
+          //
+          // MONDAY OF CURRENT WEEK
+          //
+          const monday = new Date(today);
+
+          monday.setDate(
+            today.getDate() - currentDay + (currentDay === 0 ? -6 : 1),
+          );
+
+          monday.setHours(0, 0, 0, 0);
+
+          //
+          // CURRENT WEEK
+          //
+          if (period === "current") {
+            startDate = new Date(monday);
+
+            endDate = new Date(monday);
+
+            endDate.setDate(startDate.getDate() + 6);
+
+            endDate.setHours(23, 59, 59, 999);
+          }
+
+          //
+          // PREVIOUS WEEK
+          //
+          if (period === "previous-week") {
+            startDate = new Date(monday);
+
+            startDate.setDate(startDate.getDate() - 7);
+
+            startDate.setHours(0, 0, 0, 0);
+
+            endDate = new Date(startDate);
+
+            endDate.setDate(startDate.getDate() + 6);
+
+            endDate.setHours(23, 59, 59, 999);
+          }
+        }
+
+        //
+        // GET TIMESHEETS
+        //
+        const timesheets = await Timesheet.find({
+          siteId: d.id,
+
+          clockOut: {
+            $ne: "",
+          },
+
+          createdAt: {
+            $gte: startDate,
+            $lte: endDate,
+          },
+        }).lean();
+
+        //
+        // TOTAL HOURS
+        //
+        const totalWorkedHours = timesheets.reduce(
+          (sum, t) => sum + Number(t.workedHours || 0),
+          0,
+        );
+
+        return {
+          id: d.id,
+
+          clientId: d.clientId,
+
+          name: d.name,
+
+          address: d.address || "",
+
+          postcode: d.postcode || "",
+
+          riskLevel: d.riskLevel || "Low",
+
+          requiredTrainings: d.requiredTrainings || [],
+
+          emergencyContact: d.emergencyContact || "",
+
+          emergencyPhone: d.emergencyPhone || "",
+
+          accessInstructions: d.accessInstructions || "",
+
+          activeWorkers: d.activeWorkers ?? 0,
+
+          relation: d.relation,
+
+          inspectionFrequency: d.inspectionFrequency || "Monthly",
+
+          complianceDocuments: (d.complianceDocuments || []).map((cd) => ({
+            key: cd.key,
+            name: cd.name || "",
+            dataUrl: cd.dataUrl || "",
+          })),
+
+          allocationPeriod: d.allocationPeriod || "Weekly",
+
+          allocatedHours: d.allocatedHours ?? 0,
+
+          geoFence: d.geoFence || {
+            enabled: false,
+          },
+
+          totalWorkedHours: Number(totalWorkedHours.toFixed(2)),
+        };
+      }),
+    );
     res.json(list);
   } catch (err) {
     console.error("Error fetching sites:", err);
@@ -198,14 +522,17 @@ router.post("/sites", async (req, res) => {
       accessInstructions,
       activeWorkers,
       complianceDocuments,
+      allocationPeriod,
+      allocatedHours,
+      inspectionFrequency,
+      inspectionAlertDays,
+      geoFence,
     } = req.body;
     if (!clientId || !name) {
-      return res
-        .status(400)
-        .json({
-          error: "Validation error",
-          message: "clientId and name are required",
-        });
+      return res.status(400).json({
+        error: "Validation error",
+        message: "clientId and name are required",
+      });
     }
     const docsToStore = Array.isArray(complianceDocuments)
       ? complianceDocuments
@@ -225,11 +552,18 @@ router.post("/sites", async (req, res) => {
       requiredTrainings: Array.isArray(requiredTrainings)
         ? requiredTrainings
         : [],
+      inspectionAlertDays: inspectionAlertDays || 7,
       emergencyContact: emergencyContact || "",
       emergencyPhone: emergencyPhone || "",
       accessInstructions: accessInstructions || "",
+      allocationPeriod: allocationPeriod || "Weekly",
+      inspectionFrequency: inspectionFrequency || "Monthly",
+      allocatedHours: typeof allocatedHours === "number" ? allocatedHours : 0,
       activeWorkers: typeof activeWorkers === "number" ? activeWorkers : 0,
       complianceDocuments: docsToStore,
+      geoFence: geoFence || {
+        enabled: false,
+      },
     });
     const fresh = await Site.findOne({ id: doc.id }).lean();
     const payloadSource = fresh || doc.toObject();
@@ -253,6 +587,11 @@ router.post("/sites", async (req, res) => {
       accessInstructions: payloadSource.accessInstructions || "",
       activeWorkers: payloadSource.activeWorkers ?? 0,
       complianceDocuments: complianceOut,
+      allocationPeriod: payloadSource.allocationPeriod || "Weekly",
+      geoFence: payloadSource.geoFence || {
+        enabled: false,
+      },
+      allocatedHours: payloadSource.allocatedHours ?? 0,
     });
   } catch (err) {
     console.error("Error creating site:", err);
@@ -265,12 +604,64 @@ router.post("/sites", async (req, res) => {
 router.patch("/sites/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    const { complianceDocuments } = req.body;
+
     const site = await Site.findOne({ id });
-    if (!site) return res.status(404).json({ error: "Site not found" });
+
+    if (!site) {
+      return res.status(404).json({ error: "Site not found" });
+    }
+
     const updates = {};
-    if (Array.isArray(complianceDocuments)) {
-      updates.complianceDocuments = complianceDocuments
+
+    // Basic fields
+    if (typeof req.body.address === "string") {
+      updates.address = req.body.address;
+    }
+    if (req.body.geoFence) {
+      updates.geoFence = req.body.geoFence;
+    }
+    if (typeof req.body.postcode === "string") {
+      updates.postcode = req.body.postcode;
+    }
+
+    if (typeof req.body.emergencyContact === "string") {
+      updates.emergencyContact = req.body.emergencyContact;
+    }
+
+    if (typeof req.body.emergencyPhone === "string") {
+      updates.emergencyPhone = req.body.emergencyPhone;
+    }
+
+    if (typeof req.body.accessInstructions === "string") {
+      updates.accessInstructions = req.body.accessInstructions;
+    }
+    if (typeof req.body.inspectionAlertDays === "number") {
+      updates.inspectionAlertDays = req.body.inspectionAlertDays;
+    }
+    // Trainings
+    if (Array.isArray(req.body.requiredTrainings)) {
+      updates.requiredTrainings = req.body.requiredTrainings;
+    }
+    if (req.body.geoFence) {
+      updates.geoFence = req.body.geoFence;
+    }
+    // Allocation
+    if (["Weekly", "Monthly"].includes(req.body.allocationPeriod)) {
+      updates.allocationPeriod = req.body.allocationPeriod;
+    }
+
+    if (typeof req.body.allocatedHours === "number") {
+      updates.allocatedHours = req.body.allocatedHours;
+    }
+
+    // Inspection
+    if (["Weekly", "Monthly"].includes(req.body.inspectionFrequency)) {
+      updates.inspectionFrequency = req.body.inspectionFrequency;
+    }
+
+    // Compliance docs
+    if (Array.isArray(req.body.complianceDocuments)) {
+      updates.complianceDocuments = req.body.complianceDocuments
         .filter((cd) => cd && cd.key)
         .map((cd) => ({
           key: cd.key,
@@ -278,23 +669,41 @@ router.patch("/sites/:id", async (req, res) => {
           dataUrl: cd.dataUrl || "",
         }));
     }
+
     const doc = await Site.findOneAndUpdate(
       { id },
       { $set: updates },
       { new: true },
     ).lean();
+
     res.json({
       id: doc.id,
       clientId: doc.clientId,
       name: doc.name,
+
       address: doc.address || "",
       postcode: doc.postcode || "",
+
       riskLevel: doc.riskLevel || "Low",
+
       requiredTrainings: doc.requiredTrainings || [],
+
       emergencyContact: doc.emergencyContact || "",
+
       emergencyPhone: doc.emergencyPhone || "",
+
       accessInstructions: doc.accessInstructions || "",
+
+      allocationPeriod: doc.allocationPeriod || "Weekly",
+
+      allocatedHours: doc.allocatedHours ?? 0,
+
+      inspectionFrequency: doc.inspectionFrequency || "Monthly",
+
       activeWorkers: doc.activeWorkers ?? 0,
+      geoFence: doc.geoFence || {
+        enabled: false,
+      },
       complianceDocuments: (doc.complianceDocuments || []).map((cd) => ({
         key: cd.key,
         name: cd.name || "",
@@ -303,9 +712,11 @@ router.patch("/sites/:id", async (req, res) => {
     });
   } catch (err) {
     console.error("Error updating site:", err);
-    res
-      .status(500)
-      .json({ error: "Failed to update site", message: err.message });
+
+    res.status(500).json({
+      error: "Failed to update site",
+      message: err.message,
+    });
   }
 });
 
@@ -375,13 +786,11 @@ router.post("/assignments", async (req, res) => {
       !clientId ||
       !assignedSince
     ) {
-      return res
-        .status(400)
-        .json({
-          error: "Validation error",
-          message:
-            "workerId, workerName, siteId, siteName, clientId, assignedSince are required",
-        });
+      return res.status(400).json({
+        error: "Validation error",
+        message:
+          "workerId, workerName, siteId, siteName, clientId, assignedSince are required",
+      });
     }
     const doc = await WorkerAssignment.create({
       workerId,
@@ -424,12 +833,10 @@ router.delete("/assignments", async (req, res) => {
   try {
     const { workerId, siteId } = req.query;
     if (!workerId || !siteId) {
-      return res
-        .status(400)
-        .json({
-          error: "Validation error",
-          message: "workerId and siteId query params are required",
-        });
+      return res.status(400).json({
+        error: "Validation error",
+        message: "workerId and siteId query params are required",
+      });
     }
     const result = await WorkerAssignment.deleteOne({ workerId, siteId });
     if (result.deletedCount === 0) {

@@ -673,9 +673,9 @@ export const api = {
           body: JSON.stringify(data),
         },
       ),
-    getSites: () =>
+    getSites: (period = "current") =>
       fetchWithErrorHandling<import("../modules/clients-sites/types").Site[]>(
-        `${API_BASE_URL}/clients-sites/sites`,
+        `${API_BASE_URL}/clients-sites/sites?period=${period}`,
       ),
     createSite: (
       data: Omit<import("../modules/clients-sites/types").Site, "id">,
@@ -690,9 +690,7 @@ export const api = {
       ),
     updateSite: (
       id: string,
-      updates: {
-        complianceDocuments?: import("../modules/clients-sites/types").SiteComplianceDocument[];
-      },
+      updates: Partial<import("../modules/clients-sites/types").Site>,
     ) =>
       fetchWithErrorHandling<import("../modules/clients-sites/types").Site>(
         `${API_BASE_URL}/clients-sites/sites/${id}`,
@@ -1377,6 +1375,117 @@ export const api = {
     getSales: (filter: string, offset: number) =>
       fetchWithErrorHandling(
         `${API_BASE_URL}/performance/sales?filter=${filter}&offset=${offset}`,
+      ),
+  },
+
+  // Attendance API
+  attendance: {
+    // GET ALL TIMESHEETS
+    getAll: () =>
+      fetchWithErrorHandling<import("../modules/attendance/types").Timesheet[]>(
+        `${API_BASE_URL}/timesheets`,
+      ),
+
+    // GET ACTIVE SHIFTS
+    getActiveShifts: () =>
+      fetchWithErrorHandling<import("../modules/attendance/types").Timesheet[]>(
+        `${API_BASE_URL}/timesheets/active`,
+      ),
+
+    getSettings: () =>
+      fetchWithErrorHandling(`${API_BASE_URL}/timesheets/settings`),
+
+    updateSettings: (data: any) =>
+      fetchWithErrorHandling(`${API_BASE_URL}/timesheets/settings`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+      }),
+    // CLOCK IN
+    clockIn: (data: {
+      workerId: string;
+      siteId: string;
+      latitude: number;
+      longitude: number;
+    }) =>
+      fetchWithErrorHandling<import("../modules/attendance/types").Timesheet>(
+        `${API_BASE_URL}/timesheets/clock-in`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(data),
+        },
+      ),
+
+    // CLOCK OUT
+    clockOut: (
+      id: string,
+      body: {
+        latitude: number;
+        longitude: number;
+      },
+    ) =>
+      fetchWithErrorHandling(`${API_BASE_URL}/timesheets/${id}/clock-out`, {
+        method: "PATCH",
+
+        headers: {
+          "Content-Type": "application/json",
+        },
+
+        body: JSON.stringify(body),
+      }),
+
+    // APPROVE
+    // approve: (id: string) =>
+    //   fetchWithErrorHandling<import("../modules/attendance/types").Timesheet>(
+    //     `${API_BASE_URL}/timesheets/${id}/approve`,
+    //     {
+    //       method: "PATCH",
+    //     },
+    //   ),
+    getMySites: (workerId: string) =>
+      fetchWithErrorHandling(`${API_BASE_URL}/timesheets/my-sites/${workerId}`),
+
+    // DELETE
+    delete: (id: string) =>
+      fetchWithErrorHandling<{
+        success: boolean;
+      }>(`${API_BASE_URL}/timesheets/${id}`, {
+        method: "DELETE",
+      }),
+  },
+
+  attendanceRegularization: {
+    getAll: () =>
+      fetchWithErrorHandling(`${API_BASE_URL}/attendance-regularization`),
+
+    create: (data: any) =>
+      fetchWithErrorHandling(`${API_BASE_URL}/attendance-regularization`, {
+        method: "POST",
+
+        headers: {
+          "Content-Type": "application/json",
+        },
+
+        body: JSON.stringify(data),
+      }),
+
+    review: (id: string, data: any) =>
+      fetchWithErrorHandling(
+        `${API_BASE_URL}/attendance-regularization/${id}/review`,
+        {
+          method: "PATCH",
+
+          headers: {
+            "Content-Type": "application/json",
+          },
+
+          body: JSON.stringify(data),
+        },
       ),
   },
 };

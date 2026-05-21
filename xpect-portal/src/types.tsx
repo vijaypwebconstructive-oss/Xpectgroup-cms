@@ -133,6 +133,7 @@ export type AppView =
   | "FINANCE"
   | "USER_ACCESS"
   | "LOGIN"
+  | "ATTENDANCE"
   | "ACCESS_DENIED";
 
 // ── PPE Module ──────────────────────────────────────────────

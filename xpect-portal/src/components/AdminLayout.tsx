@@ -26,6 +26,12 @@ import {
   getIncidentState,
   subscribeIncident,
 } from "../modules/incidents/incidentNavStore";
+import {
+  attendanceNavigate,
+  getAttendanceState,
+  subscribeAttendance,
+} from "../modules/attendance/attendanceNavStore";
+import { AttendanceView } from "../modules/attendance/types";
 import { userNavigate } from "../modules/user-access/userNavStore";
 // import { useCurrentUser } from "../context/AuthContext";
 import { canAccessModule } from "../utils/moduleAccess";
@@ -62,6 +68,7 @@ const DOC_CONTROL_VIEWS: AppView[] = ["DOCUMENT_CONTROL"];
 const RISK_COSHH_VIEWS: AppView[] = ["RISK_COSHH"];
 const INCIDENTS_VIEWS: AppView[] = ["INCIDENTS"];
 const FINANCE_VIEWS: AppView[] = ["FINANCE"];
+const ATTENDANCE_VIEWS: AppView[] = ["ATTENDANCE"];
 
 const AdminLayout: React.FC<AdminLayoutProps> = ({
   children,
@@ -88,6 +95,9 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
   const [isIncidentsOpen, setIsIncidentsOpen] = useState(
     INCIDENTS_VIEWS.includes(currentView),
   );
+  const [isAttendanceOpen, setIsAttendanceOpen] = useState(
+    ATTENDANCE_VIEWS.includes(currentView),
+  );
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Active sub-view tracking for modules that manage their own URL
@@ -101,7 +111,8 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
   const [activeIncidentView, setActiveIncidentView] = useState<IncidentView>(
     getIncidentState().view,
   );
-
+  const [activeAttendanceView, setActiveAttendanceView] =
+    useState<AttendanceView>(getAttendanceState().view);
   useEffect(() => {
     const fetchProfile = async () => {
       try {
@@ -154,6 +165,9 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
     if (INCIDENTS_VIEWS.includes(currentView)) {
       setIsIncidentsOpen(true);
     }
+    if (ATTENDANCE_VIEWS.includes(currentView)) {
+      setIsAttendanceOpen(true);
+    }
   }, [currentView]);
 
   // Subscribe to each module's nav store so active sub-item highlights correctly
@@ -162,7 +176,9 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
     const unDoc = subscribeDoc((s) => setActiveDocView(s.view));
     const unRisk = subscribeRisk((s) => setActiveRiskView(s.view));
     const unInc = subscribeIncident((s) => setActiveIncidentView(s.view));
-
+    const unAttendance = subscribeAttendance((s) =>
+      setActiveAttendanceView(s.view),
+    );
     // Also sync on browser back/forward
     const onPop = () => {
       setActiveCSView(getCSState().view);
@@ -177,6 +193,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
       unDoc();
       unRisk();
       unInc();
+      unAttendance();
       window.removeEventListener("popstate", onPop);
     };
   }, []);
@@ -405,6 +422,87 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
                 <span className="material-symbols-outlined text-[18px]">safety_check</span>
                 PPE Invoices
               </button> */}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Attendance */}
+        {(canAccessModule(user, "admin attendance") ||
+          canAccessModule(user, "employee attendance") ||
+          canAccessModule(user, "regularization")) && (
+          <div>
+            <button
+              type="button"
+              onClick={() => setIsAttendanceOpen((o) => !o)}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all cursor-pointer ${
+                ATTENDANCE_VIEWS.includes(currentView)
+                  ? "bg-white/20 text-white"
+                  : "text-white/70 hover:bg-white/10 hover:text-white"
+              }`}
+            >
+              <span className="material-symbols-outlined text-[20px]">
+                schedule
+              </span>
+
+              <span className="flex-1 text-left">Timesheet</span>
+
+              <span
+                className={`material-symbols-outlined text-[18px] opacity-70 transition-transform duration-200 ${
+                  isAttendanceOpen ? "rotate-90" : ""
+                }`}
+              >
+                chevron_right
+              </span>
+            </button>
+
+            <div
+              className={`overflow-hidden transition-all duration-300 ease-in-out ${
+                isAttendanceOpen ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
+              }`}
+            >
+              <div className="mt-0.5 ml-3 pl-3 border-l border-white/20 space-y-0.5">
+                {[
+                  canAccessModule(user, "admin attendance") && {
+                    view: "admin-attendance",
+                    icon: "group",
+                    label: "Attendance",
+                  },
+
+                  canAccessModule(user, "employee attendance") && {
+                    view: "employee-attendance",
+                    icon: "badge",
+                    label: "Employee Attendance",
+                  },
+
+                  canAccessModule(user, "regularization") && {
+                    view: "regularization",
+                    icon: "assignment_late",
+                    label: "Regularization",
+                  },
+                ]
+                  .filter(Boolean)
+                  .map(({ view, icon, label }) => (
+                    <button
+                      key={view}
+                      onClick={() => {
+                        onNavigate("ATTENDANCE");
+                        attendanceNavigate(view as AttendanceView);
+                      }}
+                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all cursor-pointer ${
+                        currentView === "ATTENDANCE" &&
+                        activeAttendanceView === view
+                          ? "bg-white/15 text-white"
+                          : "text-white/60 hover:bg-white/10 hover:text-white"
+                      }`}
+                    >
+                      <span className="material-symbols-outlined text-[18px]">
+                        {icon}
+                      </span>
+
+                      {label}
+                    </button>
+                  ))}
               </div>
             </div>
           </div>
@@ -840,7 +938,6 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
             <div className="flex items-center gap-2">
               <button
                 onClick={() => {
-                  console.log("clicked");
                   handleSidebar?.();
                 }}
                 className="lg:hidden p-2 rounded-lg bg-[#2e4150]"

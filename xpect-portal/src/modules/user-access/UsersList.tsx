@@ -631,6 +631,9 @@ const UsersList: React.FC<Props> = ({ onSelectUser }) => {
                           "client",
                           "sites",
                           "risk",
+                          "admin attendance",
+                          "employee attendance",
+                          "regularization",
                           "site allocation",
                           "site inspection",
                           "ppe",
@@ -661,7 +664,7 @@ const UsersList: React.FC<Props> = ({ onSelectUser }) => {
                       }
 
                       if (role === "Default") {
-                        modules = ["timesheet"];
+                        modules = ["employee attendance"];
                       }
 
                       setForm((prev) => ({
@@ -714,7 +717,9 @@ const UsersList: React.FC<Props> = ({ onSelectUser }) => {
                         "client",
                         "sites",
                         "risk",
-                        "timesheet",
+                        "admin attendance",
+                        "employee attendance",
+                        "regularization",
                         "site allocation",
                         "site inspection",
                         "ppe",

@@ -1,14 +1,20 @@
 // ── Client & Site Management — Type definitions ──────────────
 
-export type Industry = 'Office' | 'School' | 'Healthcare' | 'Construction' | 'Retail' | 'Hospitality';
+export type Industry =
+  | "Office"
+  | "School"
+  | "Healthcare"
+  | "Construction"
+  | "Retail"
+  | "Hospitality";
 
-export type RiskLevel = 'Low' | 'Medium' | 'High';
+export type RiskLevel = "Low" | "Medium" | "High";
 
-export type ComplianceStatus = 'Compliant' | 'Expiring' | 'Non-Compliant';
+export type ComplianceStatus = "Compliant" | "Expiring" | "Non-Compliant";
 
-export type ContractHealth = 'Valid' | 'Expiring' | 'Expired';
+export type ContractHealth = "Valid" | "Expiring" | "Expired";
 
-export type AssignmentStatus = 'Compliant' | 'Expiring' | 'Non-Compliant';
+export type AssignmentStatus = "Compliant" | "Expiring" | "Non-Compliant";
 
 export interface ClientDocument {
   key: string;
@@ -22,13 +28,13 @@ export interface ClientDocument {
 export interface Client {
   id: string;
   name: string;
-  industry: string;  // Business type, e.g. Healthcare, Office, Retail
+  industry: string; // Business type, e.g. Healthcare, Office, Retail
   contactPerson: string;
   email: string;
   phone: string;
-  relation: 'Recurring' | 'Onetime';
-  contractStart: string;   // ISO date
-  contractEnd: string;     // ISO date
+  relation: "Recurring" | "Onetime";
+  contractStart: string; // ISO date
+  contractEnd: string; // ISO date
   insuranceExpiry: string; // ISO date
   address: string;
   notes?: string;
@@ -51,9 +57,34 @@ export interface Site {
   requiredTrainings: string[];
   emergencyContact: string;
   emergencyPhone: string;
+  inspectionAlertDays?: number;
   accessInstructions: string;
   activeWorkers: number;
+  inspectionFrequency?: "Weekly" | "Monthly" | "";
   complianceDocuments?: SiteComplianceDocument[];
+  allocationPeriod?: "Weekly" | "Monthly";
+  allocatedHours?: number;
+  totalWorkedHours?: number;
+
+  geoFence?: {
+    enabled: boolean;
+
+    type: "Circle" | "Polygon";
+
+    coordinates?: {
+      latitude: number;
+
+      longitude: number;
+    };
+
+    radius: number;
+
+    polygon?: {
+      lat: number;
+
+      lng: number;
+    }[];
+  };
 }
 
 export interface WorkerAssignment {
@@ -76,7 +107,6 @@ export interface TrainingRequirement {
   mandatory: boolean;
 }
 
-
 // types.ts
 
 export interface ChecklistItem {
@@ -86,7 +116,7 @@ export interface ChecklistItem {
 
 export interface Issue {
   title: string;
-  severity: 'Low' | 'Medium' | 'High';
+  severity: "Low" | "Medium" | "High";
 }
 
 export interface Photo {

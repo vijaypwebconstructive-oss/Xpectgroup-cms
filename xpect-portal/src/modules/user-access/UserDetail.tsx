@@ -41,7 +41,7 @@ const ROLE_MODULES: Record<string, string[]> = {
 
   Custom: [],
 
-  Default: ["timesheet"],
+  Default: ["employee attendance"],
 };
 
 const roleBadge = (role: UserRole) => {
@@ -170,7 +170,23 @@ const UserDetail: React.FC<Props> = ({ userId, onBack }) => {
       label: "Risk & COSHH",
       icon: "warning",
     },
+    {
+      key: "admin attendance",
+      label: "Admin Attendance",
+      icon: "group",
+    },
 
+    {
+      key: "employee attendance",
+      label: "Employee Attendance",
+      icon: "badge",
+    },
+
+    {
+      key: "regularization",
+      label: "Regularization",
+      icon: "assignment_late",
+    },
     {
       key: "site allocation",
       label: "Site Allocation",

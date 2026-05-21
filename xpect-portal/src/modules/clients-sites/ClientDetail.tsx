@@ -105,18 +105,18 @@ const DOC_DEFINITIONS: DocEntry[] = [
     icon: "gavel",
     desc: "Signed contract PDF.",
   },
-  {
-    key: "healthSafety",
-    label: "Health & Safety Policy",
-    icon: "local_hospital",
-    desc: "Company health & safety policy.",
-  },
-  {
-    key: "gdpr",
-    label: "GDPR / Data Agreement",
-    icon: "lock",
-    desc: "Data protection agreement.",
-  },
+  // {
+  //   key: "healthSafety",
+  //   label: "Health & Safety Policy",
+  //   icon: "local_hospital",
+  //   desc: "Company health & safety policy.",
+  // },
+  // {
+  //   key: "gdpr",
+  //   label: "GDPR / Data Agreement",
+  //   icon: "lock",
+  //   desc: "Data protection agreement.",
+  // },
 ];
 
 const clientDocStore: Record<string, Record<string, UploadedFile>> = {};

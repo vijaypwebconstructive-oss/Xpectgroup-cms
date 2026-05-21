@@ -126,6 +126,98 @@ This is an automated message from Xpect Group.
   }
 };
 
+// incompleted onboarding from email remainder
+
+export const sendOnboardingReminderEmail = async (
+  email,
+  employeeName,
+  onboardingUrl,
+  reminderNumber,
+) => {
+  try {
+    const transporter = createTransporter();
+
+    const reminderLabel =
+      reminderNumber === 1
+        ? "24 Hour Reminder"
+        : reminderNumber === 2
+          ? "3 Day Reminder"
+          : "Final Reminder";
+
+    const mailOptions = {
+      from: `"Xpect Group" <${process.env.GMAIL_USER}>`,
+
+      to: email,
+
+      subject: `Complete Your Onboarding Process`,
+
+      html: `
+      <table width="100%" style="background:#f4f6f9;padding:40px 0;font-family:Arial,sans-serif;">
+        <tr>
+          <td align="center">
+
+            <table width="600" style="background:#ffffff;border-radius:16px;padding:35px;">
+
+              <tr>
+                <td>
+                  <h2 style="color:#2e4150;">
+                    Hello ${employeeName},
+                  </h2>
+
+                  <p style="font-size:15px;color:#555;line-height:1.7;">
+                    We noticed that your onboarding process is still incomplete.
+                  </p>
+
+                  <p style="font-size:15px;color:#555;line-height:1.7;">
+                    Please complete your onboarding by clicking the button below:                  
+                  </p>
+
+                  <div style="margin:30px 0;text-align:left;">
+                    <a href="${onboardingUrl}"
+                      style="background:#2e4150;color:#fff;padding:14px 28px;text-decoration:none;border-radius:8px;font-weight:bold;">
+                      Complete Onboarding
+                    </a>
+                  </div>
+
+                  <p style="font-size:13px;color:#999;">
+                   Completing your onboarding is required before starting work assignments.
+                  </p>
+                  <p style="font-size:13px;color:#999;">
+                    If you face any issues, please contact the support team.                  
+                  </p>
+
+                  <p style="margin-top:35px;">
+                    Regards,<br/>
+                    Xpect Group
+                  </p>
+                </td>
+              </tr>
+
+            </table>
+
+          </td>
+        </tr>
+      </table>
+      `,
+    };
+
+    await transporter.sendMail(mailOptions);
+
+    console.log(`✅ Reminder email sent to ${email}`);
+
+    return {
+      success: true,
+    };
+  } catch (error) {
+    console.error("❌ Reminder email failed:", error);
+
+    return {
+      success: false,
+      error: error.message,
+    };
+  }
+};
+
 /**
  * Send OTP resend email
  * @param {string} email - Recipient email
@@ -1028,6 +1120,103 @@ Xpect Group
       success: false,
       error: error.message,
     };
+  }
+};
+
+//
+// SEND ATTENDANCE ALERT
+//
+export const sendAttendanceAlert = async ({
+  emails,
+  workerName,
+  siteName,
+  type,
+  minutes,
+  attendanceTime,
+}) => {
+  try {
+    if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) {
+      console.error("❌ Gmail credentials not configured");
+
+      return;
+    }
+
+    const transporter = createTransporter();
+
+    const isLate = type === "late";
+
+    const subject = isLate ? "Late Clock-In Alert" : "Early Clock-Out Alert";
+
+    const actionText = isLate ? "clocked in late" : "clocked out early";
+
+    const minutesLabel = isLate ? "Late By" : "Early By";
+
+    const mailOptions = {
+      from: `"Xpect Group" <${process.env.GMAIL_USER}>`,
+
+      to: emails.join(","),
+
+      subject,
+
+      html: `
+        <div style="font-family:Arial,sans-serif;padding:20px;">
+          
+          <h2 style="color:#2e4150;">
+            ${subject}
+          </h2>
+
+          <p>
+            <strong>${workerName}</strong>
+            ${actionText}.
+          </p>
+
+          <table style="border-collapse:collapse;width:100%;margin-top:20px;">
+            
+            <tr>
+              <td style="padding:10px;border:1px solid #ddd;">
+                Site
+              </td>
+
+              <td style="padding:10px;border:1px solid #ddd;">
+                ${siteName}
+              </td>
+            </tr>
+
+            <tr>
+              <td style="padding:10px;border:1px solid #ddd;">
+                ${minutesLabel}
+              </td>
+
+              <td style="padding:10px;border:1px solid #ddd;">
+                ${minutes} minutes
+              </td>
+            </tr>
+
+            <tr>
+              <td style="padding:10px;border:1px solid #ddd;">
+                Time
+              </td>
+
+              <td style="padding:10px;border:1px solid #ddd;">
+                ${attendanceTime}
+              </td>
+            </tr>
+
+          </table>
+
+          <p style="margin-top:30px;color:#888;font-size:12px;">
+            Automated attendance notification from Xpect Group.
+          </p>
+
+        </div>
+        `,
+    };
+
+    await transporter.sendMail(mailOptions);
+
+    console.log(`✅ Attendance alert sent`);
+  } catch (error) {
+    console.error("❌ Attendance alert error:", error);
   }
 };
 

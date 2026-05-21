@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Site, RiskLevel, SiteComplianceDocument } from "./types";
 import { useClientsSites } from "../../context/ClientsSitesContext";
+import GeoFenceMap from "./components/GeoFenceMap";
 import { useCurrentUser } from "../../hook/useCurrentUser";
 
 const fileToDataUrl = (file: File): Promise<string> =>
@@ -51,11 +52,19 @@ interface SiteForm {
   clientId: string;
   address: string;
   postcode: string;
+  allocationPeriod: "Weekly" | "Monthly" | "";
+  inspectionFrequency: "Weekly" | "Monthly" | "";
+  allocatedHours: string;
   riskLevel: string;
   emergencyContact: string;
   emergencyPhone: string;
   accessInstructions: string;
+  inspectionAlertDays: string;
   requiredTrainings: string[];
+  geoFenceEnabled: boolean;
+  geoFenceRadius: string;
+  latitude: number | null;
+  longitude: number | null;
 }
 
 const emptyForm: SiteForm = {
@@ -66,19 +75,35 @@ const emptyForm: SiteForm = {
   riskLevel: "",
   emergencyContact: "",
   emergencyPhone: "",
+  allocationPeriod: "",
+  allocatedHours: "",
   accessInstructions: "",
   requiredTrainings: [],
+  inspectionFrequency: "",
+  inspectionAlertDays: "",
+  geoFenceEnabled: false,
+  geoFenceRadius: "100",
+  latitude: null,
+  longitude: null,
 };
 
 const SitesList: React.FC<SitesListProps> = ({
   onSelectSite,
   onNavigateAllocation,
 }) => {
-  const { sites, clients, assignments, loading, error, addSite } =
-    useClientsSites();
+  const {
+    sites,
+    clients,
+    assignments,
+    loading,
+    error,
+    addSite,
+    allocationHistoryFilter,
+    setAllocationHistoryFilter,
+  } = useClientsSites();
   const [search, setSearch] = useState("");
   const [clientFilter, setClientFilter] = useState("");
-  const [riskFilter, setRiskFilter] = useState("");
+  const [allocationFilter, setAllocationFilter] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [form, setForm] = useState<SiteForm>(emptyForm);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
@@ -89,7 +114,10 @@ const SitesList: React.FC<SitesListProps> = ({
   );
   const { currentUser } = useCurrentUser();
 
-  const setField = (k: keyof SiteForm, v: string | string[]) => {
+  const setField = (
+    k: keyof SiteForm,
+    v: string | string[] | boolean | number | null,
+  ) => {
     setForm((prev) => ({ ...prev, [k]: v }));
     if (formErrors[k])
       setFormErrors((prev) => {
@@ -140,10 +168,24 @@ const SitesList: React.FC<SitesListProps> = ({
     if (!form.address.trim()) e.address = "Address is required.";
     if (!form.postcode.trim()) e.postcode = "Postcode is required.";
     if (!form.riskLevel) e.riskLevel = "Risk level is required.";
+    if (!form.inspectionFrequency)
+      e.inspectionFrequency = "Inspection frequency is required.";
+
+    if (!form.inspectionAlertDays)
+      e.inspectionAlertDays = "Alert days required.";
+
+    if (!form.allocationPeriod)
+      e.allocationPeriod = "Allocation period is required.";
+
+    if (!form.allocatedHours)
+      e.allocatedHours = "Allocated hours are required.";
     if (!form.emergencyContact.trim())
       e.emergencyContact = "Emergency contact name is required.";
     if (!form.emergencyPhone.trim())
       e.emergencyPhone = "Emergency phone is required.";
+    if (form.geoFenceEnabled && (!form.latitude || !form.longitude)) {
+      e.geoFence = "Please select geo fence location.";
+    }
     return e;
   };
 
@@ -180,7 +222,24 @@ const SitesList: React.FC<SitesListProps> = ({
         emergencyContact: form.emergencyContact.trim(),
         emergencyPhone: form.emergencyPhone.trim(),
         accessInstructions: form.accessInstructions.trim(),
+        allocationPeriod: form.allocationPeriod,
+        allocatedHours: Number(form.allocatedHours),
         activeWorkers: 0,
+        inspectionAlertDays: Number(form.inspectionAlertDays),
+        inspectionFrequency: form.inspectionFrequency,
+        geoFence: {
+          enabled: form.geoFenceEnabled,
+
+          type: "Circle",
+
+          coordinates: {
+            latitude: form.latitude,
+            longitude: form.longitude,
+          },
+
+          radius: Number(form.geoFenceRadius),
+        },
+
         complianceDocuments:
           complianceDocuments.length > 0 ? complianceDocuments : undefined,
       });
@@ -193,6 +252,7 @@ const SitesList: React.FC<SitesListProps> = ({
     } finally {
       setSaving(false);
     }
+    console.log("new site detail", form);
   };
 
   const openModal = () => {
@@ -279,6 +339,30 @@ const SitesList: React.FC<SitesListProps> = ({
     };
   });
 
+  const getAllocationData = (site: any) => {
+    const workedHours = site.totalWorkedHours || 0;
+
+    const allocated = site.allocatedHours || 0;
+
+    const percentage =
+      allocated > 0 ? Math.min((workedHours / allocated) * 100, 100) : 0;
+
+    const remaining = Math.max(allocated - workedHours, 0);
+
+    const overtime = workedHours > allocated ? workedHours - allocated : 0;
+
+    const isOvertime = overtime > 0;
+
+    return {
+      workedHours,
+      allocated,
+      percentage,
+      remaining,
+      overtime,
+      isOvertime,
+    };
+  };
+
   const filtered = enriched.filter((s) => {
     const q = search.toLowerCase();
     return (
@@ -286,7 +370,7 @@ const SitesList: React.FC<SitesListProps> = ({
         s.name.toLowerCase().includes(q) ||
         s.postcode.toLowerCase().includes(q)) &&
       (!clientFilter || s.clientId === clientFilter) &&
-      (!riskFilter || s.riskLevel === riskFilter)
+      (!allocationFilter || s.allocationPeriod === allocationFilter)
     );
   });
 
@@ -377,15 +461,28 @@ const SitesList: React.FC<SitesListProps> = ({
                 </option>
               ))}
             </select>
+
             <select
-              value={riskFilter}
-              onChange={(e) => setRiskFilter(e.target.value)}
+              value={allocationHistoryFilter}
+              onChange={(e) => setAllocationHistoryFilter(e.target.value)}
+              className="h-9 bg-[#f6f6f8] border border-transparent rounded-lg px-3 text-sm text-[#0d121b] outline-none cursor-pointer font-semibold sm:min-w-[180px] min-w-full"
+            >
+              <option value="current">Current Period</option>
+
+              <option value="previous-week">Previous Week</option>
+
+              <option value="previous-month">Previous Month</option>
+            </select>
+            <select
+              value={allocationFilter}
+              onChange={(e) => setAllocationFilter(e.target.value)}
               className="h-9 bg-[#f6f6f8] border border-transparent rounded-lg px-3 text-sm text-[#0d121b] outline-none cursor-pointer font-semibold sm:min-w-[160px] min-w-full"
             >
-              <option value="">All Risk Levels</option>
-              <option value="Low">Low</option>
-              <option value="Medium">Medium</option>
-              <option value="High">High</option>
+              <option value="">All Allocation Periods</option>
+
+              <option value="Weekly">Weekly</option>
+
+              <option value="Monthly">Monthly</option>
             </select>
           </div>
           <div className="flex items-center gap-2 shrink-0">
@@ -442,22 +539,25 @@ const SitesList: React.FC<SitesListProps> = ({
               <thead>
                 <tr className="border-b border-[#e7ebf3] bg-[#f8fafc]">
                   <th className="text-left px-5 py-3 text-xs font-bold text-[#4c669a] uppercase tracking-wide">
-                    Site Name
+                    Name
                   </th>
                   <th className="text-left px-4 py-3 text-xs font-bold text-[#4c669a] uppercase tracking-wide">
                     Client
                   </th>
-                  <th className="text-left px-4 py-3 text-xs font-bold text-[#4c669a] uppercase tracking-wide">
+                  {/* <th className="text-left px-4 py-3 text-xs font-bold text-[#4c669a] uppercase tracking-wide">
                     Postcode
-                  </th>
-                  <th className="text-left px-4 py-3 text-xs font-bold text-[#4c669a] uppercase tracking-wide">
+                  </th> */}
+                  {/* <th className="text-left px-4 py-3 text-xs font-bold text-[#4c669a] uppercase tracking-wide">
                     Risk Level
-                  </th>
+                  </th> */}
                   <th className="text-left px-4 py-3 text-xs font-bold text-[#4c669a] uppercase tracking-wide">
                     Required Trainings
                   </th>
                   <th className="text-left px-4 py-3 text-xs font-bold text-[#4c669a] uppercase tracking-wide">
-                    Workers
+                    Cleaners
+                  </th>
+                  <th className="text-left px-4 py-3 text-xs font-bold text-[#4c669a] uppercase tracking-wide">
+                    Time Allocation
                   </th>
                   <th className="text-left px-4 py-3 text-xs font-bold text-[#4c669a] uppercase tracking-wide">
                     Compliance
@@ -480,74 +580,117 @@ const SitesList: React.FC<SitesListProps> = ({
                     </td>
                   </tr>
                 ) : (
-                  filtered.map((site) => (
-                    <tr
-                      key={site.id}
-                      className="hover:bg-[#f8fafc] transition-colors group"
-                    >
-                      <td className="px-5 py-4">
-                        <p className="text-sm font-bold text-[#0d121b]">
-                          {site.name}
-                        </p>
-                      </td>
-                      <td className="px-4 py-4">
-                        <p className="text-sm font-medium text-[#0d121b]">
-                          {site.client?.name ?? "—"}
-                        </p>
-                      </td>
-                      <td className="px-4 py-4 text-sm font-medium text-[#4c669a] whitespace-nowrap">
-                        {site.postcode}
-                      </td>
-                      <td className="px-4 py-4">
-                        <span
-                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-black uppercase font-semibold tracking-wide ${RISK_BADGE[site.riskLevel]}`}
-                        >
-                          <span
-                            className={`w-1.5 h-1.5 rounded-full ${site.riskLevel === "Low" ? "bg-green-500" : site.riskLevel === "Medium" ? "bg-amber-400" : "bg-red-500"}`}
-                          />
-                          {site.riskLevel}
-                        </span>
-                      </td>
-                      <td className="px-4 py-4">
-                        <div className="flex flex-wrap gap-1">
-                          {site.requiredTrainings.slice(0, 2).map((t) => (
-                            <span
-                              key={t}
-                              className="text-xs bg-[#f2f6f9] text-[#4c669a] border border-[#e7ebf3] px-2 py-0.5 rounded font-semibold"
+                  filtered.map((site) => {
+                    const allocation = getAllocationData(site);
+                    return (
+                      <tr
+                        key={site.id}
+                        className="hover:bg-[#f8fafc] transition-colors group"
+                      >
+                        <td className="px-5 py-4">
+                          <p className="text-sm font-bold text-[#0d121b]">
+                            {site.name}
+                          </p>
+                        </td>
+                        <td className="px-4 py-4">
+                          <p className="text-sm font-medium text-[#0d121b]">
+                            {site.client?.name ?? "—"}
+                          </p>
+                        </td>
+                        <td className="px-4 py-4">
+                          <div className="flex flex-wrap gap-1">
+                            {site.requiredTrainings.slice(0, 2).map((t) => (
+                              <span
+                                key={t}
+                                className="text-xs bg-[#f2f6f9] text-[#4c669a] border border-[#e7ebf3] px-2 py-0.5 rounded font-semibold"
+                              >
+                                {t.length > 12 ? t.slice(0, 10) + "…" : t}
+                              </span>
+                            ))}
+                            {site.requiredTrainings.length > 2 && (
+                              <span className="text-xs bg-[#f2f6f9] text-[#4c669a] border border-[#e7ebf3] px-2 py-0.5 rounded font-bold">
+                                +{site.requiredTrainings.length - 2}
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-4 py-4 text-sm font-semibold text-[#0d121b]">
+                          {site.assignmentCount}
+                        </td>
+                        <td className="px-4 py-4 min-w-[240px]">
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="font-bold text-[#0d121b]">
+                                {allocation.workedHours.toFixed(1)}h /{" "}
+                                {allocation.allocated.toFixed(1)}h
+                              </span>
+
+                              <span className="text-[#4c669a]">
+                                {site.allocationPeriod}
+                              </span>
+                            </div>
+
+                            {/* Progress bar */}
+                            <div
+                              className="w-full h-2.5 bg-[#edf2f7] rounded-full overflow-hidden relative group"
+                              title={
+                                allocation.isOvertime
+                                  ? `${allocation.overtime}h overtime`
+                                  : `${allocation.remaining}h remaining`
+                              }
                             >
-                              {t.length > 12 ? t.slice(0, 10) + "…" : t}
-                            </span>
-                          ))}
-                          {site.requiredTrainings.length > 2 && (
-                            <span className="text-xs bg-[#f2f6f9] text-[#4c669a] border border-[#e7ebf3] px-2 py-0.5 rounded font-bold">
-                              +{site.requiredTrainings.length - 2}
-                            </span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-4 py-4 text-sm font-semibold text-[#0d121b]">
-                        {site.assignmentCount}
-                      </td>
-                      <td className="px-4 py-4">
-                        <span
-                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold font-black uppercase tracking-wide ${COMPLIANCE_BADGE[site.overallStatus]}`}
-                        >
+                              <div
+                                className={`h-full rounded-full transition-all duration-500 ${
+                                  allocation.percentage >= 100
+                                    ? "bg-red-500"
+                                    : allocation.percentage >= 85
+                                      ? "bg-amber-500"
+                                      : "bg-green-500"
+                                }`}
+                                style={{
+                                  width: `${allocation.percentage}%`,
+                                }}
+                              />
+                            </div>
+
+                            {/* Bottom status */}
+                            <div className="flex items-center gap-2 text-xs">
+                              {allocation.isOvertime ? (
+                                <div className="flex items-center gap-1 text-red-600 font-bold">
+                                  <span className="material-symbols-outlined text-[16px]">
+                                    warning
+                                  </span>
+                                  {allocation.overtime}h overtime
+                                </div>
+                              ) : (
+                                <span className="text-[#4c669a]">
+                                  {allocation.remaining.toFixed(0)}h remaining
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-4 py-4">
                           <span
-                            className={`w-1.5 h-1.5 rounded-full ${site.overallStatus === "Compliant" ? "bg-green-500" : site.overallStatus === "Expiring" ? "bg-amber-400" : "bg-red-500"}`}
-                          />
-                          {site.overallStatus}
-                        </span>
-                      </td>
-                      <td className="px-5 py-4 text-right">
-                        <button
-                          onClick={() => onSelectSite(site.id)}
-                          className="text-[#4c669a] text-xs font-black capitalize tracking-wide transition-colors cursor-pointer"
-                        >
-                          View
-                        </button>
-                      </td>
-                    </tr>
-                  ))
+                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold font-black uppercase tracking-wide ${COMPLIANCE_BADGE[site.overallStatus]}`}
+                          >
+                            <span
+                              className={`w-1.5 h-1.5 rounded-full ${site.overallStatus === "Compliant" ? "bg-green-500" : site.overallStatus === "Expiring" ? "bg-amber-400" : "bg-red-500"}`}
+                            />
+                            {site.overallStatus}
+                          </span>
+                        </td>
+                        <td className="px-5 py-4 text-right">
+                          <button
+                            onClick={() => onSelectSite(site.id)}
+                            className="text-[#4c669a] text-xs font-black capitalize tracking-wide transition-colors cursor-pointer"
+                          >
+                            View
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>
@@ -703,7 +846,165 @@ const SitesList: React.FC<SitesListProps> = ({
                   )}
                 </div>
               </div>
+              <hr className="border-[#e7ebf3]" />
 
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <span className="material-symbols-outlined text-[18px] text-[#2e4150]">
+                    schedule
+                  </span>
+
+                  <h3 className="text-sm font-bold text-[#0d121b] uppercase tracking-wide">
+                    Working Time Allocation
+                  </h3>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-[#0d121b] mb-1">
+                      Allocation Period <span className="text-red-500">*</span>
+                    </label>
+
+                    <select
+                      value={form.allocationPeriod}
+                      onChange={(e) =>
+                        setField("allocationPeriod", e.target.value)
+                      }
+                      className={`w-full h-10 rounded-xl border px-3 text-sm text-[#0d121b] bg-white outline-none cursor-pointer ${
+                        formErrors.allocationPeriod
+                          ? "border-red-400"
+                          : "border-[#c7d2e0]"
+                      }`}
+                    >
+                      <option value="">Select period…</option>
+
+                      <option value="Weekly">Weekly</option>
+
+                      <option value="Monthly">Monthly</option>
+                    </select>
+
+                    {formErrors.allocationPeriod && (
+                      <p className="text-red-500 text-xs mt-1">
+                        {formErrors.allocationPeriod}
+                      </p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-[#0d121b] mb-1">
+                      Allocated Hours <span className="text-red-500">*</span>
+                    </label>
+
+                    <input
+                      type="number"
+                      placeholder="e.g. 120"
+                      value={form.allocatedHours}
+                      onChange={(e) =>
+                        setField("allocatedHours", e.target.value)
+                      }
+                      className={`w-full h-10 rounded-xl border px-3 text-sm text-[#0d121b] bg-white outline-none ${
+                        formErrors.allocatedHours
+                          ? "border-red-400"
+                          : "border-[#c7d2e0]"
+                      }`}
+                    />
+
+                    {formErrors.allocatedHours && (
+                      <p className="text-red-500 text-xs mt-1">
+                        {formErrors.allocatedHours}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="bg-[#f8fafc] border border-[#e7ebf3] rounded-xl p-3">
+                  <p className="text-xs text-[#4c669a] leading-5">
+                    This allocation will be used to compare actual cleaner
+                    working hours against allocated site hours in the Timesheet
+                    module.
+                  </p>
+                </div>
+              </div>
+              <hr className="border-[#e7ebf3]" />
+
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <span className="material-symbols-outlined text-[18px] text-[#2e4150]">
+                    fact_check
+                  </span>
+
+                  <h3 className="text-sm font-bold text-[#0d121b] uppercase tracking-wide">
+                    Inspection Schedule
+                  </h3>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-[#0d121b] mb-1">
+                      Inspection Frequency{" "}
+                      <span className="text-red-500">*</span>
+                    </label>
+
+                    <select
+                      value={form.inspectionFrequency}
+                      onChange={(e) =>
+                        setField("inspectionFrequency", e.target.value)
+                      }
+                      className={`w-full h-10 rounded-xl border px-3 text-sm text-[#0d121b] bg-white outline-none cursor-pointer ${
+                        formErrors.inspectionFrequency
+                          ? "border-red-400"
+                          : "border-[#c7d2e0]"
+                      }`}
+                    >
+                      <option value="">Select inspection frequency…</option>
+
+                      <option value="Weekly">Weekly</option>
+
+                      <option value="Monthly">Monthly</option>
+                    </select>
+
+                    {formErrors.inspectionFrequency && (
+                      <p className="text-red-500 text-xs mt-1">
+                        {formErrors.inspectionFrequency}
+                      </p>
+                    )}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-[#0d121b] mb-1">
+                      Alert Before (Days)
+                      <span className="text-red-500">*</span>
+                    </label>
+
+                    <input
+                      type="number"
+                      min={1}
+                      placeholder="e.g. 7"
+                      value={form.inspectionAlertDays}
+                      onChange={(e) =>
+                        setField("inspectionAlertDays", e.target.value)
+                      }
+                      className={`w-full h-10 rounded-xl border px-3 text-sm text-[#0d121b] bg-white outline-none ${
+                        formErrors.inspectionAlertDays
+                          ? "border-red-400"
+                          : "border-[#c7d2e0]"
+                      }`}
+                    />
+
+                    {formErrors.inspectionAlertDays && (
+                      <p className="text-red-500 text-xs mt-1">
+                        {formErrors.inspectionAlertDays}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="bg-[#f8fafc] border border-[#e7ebf3] rounded-xl p-3">
+                  <p className="text-xs text-[#4c669a] leading-5">
+                    This schedule determines how often site inspections should
+                    be completed for compliance monitoring.
+                  </p>
+                </div>
+              </div>
               <hr className="border-[#e7ebf3]" />
 
               {/* Section: Emergency & Access */}
@@ -806,6 +1107,132 @@ const SitesList: React.FC<SitesListProps> = ({
                     {form.requiredTrainings.length} training
                     {form.requiredTrainings.length > 1 ? "s" : ""} selected
                   </p>
+                )}
+              </div>
+
+              <hr className="border-[#e7ebf3]" />
+
+              {/* Section: Geo Fence */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <span className="material-symbols-outlined text-[18px] text-[#2e4150]">
+                    location_on
+                  </span>
+
+                  <h3 className="text-sm font-bold text-[#0d121b] uppercase tracking-wide">
+                    Geo Fence Attendance
+                  </h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.geolocation.getCurrentPosition((position) => {
+                      setField("latitude", position.coords.latitude);
+
+                      setField("longitude", position.coords.longitude);
+                    });
+                  }}
+                >
+                  Use Current Location
+                </button>
+
+                {/* Enable Toggle */}
+                <div className="flex items-center justify-between rounded-xl border border-[#e7ebf3] p-4 bg-[#fafbfd]">
+                  <div>
+                    <p className="text-sm font-semibold text-[#0d121b]">
+                      Enable Geo Fence
+                    </p>
+
+                    <p className="text-xs text-[#6b7a99] mt-1">
+                      Cleaners can only clock-in and clock-out inside this area.
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setField("geoFenceEnabled", !form.geoFenceEnabled)
+                    }
+                    className={`relative w-14 h-8 rounded-full transition-all ${
+                      form.geoFenceEnabled ? "bg-[#2e4150]" : "bg-[#dbe3ee]"
+                    }`}
+                  >
+                    <div
+                      className={`absolute top-1 w-6 h-6 rounded-full bg-white transition-all ${
+                        form.geoFenceEnabled ? "left-7" : "left-1"
+                      }`}
+                    />
+                  </button>
+                </div>
+
+                {form.geoFenceEnabled && (
+                  <div className="space-y-4">
+                    {/* Radius */}
+                    <div>
+                      <label className="block text-sm font-semibold text-[#0d121b] mb-1">
+                        Allowed Radius (Meters)
+                      </label>
+
+                      <input
+                        type="number"
+                        min={10}
+                        max={1000}
+                        value={form.geoFenceRadius}
+                        onChange={(e) =>
+                          setField("geoFenceRadius", e.target.value)
+                        }
+                        className="w-full h-10 rounded-xl border border-[#c7d2e0] px-3 text-sm text-[#0d121b] bg-white outline-none"
+                      />
+
+                      <p className="text-xs text-[#6b7a99] mt-1">
+                        Recommended: 100–200 meters
+                      </p>
+                    </div>
+
+                    {/* Coordinates Preview */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="bg-[#f8fafc] border border-[#e7ebf3] rounded-xl p-3">
+                        <p className="text-xs font-bold text-[#6b7a99] uppercase">
+                          Latitude
+                        </p>
+
+                        <p className="text-sm font-semibold text-[#0d121b] mt-1">
+                          {form.latitude || "Not Selected"}
+                        </p>
+                      </div>
+
+                      <div className="bg-[#f8fafc] border border-[#e7ebf3] rounded-xl p-3">
+                        <p className="text-xs font-bold text-[#6b7a99] uppercase">
+                          Longitude
+                        </p>
+
+                        <p className="text-sm font-semibold text-[#0d121b] mt-1">
+                          {form.longitude || "Not Selected"}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Map */}
+                    <div className="overflow-hidden rounded-2xl border border-[#e7ebf3]">
+                      <GeoFenceMap
+                        latitude={form.latitude || 19.2183}
+                        longitude={form.longitude || 72.9781}
+                        radius={Number(form.geoFenceRadius)}
+                        onChange={(lat, lng) => {
+                          setField("latitude", lat);
+                          setField("longitude", lng);
+                        }}
+                      />
+                    </div>
+
+                    <div className="bg-blue-50 border border-blue-200 rounded-xl p-3">
+                      <p className="text-xs text-blue-700 leading-5">
+                        Click anywhere on the map to set the attendance area.
+                        Cleaners will only be able to login/logout inside this
+                        radius.
+                      </p>
+                    </div>
+                  </div>
                 )}
               </div>
 

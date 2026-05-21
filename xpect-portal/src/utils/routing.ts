@@ -21,6 +21,11 @@ const URL_TO_VIEW: Record<string, AppView> = {
   "/thank-you": "THANK_YOU",
   "/audit": "DASHBOARD",
   "/access-denied": "ACCESS_DENIED",
+  "/attendance": "ATTENDANCE",
+  "/attendance/dashboard": "ATTENDANCE",
+  "/attendance/admin": "ATTENDANCE",
+  "/attendance/employee": "ATTENDANCE",
+  "/attendance/regularization": "ATTENDANCE",
 };
 
 // View to URL mapping
@@ -239,6 +244,11 @@ export const getViewFromUrl = (pathname: string) => {
       return { view: "ONBOARDING", params: { token } };
     }
     return { view: "ONBOARDING" };
+  }
+
+  // Attendance routes
+  if (normalizedPath.startsWith("/attendance")) {
+    return { view: "ATTENDANCE" };
   }
 
   // lookup

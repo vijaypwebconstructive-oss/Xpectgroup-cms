@@ -437,22 +437,25 @@ const ClientsList: React.FC<ClientsListProps> = ({ onSelectClient }) => {
               <thead>
                 <tr className="border-b border-[#e7ebf3] bg-[#f8fafc]">
                   <th className="text-left px-5 py-3 text-xs font-bold text-[#4c669a] uppercase tracking-wide">
-                    Client Company Name
+                    Client Name
                   </th>
                   <th className="text-left px-4 py-3 text-xs font-bold text-[#4c669a] uppercase tracking-wide">
-                    Industry Type
+                    Industry
                   </th>
                   <th className="text-left px-4 py-3 text-xs font-bold text-[#4c669a] uppercase tracking-wide">
                     Total Sites
                   </th>
                   <th className="text-left px-4 py-3 text-xs font-bold text-[#4c669a] uppercase tracking-wide">
-                    Active Workers
+                    Cleaners
+                  </th>
+                  <th className="text-left px-4 py-3 text-xs font-bold text-[#4c669a] uppercase tracking-wide">
+                    Contract Start
                   </th>
                   <th className="text-left px-4 py-3 text-xs font-bold text-[#4c669a] uppercase tracking-wide">
                     Contract End
                   </th>
                   <th className="text-left px-4 py-3 text-xs font-bold text-[#4c669a] uppercase tracking-wide">
-                    Compliance Status
+                    Status
                   </th>
                   <th className="text-right px-5 py-3 text-xs font-bold text-[#4c669a] uppercase tracking-wide">
                     Action
@@ -493,6 +496,9 @@ const ClientsList: React.FC<ClientsListProps> = ({ onSelectClient }) => {
                       </td>
                       <td className="px-4 py-4 text-sm font-semibold text-[#0d121b]">
                         {c.workerCount}
+                      </td>
+                      <td className="px-4 py-4 text-sm font-semibold text-[#0d121b] whitespace-nowrap">
+                        {formatDate(c.contractStart)}
                       </td>
                       <td className="px-4 py-4 text-sm font-semibold text-[#0d121b] whitespace-nowrap">
                         {formatDate(c.contractEnd)}
@@ -576,11 +582,11 @@ const ClientsList: React.FC<ClientsListProps> = ({ onSelectClient }) => {
 
                 <div>
                   <label className="block text-sm font-semibold text-[#0d121b] mb-1">
-                    Company Name <span className="text-red-500">*</span>
+                    Client Name <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
-                    placeholder="Enter company name"
+                    placeholder="Enter name"
                     value={form.name}
                     onChange={(e) => setField("name", e.target.value)}
                     className={`w-full h-10 rounded-xl border px-3 text-sm text-[#0d121b] bg-white outline-none ${formErrors.name ? "border-red-400" : "border-[#c7d2e0]"}`}
@@ -829,12 +835,12 @@ const ClientsList: React.FC<ClientsListProps> = ({ onSelectClient }) => {
                     "assignment_late",
                   )}
                   {docField("SLA Document", "slaDocument", "handshake")}
-                  {docField(
+                  {/* {docField(
                     "Health & Safety Policy",
                     "healthSafety",
                     "health_and_safety",
                   )}
-                  {docField("GDPR / Data Agreement", "gdprAgreement", "shield")}
+                  {docField("GDPR / Data Agreement", "gdprAgreement", "shield")} */}
                 </div>
               </div>
               <hr className="border-[#e7ebf3]" />

@@ -1,55 +1,72 @@
-import mongoose from 'mongoose';
-import { randomUUID } from 'crypto';
+import mongoose from "mongoose";
+import { randomUUID } from "crypto";
 
-const InvitationSchema = new mongoose.Schema({
-  id: { 
-    type: String, 
-    required: true, 
-    unique: true,
-    default: () => randomUUID()
+const InvitationSchema = new mongoose.Schema(
+  {
+    id: {
+      type: String,
+      required: true,
+      unique: true,
+      default: () => randomUUID(),
+    },
+    employeeName: {
+      type: String,
+      required: true,
+    },
+    email: {
+      type: String,
+      required: true,
+      lowercase: true,
+      trim: true,
+    },
+    inviteToken: {
+      type: String,
+      required: true,
+      unique: true,
+      default: () => randomUUID(),
+    },
+    otp: {
+      type: String,
+      required: false,
+    },
+    otpExpiresAt: {
+      type: Date,
+      required: false,
+    },
+    status: {
+      type: String,
+      enum: ["SENT", "VERIFIED", "PENDING", "COMPLETED", "EXPIRED"],
+      default: "SENT",
+      required: true,
+    },
+    onboardingProgress: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 100,
+    },
+    reminderCount: {
+      type: Number,
+      default: 0,
+    },
+
+    lastReminderSentAt: {
+      type: Date,
+      default: null,
+    },
+
+    lastActivityAt: {
+      type: Date,
+      default: Date.now,
+    },
+    verifiedAt: {
+      type: Date,
+    },
   },
-  employeeName: { 
-    type: String, 
-    required: true 
+  {
+    timestamps: true,
   },
-  email: { 
-    type: String, 
-    required: true,
-    lowercase: true,
-    trim: true
-  },
-  inviteToken: { 
-    type: String, 
-    required: true, 
-    unique: true,
-    default: () => randomUUID()
-  },
-  otp: { 
-    type: String,
-    required: false
-  },
-  otpExpiresAt: { 
-    type: Date,
-    required: false
-  },
-  status: { 
-    type: String, 
-    enum: ['SENT', 'VERIFIED', 'PENDING', 'COMPLETED', 'EXPIRED'],
-    default: 'SENT',
-    required: true 
-  },
-  onboardingProgress: { 
-    type: Number, 
-    default: 0,
-    min: 0,
-    max: 100
-  },
-  verifiedAt: { 
-    type: Date 
-  }
-}, {
-  timestamps: true
-});
+);
 
 // Indexes for better query performance
 // id and inviteToken indexes are already created by unique:true on the field definition
@@ -58,7 +75,7 @@ InvitationSchema.index({ status: 1 });
 InvitationSchema.index({ createdAt: -1 });
 
 // Method to check if OTP is valid
-InvitationSchema.methods.isOtpValid = function() {
+InvitationSchema.methods.isOtpValid = function () {
   if (!this.otp || !this.otpExpiresAt) {
     return false;
   }
@@ -66,12 +83,12 @@ InvitationSchema.methods.isOtpValid = function() {
 };
 
 // Method to check if invitation is expired (30 days)
-InvitationSchema.methods.isExpired = function() {
+InvitationSchema.methods.isExpired = function () {
   const thirtyDaysAgo = new Date();
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-  return this.createdAt < thirtyDaysAgo && this.status !== 'COMPLETED';
+  return this.createdAt < thirtyDaysAgo && this.status !== "COMPLETED";
 };
 
-const Invitation = mongoose.model('Invitation', InvitationSchema);
+const Invitation = mongoose.model("Invitation", InvitationSchema);
 
 export default Invitation;

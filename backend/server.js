@@ -6,6 +6,7 @@ import mongoose from "mongoose";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 import cors from "cors";
 import dotenv from "dotenv";
+import "./cron/onboardingReminderCron.js";
 dotenv.config();
 import cleanerRoutes from "./routes/cleaners.js";
 import documentRoutes from "./routes/documents.js";
@@ -26,7 +27,9 @@ import invoiceSettingsRoutes from "./routes/invoiceSettings.js";
 import prospectsRoutes from "./routes/prospects.js";
 import inspectionRoutes from "./routes/inspectionRoutes.js";
 import performanceRoutes from "./routes/performanceRoutes.js";
+import attendanceRegularizationRoutes from "./routes/attendanceRegularization.js";
 import authRoutes from "./routes/auth.js";
+import timesheetRoutes from "./routes/timesheets.js";
 import { authenticate } from "./middleware/auth.js";
 import { allowModule } from "./middleware/rbac.js";
 
@@ -70,6 +73,7 @@ app.use("/api/activity", activityRoutes);
 app.use("/api/training", trainingRoutes);
 app.use("/api/ppe", ppeRoutes);
 app.use("/api/risk-coshh", riskCoshhRoutes);
+app.use("/api/attendance-regularization", attendanceRegularizationRoutes);
 app.use("/api/clients-sites", clientsSitesRoutes);
 app.use("/api/policy-documents", policyDocumentsRoutes);
 app.use("/api/incidents", incidentsRoutes);
@@ -82,6 +86,7 @@ app.use("/api/prospects", prospectsRoutes);
 app.use("/api/inspections", inspectionRoutes);
 app.use("/uploads", express.static("uploads"));
 app.use("/api/performance", performanceRoutes);
+app.use("/api/timesheets", timesheetRoutes);
 // ✅ Serve frontend (React build)
 // app.use(express.static(path.join(__dirname, "../public_html")));
 

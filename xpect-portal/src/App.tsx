@@ -22,6 +22,7 @@ import AdminLayout from "./components/AdminLayout";
 import EmployeeLayout from "./components/EmployeeLayout";
 import EmployeeRouteGuard from "./components/EmployeeRouteGuard";
 import { useCleaners } from "./context/CleanersContext";
+import AttendanceModule from "./modules/attendance/AttendanceModule";
 import {
   getViewFromUrl,
   getUrlForView,
@@ -36,6 +37,9 @@ import AccessDenied from "./views/AccessDenied";
 import Login from "./views/Login";
 import { useCurrentUser } from "./hook/useCurrentUser";
 import api from "./services/api";
+import "leaflet/dist/leaflet.css";
+import "leaflet-geosearch/dist/geosearch.css";
+// import AttendanceModule from "./modules/attendance/AttendanceModule";
 const getDefaultView = (user: any): AppView => {
   if (!user) return "DASHBOARD";
 
@@ -303,6 +307,7 @@ const App: React.FC = () => {
     if (currentView === "USER_ACCESS") return;
     if (currentView === "ACCESS_DENIED") return;
     if (currentView === "PPE_LIST") return;
+    if (currentView === "ATTENDANCE") return;
 
     const url = getUrlForView(currentView, {
       inviteToken: onboardingInviteToken || undefined,
@@ -386,6 +391,7 @@ const App: React.FC = () => {
     if (view === "USER_ACCESS") return;
     if (view === "ACCESS_DENIED") return;
     if (view === "PPE_LIST") return;
+    if (view === "ATTENDANCE") return;
 
     // Update URL based on view and cleaner (if applicable)
     const url = getUrlForView(view, {
@@ -526,6 +532,8 @@ const App: React.FC = () => {
       >
         {(() => {
           switch (currentView) {
+            case "ATTENDANCE":
+              return <AttendanceModule />;
             case "ACCESS_DENIED":
               return <AccessDenied onNavigate={navigateTo} />;
             case "DASHBOARD":
@@ -533,6 +541,8 @@ const App: React.FC = () => {
                 return <AccessDenied onNavigate={navigateTo} />;
               }
               return <ComplianceDashboardView onNavigate={navigateTo} />;
+            // case "ATTENDANCE":
+            //   return <AttendanceModule />;
             case "EMPLOYEE_COMPLIANCE":
               return <EmployeeCompliance onNavigate={navigateTo} />;
             case "TRAINING_CERTIFICATION":
@@ -639,11 +649,31 @@ const App: React.FC = () => {
   // }
 
   useEffect(() => {
-    if (!token && currentView !== "LOGIN") {
+    const pathname = window.location.pathname;
+
+    // PUBLIC ROUTES
+    const isOnboardingAuthRoute = pathname.startsWith("/onboarding/auth");
+
+    const isOnboardingRoute = pathname === "/onboarding";
+
+    const isThankYouRoute = pathname === "/thank-you";
+
+    const isPublicRoute =
+      isOnboardingAuthRoute || isOnboardingRoute || isThankYouRoute;
+
+    // If public onboarding route → allow access
+    if (isPublicRoute) {
+      return;
+    }
+
+    // All other routes require admin auth
+    if (!token) {
       setCurrentView("LOGIN");
+
       navigateToUrl("/login", true);
     }
-  }, [token, currentView]);
+  }, [token]);
+
   if (loading) {
     return (
       <div className="h-screen flex items-center justify-center bg-white">
