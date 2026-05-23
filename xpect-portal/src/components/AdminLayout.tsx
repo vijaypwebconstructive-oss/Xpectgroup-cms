@@ -236,12 +236,6 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
 
     return () => clearInterval(interval);
   }, []);
-  // const canMod = (key: ModuleKey) =>
-  //   user ? canAccessModule(user, key) : false;
-
-  // if (!user) {
-  //   return <div>Loading...</div>;
-  // }
 
   const handleLogout = () => {
     // remove auth data
@@ -486,8 +480,23 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
                     <button
                       key={view}
                       onClick={() => {
-                        onNavigate("ATTENDANCE");
                         attendanceNavigate(view as AttendanceView);
+                        switch (view) {
+                          case "admin-attendance":
+                            onNavigate("ADMIN_ATTENDANCE");
+                            break;
+
+                          case "employee-attendance":
+                            onNavigate("EMPLOYEE_ATTENDANCE");
+                            break;
+
+                          case "regularization":
+                            onNavigate("REGULARIZATION");
+                            break;
+
+                          default:
+                            onNavigate("ADMIN_ATTENDANCE");
+                        }
                       }}
                       className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all cursor-pointer ${
                         currentView === "ATTENDANCE" &&
@@ -583,7 +592,30 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
                         setActiveCSView(csView);
 
                         // 2. Tell App.tsx to render ClientSitesModule if not already
-                        onNavigate("CLIENTS_SITES");
+                        switch (csView) {
+                          case "clients":
+                            onNavigate("CLIENTS_SITES");
+                            break;
+
+                          case "sites":
+                            onNavigate("SITES");
+                            break;
+
+                          case "allocation":
+                            onNavigate("SITE_ALLOCATION");
+                            break;
+
+                          case "inspection":
+                            onNavigate("INSPECTION");
+                            break;
+
+                          case "PPE_LIST":
+                            onNavigate("PPE");
+                            break;
+
+                          default:
+                            onNavigate("CLIENTS_SITES");
+                        }
                       }}
                       className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all cursor-pointer ${
                         currentView === "CLIENTS_SITES" &&

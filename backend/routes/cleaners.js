@@ -335,7 +335,7 @@ router.post("/", async (req, res) => {
       email: cleaner.email,
       passwordHash,
       role: "Default",
-      modules: ["timesheet"],
+      modules: ["employee attendance"],
       cleanerId: cleaner.id,
     });
 

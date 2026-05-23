@@ -240,7 +240,7 @@ const SiteDetail: React.FC<SiteDetailProps> = ({ siteId, onBack }) => {
   );
 
   return (
-    <div className="flex-1 flex flex-col bg-[#f6f7fb] min-h-screen">
+    <div className="flex-1 flex flex-col bg-[#f6f7fb] min-h-screen sm:p-10 px-6 py-4">
       {/* Page header */}
       <div className=" p-0">
         <button

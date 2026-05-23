@@ -375,7 +375,17 @@ const SitesList: React.FC<SitesListProps> = ({
   });
 
   return (
-    <div className="space-y-6 sm:w-full sm:max-w-full">
+    <div className="space-y-6 sm:w-full sm:max-w-full sm:p-10 py-4 px-6">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex flex-col gap-1">
+          <h1 className="text-[#0d121b] text-[1.6rem] sm:text-2xl font-bold font-black">
+            Site Management
+          </h1>
+          <p className="text-[#4c669a] text-base">
+            Manage clients, work sites, and worker compliance allocations.
+          </p>
+        </div>
+      </div>
       {/* Success toast */}
       {successMsg && (
         <div className="flex items-center gap-3 bg-green-50 border border-green-200 rounded-xl px-4 py-3 duration-300">

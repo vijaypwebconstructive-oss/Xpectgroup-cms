@@ -30,7 +30,7 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 function loadStoredUser(): AuthUser | null {
   try {
-    const raw = localStorage.getItem(STORAGE_USER_KEY);
+    const raw = localStorage.getItem("xpect_user");
     if (!raw) return null;
     const parsed = JSON.parse(raw) as AuthUser;
     if (parsed?.id && parsed?.role) return parsed;

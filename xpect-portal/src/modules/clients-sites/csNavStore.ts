@@ -15,15 +15,15 @@
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export type CSView =
-  | 'clients'
-  | 'client-detail'
-  | 'sites'
-  | 'site-detail'
-  | 'allocation'
-  | 'inspection'
-  | 'inspection-detail'
-  | 'inspection-create'
-  | 'PPE_LIST';
+  | "clients"
+  | "client-detail"
+  | "sites"
+  | "site-detail"
+  | "allocation"
+  | "inspection"
+  | "inspection-detail"
+  | "inspection-create"
+  | "PPE_LIST";
 
 export interface CSState {
   view: CSView;
@@ -36,69 +36,72 @@ type Listener = (state: CSState) => void;
 // ── URL → State parser ────────────────────────────────────────────────────────
 
 export const parsePathname = (pathname: string): CSState => {
-
-// clients
-if (pathname === '/clients') return { view: 'clients', id: null };
+  // clients
+  if (pathname === "/clients") return { view: "clients", id: null };
 
   // /clients/:id
   const clientDetail = pathname.match(/^\/clients\/([^/]+)$/);
-  if (clientDetail) return { view: 'client-detail', id: clientDetail[1] };
+  if (clientDetail) return { view: "client-detail", id: clientDetail[1] };
 
   // /sites/:id
   const siteDetail = pathname.match(/^\/sites\/([^/]+)$/);
-  if (siteDetail) return { view: 'site-detail', id: siteDetail[1] };
+  if (siteDetail) return { view: "site-detail", id: siteDetail[1] };
 
   // /site-allocation
-  if (pathname === '/site-allocation') return { view: 'allocation', id: null };
-
+  if (pathname === "/site-allocation") return { view: "allocation", id: null };
 
   // /sites
-  if (pathname.startsWith('/sites')) return { view: 'sites', id: null };
+  if (pathname.startsWith("/sites")) return { view: "sites", id: null };
 
   //inspection
-  if(pathname === '/inspection') return {view:"inspection", id:null};
+  if (pathname === "/inspection") return { view: "inspection", id: null };
   console.log(window.location.pathname);
-  //inspection create 
+  //inspection create
 
-  if(pathname === '/create-inspection') return {view:"inspection-create", id:null};
-//PPE list
-if (pathname === '/PPE') return { view: 'PPE_LIST', id: null };
+  if (pathname === "/create-inspection")
+    return { view: "inspection-create", id: null };
+  //PPE list
+  if (pathname === "/PPE") return { view: "PPE_LIST", id: null };
 
-
-  if (pathname === '/inspectionDetail') {
-    return { view: 'inspection-detail', id: null };
+  if (pathname === "/inspectionDetail") {
+    return { view: "inspection-detail", id: null };
   }
 
-
-
-
-
   // /clients (default / fallback)
-  return { view: 'clients', id: null };
+  return { view: "clients", id: null };
 };
 
 // ── State → URL builder ───────────────────────────────────────────────────────
 
 export const buildPathname = (state: CSState): string => {
   switch (state.view) {
-    case 'client-detail': return state.id ? `/clients/${state.id}` : '/clients';
-    case 'sites':         return '/sites';
-    case 'site-detail':   return state.id ? `/sites/${state.id}` : '/sites';
-    case 'allocation':    return '/site-allocation';
-    case 'inspection' : return '/inspection';
-    case "inspection-detail":  return '/inspectionDetail';
-    case "inspection-create" : return '/create-inspection';
-    case "PPE_LIST": return '/PPE';
-    case 'clients':
-    
-    default:              return '/clients';
+    case "client-detail":
+      return state.id ? `/clients/${state.id}` : "/clients";
+    case "sites":
+      return "/sites";
+    case "site-detail":
+      return state.id ? `/sites/${state.id}` : "/sites";
+    case "allocation":
+      return "/site-allocation";
+    case "inspection":
+      return "/inspection";
+    case "inspection-detail":
+      return "/inspectionDetail";
+    case "inspection-create":
+      return "/create-inspection";
+    case "PPE_LIST":
+      return "/PPE";
+    case "clients":
+
+    default:
+      return "/clients";
   }
 };
 
 // ── Store ─────────────────────────────────────────────────────────────────────
 
 let _state: CSState = parsePathname(
-  typeof window !== 'undefined' ? window.location.pathname : '/clients'
+  typeof window !== "undefined" ? window.location.pathname : "/clients",
 );
 
 const _listeners = new Set<Listener>();
@@ -114,7 +117,7 @@ export const subscribe = (listener: Listener): (() => void) => {
 
 const _notify = () => {
   const snap = getState();
-  _listeners.forEach(fn => fn(snap));
+  _listeners.forEach((fn) => fn(snap));
 };
 
 /**
@@ -123,15 +126,19 @@ const _notify = () => {
  * Does NOT dispatch a popstate event — we use our own subscriber pattern
  * to avoid re-triggering App.tsx's top-level popstate handler.
  */
-export const csNavigate = (view: CSView, id?: string, replace = false): void => {
+export const csNavigate = (
+  view: CSView,
+  id?: string,
+  replace = false,
+): void => {
   const next: CSState = { view, id: id ?? null };
   _state = next;
 
   const path = buildPathname(next);
   if (replace) {
-    window.history.replaceState({ csView: view, csId: id ?? null }, '', path);
+    window.history.replaceState({ csView: view, csId: id ?? null }, "", path);
   } else {
-    window.history.pushState({ csView: view, csId: id ?? null }, '', path);
+    window.history.pushState({ csView: view, csId: id ?? null }, "", path);
   }
 
   _notify();
@@ -151,6 +158,13 @@ export const syncFromPathname = (pathname: string): void => {
 // ── Legacy pending-page API (kept for AdminLayout compatibility) ───────────────
 // The sidebar still calls setPendingPage; ClientSitesModule ignores it now
 // because it reads the URL directly on mount.
-export type CSPage = 'clients-list' | 'client-detail' | 'sites-list' | 'site-detail' | 'site-allocation';
-export const setPendingPage = (_page: CSPage): void => { /* no-op — URL is the source of truth */ };
+export type CSPage =
+  | "clients-list"
+  | "client-detail"
+  | "sites-list"
+  | "site-detail"
+  | "site-allocation";
+export const setPendingPage = (_page: CSPage): void => {
+  /* no-op — URL is the source of truth */
+};
 export const consumePendingPage = (): CSPage | null => null;

@@ -21,25 +21,27 @@ const URL_TO_VIEW: Record<string, AppView> = {
   "/thank-you": "THANK_YOU",
   "/audit": "DASHBOARD",
   "/access-denied": "ACCESS_DENIED",
-  "/attendance": "ATTENDANCE",
-  "/attendance/dashboard": "ATTENDANCE",
-  "/attendance/admin": "ATTENDANCE",
-  "/attendance/employee": "ATTENDANCE",
-  "/attendance/regularization": "ATTENDANCE",
 };
 
 // View to URL mapping
 const VIEW_TO_URL: Record<AppView, string> = {
   DASHBOARD: "/dashboard",
-  EMPLOYEE_COMPLIANCE: "/compliance",
+  EMPLOYEE_COMPLIANCE: "/staff",
   TRAINING_CERTIFICATION: "/training",
   TRAINING_DETAIL: "/training/record",
-  PPE_LIST: "/ppe",
   CLIENTS_SITES: "/clients",
+  SITES: "/sites",
+  SITE_ALLOCATION: "/site-allocation",
+  INSPECTION: "/inspection",
+  INSPECTION_DETAIL: "/inspectionDetail",
+  ADMIN_ATTENDANCE: "/attendance/admin",
+  EMPLOYEE_ATTENDANCE: "/attendance/employee",
+  REGULARIZATION: "/attendance/regularization",
   DOCUMENT_CONTROL: "/documents",
   RISK_COSHH: "/risk",
   INCIDENTS: "/incidents",
   FINANCE: "/finance-management",
+  PPE: "/ppe",
   USER_ACCESS: "/users",
   CLEANERS_LIST: "/staff",
   CLEANER_DETAIL: "/staff", // Will be appended with firstName
@@ -65,137 +67,130 @@ export const createNameSlug = (name: string): string => {
 };
 
 // Parse URL to determine view and extract parameters
-// export const getViewFromUrl = (
-//   pathname: string,
-// ): {
-//   view: AppView;
-//   params?: { token?: string; firstName?: string; traineeId?: string };
-// } => {
-//   const normalizedPath = pathname
-//     .replace(/^\/+/, "/") // remove extra leading slashes
-//     .replace(/\/+$/, "");
+export const getViewFromUrl = (
+  pathname: string,
+): {
+  view: AppView;
+  params?: { token?: string; firstName?: string; traineeId?: string };
+} => {
+  const normalizedPath = pathname
+    .replace(/^\/+/, "/") // remove extra leading slashes
+    .replace(/\/+$/, "");
 
-//   // Training sub-routes (most specific first)
-//   if (normalizedPath.startsWith("/training/record/")) {
-//     const id = pathname.split("/")[3];
-//     return { view: "TRAINING_DETAIL", params: { traineeId: id } };
-//   }
-//   if (normalizedPath.startsWith("/training")) {
-//     return { view: "TRAINING_CERTIFICATION" };
-//   }
+  // Training sub-routes (most specific first)
+  if (normalizedPath.startsWith("/training/record/")) {
+    const id = pathname.split("/")[3];
+    return { view: "TRAINING_DETAIL", params: { traineeId: id } };
+  }
+  if (normalizedPath.startsWith("/training")) {
+    return { view: "TRAINING_CERTIFICATION" };
+  }
 
-//   // PPE sub-routes all resolve to PPE_LIST (internal routing handled by PPEModule)
-//   if (normalizedPath.startsWith("/ppe")) {
-//     return { view: "PPE_LIST" };
-//   }
+  console.log("normalizedPath", normalizedPath);
 
-//   // Client & Sites sub-routes all resolve to CLIENTS_SITES
-//   // (internal routing handled by ClientSitesModule + csNavStore)
-//   if (
-//     normalizedPath.startsWith("/clients") ||
-//     normalizedPath.startsWith("/sites") ||
-//     normalizedPath === "/site-allocation"
-//   ) {
-//     return { view: "CLIENTS_SITES" };
-//   }
+  // PPE sub-routes all resolve to PPE_LIST (internal routing handled by PPEModule)
 
-//   // User Access sub-routes all resolve to USER_ACCESS
-//   // (internal routing handled by UserAccessModule + userNavStore)
-//   if (normalizedPath.startsWith("/users")) {
-//     return { view: "USER_ACCESS" };
-//   }
+  // Client & Sites sub-routes all resolve to CLIENTS_SITES
+  // (internal routing handled by ClientSitesModule + csNavStore)
+  if (normalizedPath.startsWith("/clients")) {
+    return { view: "CLIENTS_SITES" };
+  }
 
-//   // Document Control sub-routes all resolve to DOCUMENT_CONTROL
-//   // (internal routing handled by DocumentControlModule + docNavStore)
-//   if (normalizedPath.startsWith("/documents")) {
-//     return { view: "DOCUMENT_CONTROL" };
-//   }
+  // if (normalizedPath.startsWith("/sites")) {
+  //   return { view: "SITES" };
+  // }
 
-//   // Risk Assessment & COSHH sub-routes all resolve to RISK_COSHH
-//   // (internal routing handled by RiskCoshhModule + riskNavStore)
-//   if (normalizedPath.startsWith("/risk")) {
-//     return { view: "RISK_COSHH" };
-//   }
+  // Site detail route FIRST
+  const siteDetailMatch = normalizedPath.match(/^\/sites\/([^\/]+)$/);
 
-//   // Incidents sub-routes all resolve to INCIDENTS
-//   // (internal routing handled by IncidentsModule + incidentNavStore)
-//   if (normalizedPath.startsWith("/incidents")) {
-//     return { view: "INCIDENTS" };
-//   }
+  if (siteDetailMatch) {
+    return {
+      view: "SITE_DETAIL",
+      params: {
+        siteId: siteDetailMatch[1],
+      },
+    };
+  }
 
-//   // Prospect routes resolve to FINANCE (Prospect lives in Finance secondary sidebar)
-//   if (normalizedPath.startsWith("/prospects")) {
-//     return { view: "FINANCE" };
-//   }
+  // Plain sites list
+  if (normalizedPath === "/sites") {
+    return {
+      view: "SITES",
+    };
+  }
 
-//   // Finance module - /finance-management and /finance (legacy) both resolve to FINANCE
-//   if (
-//     normalizedPath.startsWith("/finance-management") ||
-//     normalizedPath.startsWith("/finance")
-//   ) {
-//     return { view: "FINANCE" };
-//   }
+  if (normalizedPath.startsWith("/site-allocation")) {
+    return { view: "SITE_ALLOCATION" };
+  }
 
-//   // Dashboard (also supports legacy /audit)
-//   if (normalizedPath.startsWith("/audit")) {
-//     return { view: "DASHBOARD" };
-//   }
+  if (normalizedPath.startsWith("/inspectionDetail")) {
+    return { view: "INSPECTION_DETAIL" };
+  }
 
-//   // Check for onboarding auth route: /onboarding/auth/:token
-//   const authMatch = pathname.match(/^\/onboarding\/auth\/([^\/]+)\/?$/);
-//   if (authMatch) {
-//     return {
-//       view: "ONBOARDING_AUTH",
-//       params: { token: authMatch[1] },
-//     };
-//   }
+  if (normalizedPath.startsWith("/inspection")) {
+    return { view: "INSPECTION" };
+  }
 
-//   // Check for cleaner detail route: /staff/:firstName
-//   const cleanerDetailMatch = pathname.match(/^\/staff\/([^\/]+)$/);
-//   if (cleanerDetailMatch) {
-//     return {
-//       view: "CLEANER_DETAIL",
-//       params: { firstName: cleanerDetailMatch[1] },
-//     };
-//   }
+  if (normalizedPath.startsWith("/ppe")) {
+    return { view: "PPE" };
+  }
+  // attendance
+  if (normalizedPath.startsWith("/attendance/admin")) {
+    return { view: "ADMIN_ATTENDANCE" };
+  }
 
-//   // Check for report route: /staff/:firstName/report
-//   const reportMatch = pathname.match(/^\/staff\/([^\/]+)\/report$/);
-//   if (reportMatch) {
-//     return {
-//       view: "REPORT",
-//       params: { firstName: reportMatch[1] },
-//     };
-//   }
+  if (normalizedPath.startsWith("/attendance/employee")) {
+    return { view: "EMPLOYEE_ATTENDANCE" };
+  }
 
-//   // Check for onboarding with token: /onboarding?token=...
-//   if (pathname === "/onboarding") {
-//     const urlParams = new URLSearchParams(window.location.search);
-//     const token = urlParams.get("token");
-//     if (token) {
-//       return {
-//         view: "ONBOARDING",
-//         params: { token },
-//       };
-//     }
-//     return { view: "ONBOARDING" };
-//   }
+  if (normalizedPath.startsWith("/attendance/regularization")) {
+    return { view: "REGULARIZATION" };
+  }
 
-//   // Check standard routes
-//   const view = URL_TO_VIEW[pathname];
-//   if (view) {
-//     return { view };
-//   }
+  // User Access sub-routes all resolve to USER_ACCESS
+  // (internal routing handled by UserAccessModule + userNavStore)
+  if (normalizedPath.startsWith("/users")) {
+    return { view: "USER_ACCESS" };
+  }
 
-//   // Default to dashboard
-//   return { view: "DASHBOARD" };
-// };
+  // Document Control sub-routes all resolve to DOCUMENT_CONTROL
+  // (internal routing handled by DocumentControlModule + docNavStore)
+  if (normalizedPath.startsWith("/documents")) {
+    return { view: "DOCUMENT_CONTROL" };
+  }
 
-export const getViewFromUrl = (pathname: string) => {
-  const normalizedPath = pathname.replace(/^\/+/, "/").replace(/\/+$/, "");
+  // Risk Assessment & COSHH sub-routes all resolve to RISK_COSHH
+  // (internal routing handled by RiskCoshhModule + riskNavStore)
+  if (normalizedPath.startsWith("/risk")) {
+    return { view: "RISK_COSHH" };
+  }
 
-  // ✅ onboarding auth FIRST
-  const authMatch = normalizedPath.match(/^\/onboarding\/auth\/([^\/]+)$/);
+  // Incidents sub-routes all resolve to INCIDENTS
+  // (internal routing handled by IncidentsModule + incidentNavStore)
+  if (normalizedPath.startsWith("/incidents")) {
+    return { view: "INCIDENTS" };
+  }
+
+  // Prospect routes resolve to FINANCE (Prospect lives in Finance secondary sidebar)
+  if (normalizedPath.startsWith("/prospects")) {
+    return { view: "FINANCE" };
+  }
+
+  // Finance module - /finance-management and /finance (legacy) both resolve to FINANCE
+  if (
+    normalizedPath.startsWith("/finance-management") ||
+    normalizedPath.startsWith("/finance")
+  ) {
+    return { view: "FINANCE" };
+  }
+
+  // Dashboard (also supports legacy /audit)
+  if (normalizedPath.startsWith("/audit")) {
+    return { view: "DASHBOARD" };
+  }
+
+  // Check for onboarding auth route: /onboarding/auth/:token
+  const authMatch = pathname.match(/^\/onboarding\/auth\/([^\/]+)\/?$/);
   if (authMatch) {
     return {
       view: "ONBOARDING_AUTH",
@@ -203,32 +198,8 @@ export const getViewFromUrl = (pathname: string) => {
     };
   }
 
-  // training
-  if (normalizedPath.startsWith("/training/record/")) {
-    const id = normalizedPath.split("/")[3];
-    return { view: "TRAINING_DETAIL", params: { traineeId: id } };
-  }
-
-  if (normalizedPath.startsWith("/training")) {
-    return { view: "TRAINING_CERTIFICATION" };
-  }
-
-  // PPE
-  if (normalizedPath.startsWith("/ppe")) {
-    return { view: "PPE_LIST" };
-  }
-
-  // REPORT FIRST
-  const reportMatch = normalizedPath.match(/^\/staff\/([^\/]+)\/report$/);
-  if (reportMatch) {
-    return {
-      view: "REPORT",
-      params: { firstName: reportMatch[1] },
-    };
-  }
-
-  // THEN cleaner
-  const cleanerDetailMatch = normalizedPath.match(/^\/staff\/([^\/]+)$/);
+  // Check for cleaner detail route: /staff/:firstName
+  const cleanerDetailMatch = pathname.match(/^\/staff\/([^\/]+)$/);
   if (cleanerDetailMatch) {
     return {
       view: "CLEANER_DETAIL",
@@ -236,29 +207,101 @@ export const getViewFromUrl = (pathname: string) => {
     };
   }
 
-  // onboarding query
-  if (normalizedPath === "/onboarding") {
+  // Check for report route: /staff/:firstName/report
+  const reportMatch = pathname.match(/^\/staff\/([^\/]+)\/report$/);
+  if (reportMatch) {
+    return {
+      view: "REPORT",
+      params: { firstName: reportMatch[1] },
+    };
+  }
+
+  // Check for onboarding with token: /onboarding?token=...
+  if (pathname === "/onboarding") {
     const urlParams = new URLSearchParams(window.location.search);
     const token = urlParams.get("token");
     if (token) {
-      return { view: "ONBOARDING", params: { token } };
+      return {
+        view: "ONBOARDING",
+        params: { token },
+      };
     }
     return { view: "ONBOARDING" };
   }
 
-  // Attendance routes
-  if (normalizedPath.startsWith("/attendance")) {
-    return { view: "ATTENDANCE" };
-  }
-
-  // lookup
-  const view = URL_TO_VIEW[normalizedPath];
+  // Check standard routes
+  const view = URL_TO_VIEW[pathname];
   if (view) {
     return { view };
   }
 
+  // Default to dashboard
   return { view: "DASHBOARD" };
 };
+
+// export const getViewFromUrl = (pathname: string) => {
+//   const normalizedPath = pathname.replace(/^\/+/, "/").replace(/\/+$/, "");
+
+//   // ✅ onboarding auth FIRST
+//   const authMatch = normalizedPath.match(/^\/onboarding\/auth\/([^\/]+)$/);
+//   if (authMatch) {
+//     return {
+//       view: "ONBOARDING_AUTH",
+//       params: { token: authMatch[1] },
+//     };
+//   }
+
+//   // training
+//   if (normalizedPath.startsWith("/training/record/")) {
+//     const id = normalizedPath.split("/")[3];
+//     return { view: "TRAINING_DETAIL", params: { traineeId: id } };
+//   }
+
+//   if (normalizedPath.startsWith("/training")) {
+//     return { view: "TRAINING_CERTIFICATION" };
+//   }
+
+//   // PPE
+//   if (normalizedPath.startsWith("/ppe")) {
+//     return { view: "PPE_LIST" };
+//   }
+
+//   // REPORT FIRST
+//   const reportMatch = normalizedPath.match(/^\/staff\/([^\/]+)\/report$/);
+//   if (reportMatch) {
+//     return {
+//       view: "REPORT",
+//       params: { firstName: reportMatch[1] },
+//     };
+//   }
+
+//   // THEN cleaner
+//   const cleanerDetailMatch = normalizedPath.match(/^\/staff\/([^\/]+)$/);
+//   if (cleanerDetailMatch) {
+//     return {
+//       view: "CLEANER_DETAIL",
+//       params: { firstName: cleanerDetailMatch[1] },
+//     };
+//   }
+
+//   // onboarding query
+//   if (normalizedPath === "/onboarding") {
+//     const urlParams = new URLSearchParams(window.location.search);
+//     const token = urlParams.get("token");
+//     if (token) {
+//       return { view: "ONBOARDING", params: { token } };
+//     }
+//     return { view: "ONBOARDING" };
+//   }
+
+//   // lookup
+//   const view = URL_TO_VIEW[normalizedPath];
+//   if (view) {
+//     return { view };
+//   }
+
+//   return { view: "DASHBOARD" };
+// };
 
 // Generate URL for a view
 export const getUrlForView = (
