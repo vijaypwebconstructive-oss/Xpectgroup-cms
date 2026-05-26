@@ -84,10 +84,18 @@ const EmployeeAttendance = () => {
 
   const myAttendance = timesheets.filter((item) => item.workerId === workerId);
 
+  const todayAttendance = myAttendance.find((item) => {
+    const itemDate = new Date(item.date);
+
+    return itemDate.toDateString() === new Date().toDateString();
+  });
+
   const activeShift = myAttendance.find(
     (item) =>
       (item.status === "Present" || item.status === "Late") && !item.clockOut,
   );
+
+  const completedShiftToday = todayAttendance && todayAttendance.clockOut;
 
   const latestAttendance = myAttendance?.[0];
 
@@ -96,6 +104,12 @@ const EmployeeAttendance = () => {
     : "--:--";
 
   const isClockedIn = !!activeShift;
+
+  const attendanceHeaderText = isClockedIn
+    ? "Currently Working"
+    : completedShiftToday
+      ? "Shift Completed"
+      : "No Shift Started";
 
   const filteredAttendance = myAttendance.filter((item) => {
     //
@@ -147,8 +161,9 @@ const EmployeeAttendance = () => {
   const canRequestRegularization = (item: any) => {
     return (
       item.status === "Late" ||
-      item.status === "Early Clock-Out" ||
       item.status === "Missed Clock-Out" ||
+      item.attendanceIssue === "Late Clock-In" ||
+      item.attendanceIssue === "Early Clock-Out" ||
       item.attendanceIssue === "Missed Clock-In"
     );
   };
@@ -158,7 +173,7 @@ const EmployeeAttendance = () => {
   //
   // TODAY HOURS
   //
-  const todayHours = myAttendance
+  const todayHours = filteredAttendance
     .filter((item) => {
       const itemDate = new Date(item.date);
 
@@ -169,7 +184,7 @@ const EmployeeAttendance = () => {
   //
   // WEEKLY HOURS
   //
-  const weeklyHours = myAttendance
+  const weeklyHours = filteredAttendance
     .filter((item) => {
       const itemDate = new Date(item.date);
 
@@ -184,7 +199,7 @@ const EmployeeAttendance = () => {
   //
   // MONTHLY HOURS
   //
-  const monthlyHours = myAttendance
+  const monthlyHours = filteredAttendance
     .filter((item) => {
       const itemDate = new Date(item.date);
 
@@ -198,7 +213,7 @@ const EmployeeAttendance = () => {
   //
   // OVERTIME HOURS
   //
-  const overtimeHours = myAttendance.reduce(
+  const overtimeHours = filteredAttendance.reduce(
     (total, item) => total + (item.overtimeHours || 0),
     0,
   );
@@ -494,11 +509,12 @@ const EmployeeAttendance = () => {
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
           <div>
             <h1 className="text-[#0d121b] text-[1.6rem] sm:text-2xl font-black">
-              Employee Attendance
+              Workforce Attendance
             </h1>
 
             <p className="text-[#4c669a] text-base mt-1">
-              Track employee attendance, working hours and productivity.
+              Monitor shifts, track working hours, manage attendance records and
+              maintain workforce productivity.
             </p>
           </div>
 
@@ -535,16 +551,22 @@ const EmployeeAttendance = () => {
               className={`px-6 py-2 ${
                 isClockedIn
                   ? "bg-gradient-to-r from-[#22c55e] to-[#16a34a]"
-                  : "bg-gradient-to-r from-[#64748b] to-[#475569]"
+                  : completedShiftToday
+                    ? "bg-gradient-to-r from-[#64748b] to-[#475569]"
+                    : "bg-gradient-to-r from-[#161410] to-[#0e0701]"
               }`}
             >
               <div className="flex items-center justify-between">
-                <p className="text-white/80 text-sm font-medium">
-                  {isClockedIn ? "Currently Working" : "Shift Completed"}
+                <p className="text-white/100 text-sm font-medium">
+                  {attendanceHeaderText}
                 </p>
 
                 <h2 className="text-white text-xl font-black mt-1">
-                  {currentTime}
+                  {isClockedIn
+                    ? currentTime
+                    : completedShiftToday
+                      ? formatTime(todayAttendance.clockOut)
+                      : "--:--"}
                 </h2>
 
                 {/* <div

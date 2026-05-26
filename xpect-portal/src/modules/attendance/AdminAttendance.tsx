@@ -39,6 +39,16 @@ const AdminAttendance = () => {
 
   const [cleanersMap, setCleanersMap] = useState<Record<string, any>>({});
 
+  const dateFilteredTimesheets = useMemo(() => {
+    return timesheets.filter((t) => {
+      const matchesDate =
+        !selectedDate ||
+        new Date(t.date).toISOString().split("T")[0] === selectedDate;
+
+      return matchesDate;
+    });
+  }, [timesheets, selectedDate]);
+
   const filteredTimesheets = useMemo(() => {
     return timesheets.filter((t) => {
       //
@@ -57,14 +67,22 @@ const AdminAttendance = () => {
       //
       // DATE FILTER
       //
-      const matchesDate = !selectedDate || t.date === selectedDate;
+      // const matchesDate =
+      //   !selectedDate ||
+      //   new Date(t.date).toISOString().split("T")[0] === selectedDate;
       //
       // STATUS FILTER
       //
       const matchesStatus =
-        statusFilter === "All Status" || t.status === statusFilter;
+        statusFilter === "All Status"
+          ? true
+          : statusFilter === "OVERTIME"
+            ? t.overtimeHours > 0
+            : statusFilter === "Late"
+              ? t.status === "Late" || t.lateMinutes > 0
+              : t.status === statusFilter;
 
-      return matchesSearch && matchesSite && matchesStatus && matchesDate;
+      return matchesSearch && matchesSite && matchesStatus;
     });
   }, [timesheets, search, siteFilter, statusFilter, selectedDate]);
 
@@ -80,15 +98,23 @@ const AdminAttendance = () => {
     startIndex + rowsPerPage,
   );
 
-  const presentCount = filteredTimesheets.filter(
+  const presentCount = dateFilteredTimesheets.filter(
     (t) => t.status === "Present",
   ).length;
 
-  const completedCount = filteredTimesheets.filter(
+  const completedCount = dateFilteredTimesheets.filter(
     (t) => t.status === "Completed",
   ).length;
 
-  const overtimeHours = filteredTimesheets.reduce(
+  const absentCount = dateFilteredTimesheets.filter(
+    (t) => t.status === "Absent",
+  ).length;
+
+  const lateCount = dateFilteredTimesheets.filter(
+    (t) => t.status === "Late" || t.lateMinutes > 0,
+  ).length;
+
+  const overtimeHours = dateFilteredTimesheets.reduce(
     (sum, t) => sum + t.overtimeHours,
     0,
   );
@@ -101,38 +127,70 @@ const AdminAttendance = () => {
 
     ...new Set(timesheets.map((item) => item.siteName)),
   ];
+
   const statCards = [
     {
-      label: "Present",
+      label: "Present Today",
+
       value: presentCount,
-      trend: "+1%",
-      trendColor: "bg-green-500",
-      iconBg: "#eff6ff",
-      iconColor: "#2563eb",
+
+      icon: "check_circle",
+
+      trend: "Active",
+
+      bgColor: "#ecfdf5",
+
+      borderColor: "#22c55e",
+
+      filter: "Present",
     },
+
     {
-      label: "Absent",
-      value: filteredTimesheets.filter((t) => t.status === "Absent").length,
-      trend: "-19%",
-      trendColor: "bg-red-500",
-      iconBg: "#fef2f2",
-      iconColor: "#dc2626",
+      label: "Absent Staff",
+
+      value: absentCount,
+
+      icon: "person_off",
+
+      trend: "Attention",
+
+      bgColor: "#fef2f2",
+
+      borderColor: "#ef4444",
+
+      filter: "Absent",
     },
+
     {
-      label: "Late",
-      value: filteredTimesheets.filter((t) => t.lateMinutes > 0).length,
-      trend: "+3%",
-      trendColor: "bg-green-500",
-      iconBg: "#fef3c7",
-      iconColor: "#f59e0b",
+      label: "Late Clock-Ins",
+
+      value: lateCount,
+
+      icon: "alarm",
+
+      trend: "Late",
+
+      bgColor: "#fff7ed",
+
+      borderColor: "#f97316",
+
+      filter: "Late",
     },
+
     {
-      label: "Overtime",
+      label: "Overtime Hours",
+
       value: overtimeHours.toFixed(1),
-      trend: "-2%",
-      trendColor: "bg-red-500",
-      iconBg: "#f3e8ff",
-      iconColor: "#9333ea",
+
+      icon: "timer",
+
+      trend: "Extra",
+
+      bgColor: "#f3e8ff",
+
+      borderColor: "#9333ea",
+
+      filter: "OVERTIME",
     },
   ];
 
@@ -202,12 +260,13 @@ const AdminAttendance = () => {
         {/* HEADER */}
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
           <div>
-            <h1 className="text-[#0d121b] text-[1.6rem] sm:text-2xl font-black">
-              Attendance Admin
+            <h1 className="text-[#0d121b] text-[1.6rem] sm:text-2xl font-bold font-black">
+              Workforce Attendance
             </h1>
 
             <p className="text-[#4c669a] text-base mt-1">
-              Monitor employee attendance, shifts and productivity.
+              Monitor workforce attendance, shift compliance, attendance issues
+              and productivity insights.
             </p>
           </div>
 
@@ -248,7 +307,7 @@ const AdminAttendance = () => {
         <div className="bg-white border border-[#e7ebf3] rounded-2xl shadow-sm p-5 sm:p-6">
           <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-6">
             <div>
-              <h2 className="text-lg sm:text-xl font-black text-[#0d121b]">
+              <h2 className="text-lg sm:text-xl font-black font-bold  text-[#0d121b]">
                 Attendance Details Today
               </h2>
 
@@ -259,32 +318,55 @@ const AdminAttendance = () => {
           </div>
 
           {/* STATS */}
-          <div className="grid grid-cols-2 sm:grid-cols-2 xl:grid-cols-4 gap-5 mt-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mt-8">
             {statCards.map((card) => (
-              <div
+              <button
                 key={card.label}
-                className="bg-white border border-[#e7ebf3] rounded-2xl p-4 sm:p-5 min-w-0"
+                onClick={() => {
+                  setStatusFilter(card.filter);
+                }}
+                type="button"
+                className={`bg-white p-4 sm:p-6 rounded-2xl shadow-sm hover:shadow-md hover:-translate-y-1 transition-all cursor-pointer text-left ${
+                  statusFilter === card.filter ? "ring-2 ring-[#135bec]/20" : ""
+                }`}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderBottomColor = card.borderColor;
+
+                  e.currentTarget.style.borderBottomWidth = "5px";
+
+                  e.currentTarget.style.borderBottomStyle = "solid";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderBottomColor = "transparent";
+                }}
               >
-                <div
-                  className="w-12 h-12 rounded-xl flex items-center justify-center"
-                  style={{
-                    backgroundColor: card.iconBg,
-                    color: card.iconColor,
-                  }}
-                >
-                  <Clock3 size={18} />
+                <div className="flex justify-between items-start mb-4">
+                  <div
+                    className="p-3 rounded-lg"
+                    style={{
+                      backgroundColor: card.bgColor,
+
+                      color: card.borderColor,
+                    }}
+                  >
+                    <span className="material-symbols-outlined">
+                      {card.icon}
+                    </span>
+                  </div>
+
+                  <span className="text-gray-400 text-[10px] font-bold uppercase tracking-wider bg-gray-50 px-2 py-0.5 rounded-full">
+                    {card.trend}
+                  </span>
                 </div>
 
-                <p className="text-[#4c669a] font-medium text-sm mt-5">
+                <p className="text-base font-medium text-slate-500">
                   {card.label}
                 </p>
 
-                <div className="flex items-center justify-between gap-3 mt-3 flex-wrap">
-                  <h3 className="text-3xl font-black text-[#0d121b] break-words">
-                    {card.value}
-                  </h3>
-                </div>
-              </div>
+                <p className="text-3xl font-black font-bold text-gray-900 mt-1">
+                  {card.value}
+                </p>
+              </button>
             ))}
           </div>
         </div>

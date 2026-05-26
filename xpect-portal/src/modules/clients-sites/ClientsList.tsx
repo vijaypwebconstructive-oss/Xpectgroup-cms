@@ -107,6 +107,7 @@ const ClientsList: React.FC<ClientsListProps> = ({ onSelectClient }) => {
     useClientsSites();
   const [search, setSearch] = useState("");
   const [industryFilter, setIndustryFilter] = useState("");
+  const [statsFilter, setStatsFilter] = useState("ALL");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [form, setForm] = useState<ClientForm>(emptyForm);
   const [formDocFiles, setFormDocFiles] = useState<Record<string, File>>({});
@@ -239,12 +240,40 @@ const ClientsList: React.FC<ClientsListProps> = ({ onSelectClient }) => {
 
   const filtered = enriched.filter((c) => {
     const q = search.toLowerCase();
-    return (
-      (!q ||
-        c.name.toLowerCase().includes(q) ||
-        c.contactPerson.toLowerCase().includes(q)) &&
-      (!industryFilter || c.industry === industryFilter)
-    );
+
+    //
+    // SEARCH FILTER
+    //
+    const matchesSearch =
+      !q ||
+      c.name.toLowerCase().includes(q) ||
+      c.contactPerson.toLowerCase().includes(q);
+
+    //
+    // INDUSTRY FILTER
+    //
+    const matchesIndustry = !industryFilter || c.industry === industryFilter;
+
+    //
+    // STATS FILTER
+    //
+    let matchesStats = true;
+
+    if (statsFilter === "EXPIRING") {
+      matchesStats = c.health === "Expiring";
+    }
+
+    if (statsFilter === "NON_COMPLIANT") {
+      matchesStats = assignments.some(
+        (a) => a.clientId === c.id && a.complianceStatus === "Non-Compliant",
+      );
+    }
+
+    if (statsFilter === "ACTIVE") {
+      matchesStats = c.health === "Valid";
+    }
+
+    return matchesSearch && matchesIndustry && matchesStats;
   });
 
   console.log("relation", form);
@@ -305,6 +334,48 @@ const ClientsList: React.FC<ClientsListProps> = ({ onSelectClient }) => {
     </div>
   );
 
+  const stats = [
+    {
+      label: "Total Clients",
+      value: totalClients,
+      icon: "handshake",
+      trend: "All",
+      bgColor: "#eff6ff",
+      borderColor: "#2563eb",
+      filter: "ALL",
+    },
+
+    {
+      label: "Active Sites",
+      value: totalSites,
+      icon: "location_city",
+      trend: "Operational",
+      bgColor: "#f0fdf4",
+      borderColor: "#22c55e",
+      filter: "ACTIVE",
+    },
+
+    {
+      label: "Expiring Soon",
+      value: expiringSoon,
+      icon: "schedule",
+      trend: "Attention",
+      bgColor: "#fffbeb",
+      borderColor: "#f59e0b",
+      filter: "EXPIRING",
+    },
+
+    {
+      label: "Non-Compliant",
+      value: nonCompliant,
+      icon: "warning",
+      trend: "Risk",
+      bgColor: "#fef2f2",
+      borderColor: "#ef4444",
+      filter: "NON_COMPLIANT",
+    },
+  ];
+
   return (
     <div className="space-y-6 max-w-screen sm:w-full sm:max-w-full">
       {/* Success toast */}
@@ -317,51 +388,47 @@ const ClientsList: React.FC<ClientsListProps> = ({ onSelectClient }) => {
         </div>
       )}
 
-      {/* Stat cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {[
-          {
-            label: "Total Clients",
-            value: totalClients,
-            icon: "handshake",
-            iconColor: "text-[#2e4150]",
-          },
-          {
-            label: "Active Sites",
-            value: totalSites,
-            icon: "location_city",
-            iconColor: "text-[#2e4150]",
-          },
-          {
-            label: "Expiring Soon",
-            value: expiringSoon,
-            icon: "schedule",
-            iconColor: "text-amber-500",
-          },
-          {
-            label: "Non-Compliant",
-            value: nonCompliant,
-            icon: "warning",
-            iconColor: "text-red-600",
-          },
-        ].map((s) => (
-          <div
-            key={s.label}
-            className="bg-white rounded-2xl border border-[#e7ebf3] shadow-sm sm:p-4 p-3 flex flex-col gap-3 items-start"
-          >
-            <span
-              className={`material-symbols-outlined text-[22px] sm:text-[30px] p-2 w-fit rounded-[12px] sm:p-3 bg-[#f2f6f9] ${s.iconColor}`}
+      {/* Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {stats.map((stat) => {
+          const active = statsFilter === stat.filter;
+
+          return (
+            <button
+              key={stat.label}
+              onClick={() => setStatsFilter(stat.filter)}
+              type="button"
+              className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm hover:shadow-md hover:-translate-y-1 transition-all cursor-pointer text-left border-b-[5px]"
+              style={{
+                borderBottomColor: active ? stat.borderColor : "transparent",
+              }}
             >
-              {s.icon}
-            </span>
-            <p className="text-xs font-bold text-[#4c669a] uppercase tracking-wide">
-              {s.label}
-            </p>
-            <p className=" font-bold text-[#000] sm:text-[30px] text-xl">
-              {s.value}
-            </p>
-          </div>
-        ))}
+              <div className="flex justify-between items-start mb-4">
+                <div
+                  className="p-4 rounded-lg"
+                  style={{
+                    backgroundColor: stat.bgColor,
+                    color: stat.borderColor,
+                  }}
+                >
+                  <span className="material-symbols-outlined">{stat.icon}</span>
+                </div>
+
+                <span className="text-gray-400 text-[10px] font-bold uppercase tracking-wider bg-gray-50 px-2 py-0.5 rounded-full">
+                  {stat.trend}
+                </span>
+              </div>
+
+              <p className="text-base font-medium text-slate-500">
+                {stat.label}
+              </p>
+
+              <p className="text-3xl font-black font-bold text-gray-900 mt-1">
+                {stat.value}
+              </p>
+            </button>
+          );
+        })}
       </div>
 
       {/* Table card */}

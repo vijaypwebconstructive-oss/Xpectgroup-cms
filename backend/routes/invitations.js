@@ -4,6 +4,7 @@ import jwt from "jsonwebtoken";
 import Invitation from "../models/Invitation.js";
 import OnboardingProgress from "../models/OnboardingProgress.js";
 import Cleaner from "../models/Cleaner.js";
+import { getStepName } from "../constants/onboardingSteps.js";
 import {
   sendInvitationEmail,
   sendOTPResendEmail,
@@ -275,16 +276,45 @@ router.post("/verify-otp", async (req, res) => {
   }
 });
 
-// GET /api/invitations - Get all invitations (admin)
 router.get("/", async (req, res) => {
   try {
     const invitations = await Invitation.find()
       .sort({ createdAt: -1 })
-      .select("-otp -otpExpiresAt"); // Don't return OTP in response
+      .select("-otp -otpExpiresAt")
+      .lean();
 
-    res.json(invitations);
+    // Get all invite tokens
+    const inviteTokens = invitations.map((i) => i.inviteToken);
+
+    // Get onboarding progress records
+    const progressRecords = await OnboardingProgress.find({
+      inviteToken: { $in: inviteTokens },
+    }).lean();
+
+    // Convert to map for quick lookup
+    const progressMap = new Map();
+
+    progressRecords.forEach((progress) => {
+      progressMap.set(progress.inviteToken, progress);
+    });
+
+    // Attach current step name
+    const invitationsWithSteps = invitations.map((invitation) => {
+      const progress = progressMap.get(invitation.inviteToken);
+
+      const currentStep = progress?.currentStep || 1;
+
+      return {
+        ...invitation,
+        currentStep,
+        currentStepName: getStepName(currentStep),
+      };
+    });
+
+    res.json(invitationsWithSteps);
   } catch (error) {
     console.error("Error fetching invitations:", error);
+
     res.status(500).json({
       error: "Failed to fetch invitations",
       message: error.message,

@@ -16,6 +16,7 @@ import EmploymentAllocationCard, {
   ContractStatus,
   EmploymentDetails,
 } from "../components/EmploymentAllocationCard";
+import { useTraining } from "../context/TrainingContext";
 
 interface CleanerDetailProps {
   cleaner?: Cleaner;
@@ -28,6 +29,7 @@ const CleanerDetail: React.FC<CleanerDetailProps> = ({
 }) => {
   const { cleaners, updateCleaner, deleteCleaner } = useCleaners();
   const { payrollRecords, salarySlips } = useFinance();
+  const { trainingRecords } = useTraining();
 
   // Early return if cleaner is not provided
   if (!cleaner) {
@@ -65,6 +67,9 @@ const CleanerDetail: React.FC<CleanerDetailProps> = ({
 
   // Get the latest cleaner data from context
   const currentCleaner = cleaners.find((c) => c.id === cleaner.id) || cleaner;
+  const cleanerTrainings = trainingRecords.filter(
+    (training) => training.cleanerId === currentCleaner.id,
+  );
 
   const [isEditing, setIsEditing] = useState(false);
   const [editedCleaner, setEditedCleaner] = useState(currentCleaner);
@@ -998,62 +1003,157 @@ const CleanerDetail: React.FC<CleanerDetailProps> = ({
             )}
           </div>
 
-          {/* SALARY SLIPS SECTION */}
-          {/* <div className="bg-white border border-[#e7ebf3] rounded-2xl overflow-hidden shadow-sm">
-            <div className="px-4 sm:px-6 py-4 border-b border-[#e7ebf3] bg-gray-50/30 flex items-center gap-2">
-              <span className="material-symbols-outlined text-[#000] text-xl">receipt_long</span>
-              <h2 className="text-[14px] font-bold font-black uppercase tracking-widest text-gray-900">Salary Slips</h2>
+          {/* TRAINING & CERTIFICATIONS SECTION */}
+          <div className="bg-white border border-[#e7ebf3] rounded-2xl overflow-hidden shadow-sm">
+            <div className="px-4 sm:px-6 py-4 border-b border-[#e7ebf3] bg-gray-50/30 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-[#000] text-xl">
+                  school
+                </span>
+
+                <h2 className="text-[15px] font-bold font-black uppercase tracking-widest text-gray-900">
+                  Training & Certifications
+                </h2>
+              </div>
+
+              <div className="px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-[10px] font-black uppercase tracking-widest">
+                {cleanerTrainings.length} Trainings
+              </div>
             </div>
+
             <div className="p-4 sm:p-6">
-              {(() => {
-                const slips = salarySlips.filter(s => s.cleanerId === currentCleaner.id)
-                  .sort((a, b) => (b.year - a.year) || (b.month - a.month));
-                if (slips.length === 0) {
-                  return (
-                    <p className="text-sm text-[#6b7a99]">No salary slips yet. Mark payroll as Paid to generate slips.</p>
-                  );
-                }
-                return (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b border-[#e7ebf3] text-left">
-                          <th className="pb-2 pr-4 text-xs font-semibold text-[#6b7a99] uppercase">Pay Period</th>
-                          <th className="pb-2 pr-4 text-xs font-semibold text-[#6b7a99] uppercase">Salary</th>
-                          <th className="pb-2 text-xs font-semibold text-[#6b7a99] uppercase"></th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {slips.map(s => (
-                          <tr key={s.id} className="border-b border-[#e7ebf3] last:border-0">
-                            <td className="py-3 pr-4 font-medium text-[#0d121b]">{s.payPeriod}</td>
-                            <td className="py-3 pr-4 font-semibold text-[#0d121b]">£{s.salaryAmount?.toFixed(2)}</td>
-                            <td className="py-3 flex items-center gap-2">
-                              <button
-                                type="button"
-                                onClick={() => navigateToUrl('/finance-management/payroll')}
-                                className="text-[#2e4150] hover:text-[#3a5268] font-semibold text-sm flex items-center gap-1"
-                              >
-                                View All <span className="material-symbols-outlined text-[16px]">open_in_new</span>
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => window.open(api.finance.salarySlips.getDownloadUrl(s.id), '_blank')}
-                                className="flex items-center gap-1 px-2 py-1 rounded-lg bg-[#2e4150] text-white text-xs font-semibold hover:bg-[#3a5268]"
-                              >
-                                <span className="material-symbols-outlined text-[14px]">download</span>
-                                Download
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                );
-              })()}
+              {cleanerTrainings.length === 0 ? (
+                <div className="text-center py-10">
+                  <span className="material-symbols-outlined text-5xl text-gray-300">
+                    school
+                  </span>
+
+                  <p className="mt-3 text-sm font-semibold text-gray-500">
+                    No training records found
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {cleanerTrainings.map((training) => {
+                    const isExpired =
+                      new Date(training.expiryDate) < new Date();
+
+                    return (
+                      <div
+                        key={training.id}
+                        className="border border-[#e7ebf3] rounded-2xl p-5 bg-white hover:border-[#135bec]/30 hover:shadow-md transition-all"
+                      >
+                        <div className="flex items-start justify-between mb-4">
+                          <div className="flex items-start gap-3">
+                            <div className="size-12 rounded-xl bg-blue-50 text-[#135bec] flex items-center justify-center">
+                              <span className="material-symbols-outlined">
+                                school
+                              </span>
+                            </div>
+
+                            <div>
+                              <h3 className="text-sm font-black text-gray-900">
+                                {training.course}
+                              </h3>
+
+                              <p className="text-[12px] text-[#4c669a] font-medium mt-1">
+                                {training.trainingStartDate} →{" "}
+                                {training.trainingEndDate}
+                              </p>
+                            </div>
+                          </div>
+
+                          <span
+                            className={`px-2 py-1 rounded-full text-[10px] font-black uppercase tracking-widest text-nowrap ${
+                              isExpired
+                                ? "bg-red-100 text-red-700"
+                                : training.status === "Not Trained"
+                                  ? "bg-amber-100 text-amber-700"
+                                  : "bg-green-100 text-green-700"
+                            }`}
+                          >
+                            {isExpired
+                              ? "Expired"
+                              : training.status === "Not Trained"
+                                ? "Pending"
+                                : "Completed"}
+                          </span>
+                        </div>
+
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-[#4c669a] font-medium">
+                              Expiry Date
+                            </span>
+
+                            <span
+                              className={`font-bold ${
+                                isExpired ? "text-red-600" : "text-gray-900"
+                              }`}
+                            >
+                              {new Date(training.expiryDate).toLocaleDateString(
+                                "en-GB",
+                              )}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-[#4c669a] font-medium">
+                              Certificates
+                            </span>
+
+                            <span className="font-bold text-gray-900">
+                              {training.documents?.length || 0}
+                            </span>
+                          </div>
+                        </div>
+
+                        {training.documents &&
+                          training.documents.length > 0 && (
+                            <div className="mt-5 pt-4 border-t border-[#e7ebf3] space-y-2">
+                              {training.documents.map((doc) => (
+                                <div
+                                  key={doc.id}
+                                  className="flex items-center justify-between bg-gray-50 rounded-xl px-3 py-2"
+                                >
+                                  <div className="flex items-center gap-2 min-w-0">
+                                    <span className="material-symbols-outlined text-gray-500 text-[18px]">
+                                      description
+                                    </span>
+
+                                    <p className="text-xs font-bold text-gray-700 truncate">
+                                      {doc.name}
+                                    </p>
+                                  </div>
+
+                                  <button
+                                    onClick={() =>
+                                      setViewingDocument({
+                                        id: doc.id,
+                                        name: doc.name,
+                                        type: doc.name.includes(".pdf")
+                                          ? "PDF"
+                                          : "IMG",
+                                        uploadDate: doc.uploadedAt,
+                                        status: DocumentStatus.VERIFIED,
+                                        fileUrl: doc.data,
+                                      })
+                                    }
+                                    className="text-[#135bec] text-xs font-black hover:underline"
+                                  >
+                                    View
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
-          </div> */}
+          </div>
 
           {/* DECLARATIONS SECTION */}
           <div className="bg-white border border-[#e7ebf3] rounded-2xl overflow-hidden shadow-sm">
@@ -1140,7 +1240,7 @@ const CleanerDetail: React.FC<CleanerDetailProps> = ({
                 <textarea
                   className="outline-none w-full bg-gray-50 border-[#e7ebf3] rounded-xl text-sm font-medium focus:ring-[#135bec] focus:border-[#135bec] placeholder:text-gray-400 p-4"
                   rows={4}
-                  placeholder="Note findings from RTW check, interview outcomes, or missing document requests..."
+                  placeholder="Provide verification comments, approval notes, rejection reasons, or required actions visible to the employee..."
                   value={auditorNotes}
                   onChange={(e) => setAuditorNotes(e.target.value)}
                 ></textarea>
@@ -1154,7 +1254,7 @@ const CleanerDetail: React.FC<CleanerDetailProps> = ({
                   <span className="material-symbols-outlined">save</span>
                   Update Profile Status
                 </button>
-                <button
+                {/* <button
                   type="button"
                   onClick={handleRevokeVerification}
                   className="w-full h-10 sm:h-12 bg-white border-2 border-red-50 text-red-600 font-black text-xs uppercase tracking-widest rounded-full hover:bg-red-50 hover:border-red-100 transition-all flex items-center justify-center gap-2"
@@ -1163,7 +1263,7 @@ const CleanerDetail: React.FC<CleanerDetailProps> = ({
                     block
                   </span>
                   Revoke Verification
-                </button>
+                </button> */}
               </div>
             </form>
           </div>

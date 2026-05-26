@@ -151,6 +151,8 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
 
   // Track if form is currently being submitted
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const [isNextLoading, setIsNextLoading] = useState(false);
   const [checkingUsername, setCheckingUsername] = useState(false);
 
   const [usernameExists, setUsernameExists] = useState(false);
@@ -718,6 +720,23 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
     }
   };
 
+  const removeUploadedFile = (
+    type:
+      | "shareCodeScreenshot"
+      | "passport"
+      | "brp"
+      | "residenceCard"
+      | "drivingLicence"
+      | "termDatesDocument"
+      | "dbsCertificate"
+      | "salarySlip",
+  ) => {
+    setUploadedFiles((prev) => ({
+      ...prev,
+      [type]: undefined,
+    }));
+  };
+
   const isBritishOrIrish =
     citizenshipStatus === "UK Citizen" || citizenshipStatus === "Irish Citizen";
   const isNonEU = citizenshipStatus === "Non-EU Citizen (Visa / BRP holder)";
@@ -751,39 +770,82 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
   const currentStepIndex = activeSteps.indexOf(step);
   const displayStep = currentStepIndex + 1;
 
+  // const handleNext = async () => {
+  //   // First check if step is valid (without setting errors)
+
+  //   if (step === 2) {
+  //     const usernameValid = await validateUsername();
+
+  //     if (!usernameValid) {
+  //       return;
+  //     }
+  //   }
+  //   if (!checkStepValidity()) {
+  //     // If invalid, run validateStep to show errors
+  //     validateStep();
+  //     return;
+  //   }
+
+  //   // Save progress for current step (marking it as completed) before moving to next step
+  //   if (inviteToken) {
+  //     await saveProgressOnStepChange(step, true); // Mark current step as completed
+  //   }
+
+  //   if (currentStepIndex < totalSteps - 1) {
+  //     setValidationErrors({}); // Clear errors when moving to next step
+  //     const nextStep = activeSteps[currentStepIndex + 1];
+  //     setStep(nextStep);
+
+  //     // Save progress for the new step (not completed yet, just starting)
+  //     if (inviteToken) {
+  //       await saveProgressOnStepChange(nextStep, false);
+  //     }
+  //   } else {
+  //     // Final step "Submit Application" - create new cleaner
+  //     submitApplication();
+  //   }
+  // };
+
   const handleNext = async () => {
-    // First check if step is valid (without setting errors)
+    try {
+      setIsNextLoading(true);
 
-    if (step === 2) {
-      const usernameValid = await validateUsername();
+      // First check if step is valid
+      if (step === 2) {
+        const usernameValid = await validateUsername();
 
-      if (!usernameValid) {
+        if (!usernameValid) {
+          return;
+        }
+      }
+
+      if (!checkStepValidity()) {
+        validateStep();
         return;
       }
-    }
-    if (!checkStepValidity()) {
-      // If invalid, run validateStep to show errors
-      validateStep();
-      return;
-    }
 
-    // Save progress for current step (marking it as completed) before moving to next step
-    if (inviteToken) {
-      await saveProgressOnStepChange(step, true); // Mark current step as completed
-    }
-
-    if (currentStepIndex < totalSteps - 1) {
-      setValidationErrors({}); // Clear errors when moving to next step
-      const nextStep = activeSteps[currentStepIndex + 1];
-      setStep(nextStep);
-
-      // Save progress for the new step (not completed yet, just starting)
+      // Save progress
       if (inviteToken) {
-        await saveProgressOnStepChange(nextStep, false);
+        await saveProgressOnStepChange(step, true);
       }
-    } else {
-      // Final step "Submit Application" - create new cleaner
-      submitApplication();
+
+      if (currentStepIndex < totalSteps - 1) {
+        setValidationErrors({});
+
+        const nextStep = activeSteps[currentStepIndex + 1];
+
+        setStep(nextStep);
+
+        if (inviteToken) {
+          await saveProgressOnStepChange(nextStep, false);
+        }
+      } else {
+        await submitApplication();
+      }
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setIsNextLoading(false);
     }
   };
 
@@ -1662,9 +1724,29 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
                           add_photo_alternate
                         </span>
                         <span className="text-xs font-bold">
-                          {uploadedFiles.shareCodeScreenshot
-                            ? uploadedFiles.shareCodeScreenshot.name
-                            : "Upload Screenshot"}
+                          {uploadedFiles.shareCodeScreenshot ? (
+                            <div className="flex items-center gap-2">
+                              <span className="truncate max-w-[180px]">
+                                {uploadedFiles.shareCodeScreenshot.name}
+                              </span>
+
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  removeUploadedFile("shareCodeScreenshot");
+                                }}
+                                className="text-red-500 hover:text-red-700"
+                              >
+                                <span className="material-symbols-outlined text-base">
+                                  close
+                                </span>
+                              </button>
+                            </div>
+                          ) : (
+                            "Upload Screenshot"
+                          )}
                         </span>
                       </label>
                       {validationErrors.shareCodeScreenshot && (
@@ -1796,7 +1878,7 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
                     University / College Name *
                   </label>
                   <input
-                    className={`form-input h-12 rounded-xl border bg-white focus:ring-[#135bec] text-sm font-semibold ${
+                    className={`form-input h-12 p-4 rounded-xl border bg-white focus:ring-[#135bec] text-sm font-semibold ${
                       validationErrors.uniName
                         ? "border-red-500 bg-red-50"
                         : "border-[#e7ebf3]"
@@ -1824,7 +1906,7 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
                     Course Name *
                   </label>
                   <input
-                    className={`form-input h-12 rounded-xl border bg-white focus:ring-[#135bec] text-sm font-semibold ${
+                    className={`form-input h-12 rounded-xl p-4 border bg-white focus:ring-[#135bec] text-sm font-semibold ${
                       validationErrors.courseName
                         ? "border-red-500 bg-red-50"
                         : "border-[#e7ebf3]"
@@ -1853,7 +1935,7 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
                   </label>
                   <input
                     type="date"
-                    className={`form-input h-12 rounded-xl border bg-white focus:ring-[#135bec] text-sm font-semibold ${
+                    className={`form-input h-12 rounded-xl p-4 border bg-white focus:ring-[#135bec] text-sm font-semibold ${
                       validationErrors.termStart
                         ? "border-red-500 bg-red-50"
                         : "border-[#e7ebf3]"
@@ -1881,7 +1963,7 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
                   </label>
                   <input
                     type="date"
-                    className={`form-input h-12 rounded-xl border bg-white focus:ring-[#135bec] text-sm font-semibold ${
+                    className={`form-input h-12 rounded-xl p-4 border bg-white focus:ring-[#135bec] text-sm font-semibold ${
                       validationErrors.termEnd
                         ? "border-red-500 bg-red-50"
                         : "border-[#e7ebf3]"
@@ -1937,9 +2019,29 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
                     upload_file
                   </span>
                   <p className="text-sm font-bold text-gray-600 group-hover:text-gray-900">
-                    {uploadedFiles.termDatesDocument
-                      ? uploadedFiles.termDatesDocument.name
-                      : "Click to upload document"}
+                    {uploadedFiles.termDatesDocument ? (
+                      <div className="flex items-center justify-center gap-2">
+                        <span className="truncate max-w-[200px]">
+                          {uploadedFiles.termDatesDocument.name}
+                        </span>
+
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            removeUploadedFile("termDatesDocument");
+                          }}
+                          className="text-red-500 hover:text-red-700"
+                        >
+                          <span className="material-symbols-outlined text-base">
+                            close
+                          </span>
+                        </button>
+                      </div>
+                    ) : (
+                      "Click to upload document"
+                    )}
                   </p>
                   <p className="text-[10px] text-gray-400 mt-1 uppercase tracking-tight">
                     Letter / Timetable / Official Email (PDF, JPG, PNG)
@@ -1961,7 +2063,7 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
               >
                 <input
                   type="checkbox"
-                  className="size-6 rounded-lg text-[#135bec] focus:ring-[#135bec] mt-0.5"
+                  className="size-6 rounded-lg text-[#000000] focus:ring-[#0f0f10] mt-0.5"
                   checked={hasAgreedToHours}
                   onChange={(e) => {
                     setHasAgreedToHours(e.target.checked);
@@ -1974,7 +2076,7 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
                   }}
                 />
                 <div className="flex-1">
-                  <p className="text-sm font-black text-gray-900 leading-tight">
+                  <p className="text-md font-black font-bold text-gray-900 leading-tight">
                     Working Hours Declaration
                   </p>
                   <p className="text-xs text-[#135bec] font-bold mt-1">
@@ -2906,7 +3008,7 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
             >
               {currentStepIndex === 0 ? "Cancel" : "Back"}
             </button>
-            <button
+            {/* <button
               disabled={isNextDisabled() || isSubmitting}
               onClick={handleNext}
               className={`px-[30px] py-[15px] h-10 rounded-full bg-[#2e4150]/90 text-white font-semibold text-sm sm:text-base cursor-pointer hover:bg-[#2e4150] transition-all flex items-center gap-2 ${
@@ -2929,6 +3031,29 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
                     {isLastStep ? "send" : "arrow_forward"}
                   </span>
                 </>
+              )}
+            </button> */}
+
+            <button
+              onClick={handleNext}
+              disabled={isNextLoading || isSubmitting}
+              className={`h-12 px-6 rounded-xl text-white font-semibold transition-all ${
+                isNextLoading || isSubmitting
+                  ? "bg-gray-400 cursor-not-allowed"
+                  : "bg-[#000] hover:bg-[#222]"
+              }`}
+            >
+              {isNextLoading ? (
+                <div className="flex items-center gap-2">
+                  <span className="material-symbols-outlined animate-spin text-sm">
+                    progress_activity
+                  </span>
+                  Processing...
+                </div>
+              ) : currentStepIndex === totalSteps - 1 ? (
+                "Submit Application"
+              ) : (
+                "Next"
               )}
             </button>
           </div>

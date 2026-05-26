@@ -52,7 +52,7 @@ const StaffInvites: React.FC<StaffInvitesProps> = () => {
       // Refresh invitations list
       await fetchInvitations();
 
-      alert(`Invitation sent to ${email}! Check the console for OTP details.`);
+      alert(`Onboarding invitation has been sent successfully to ${email}.`);
     } catch (err: any) {
       alert(`Failed to send invitation: ${err.message || "Unknown error"}`);
     }
@@ -61,7 +61,7 @@ const StaffInvites: React.FC<StaffInvitesProps> = () => {
   const handleResendOtp = async (invitation: StaffInvitation) => {
     try {
       await api.invitations.resendOtp(invitation.id);
-      alert(`OTP resent to ${invitation.email}! Please check the email inbox.`);
+      alert(`OTP resent to ${invitation.email}!.`);
       // Refresh invitations to show updated status
       await fetchInvitations();
     } catch (err: any) {
@@ -249,9 +249,11 @@ const StaffInvites: React.FC<StaffInvitesProps> = () => {
                     </td>
                     <td className="px-[16px] sm:px-6 py-4">
                       <span
-                        className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${getStatusStyles(invitation.status)}`}
+                        className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider text-nowrap ${getStatusStyles(invitation.status)}`}
                       >
-                        {invitation.status}
+                        {invitation.status === "COMPLETED"
+                          ? "Completed"
+                          : invitation.currentStepName}
                       </span>
                     </td>
                     <td className="px-[16px] sm:px-6 py-4 text-sm font-medium text-[#0d121b]">

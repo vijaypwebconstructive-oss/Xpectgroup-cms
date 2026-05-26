@@ -104,6 +104,7 @@ const SitesList: React.FC<SitesListProps> = ({
   const [search, setSearch] = useState("");
   const [clientFilter, setClientFilter] = useState("");
   const [allocationFilter, setAllocationFilter] = useState("");
+  const [statsFilter, setStatsFilter] = useState("ALL");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [form, setForm] = useState<SiteForm>(emptyForm);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
@@ -312,12 +313,53 @@ const SitesList: React.FC<SitesListProps> = ({
   };
 
   const totalSites = visibleSites.length;
+
   const highRisk = visibleSites.filter((s) => s.riskLevel === "High").length;
   const nonCompliant = assignments.filter(
     (a) => a.complianceStatus === "Non-Compliant",
   ).length;
   const totalWorkers = assignments.length;
+  const stats = [
+    {
+      label: "Total Sites",
+      value: totalSites,
+      icon: "location_city",
+      trend: "All",
+      bgColor: "#eff6ff",
+      borderColor: "#2563eb",
+      filter: "ALL",
+    },
 
+    {
+      label: "Total Workers",
+      value: totalWorkers,
+      icon: "group",
+      trend: "Allocated",
+      bgColor: "#f0fdf4",
+      borderColor: "#22c55e",
+      filter: "WORKERS",
+    },
+
+    {
+      label: "High Risk",
+      value: highRisk,
+      icon: "warning",
+      trend: "Attention",
+      bgColor: "#fffbeb",
+      borderColor: "#f59e0b",
+      filter: "HIGH_RISK",
+    },
+
+    {
+      label: "Non-Compliant",
+      value: nonCompliant,
+      icon: "person_off",
+      trend: "Critical",
+      bgColor: "#fef2f2",
+      borderColor: "#ef4444",
+      filter: "NON_COMPLIANT",
+    },
+  ];
   const allClients = visibleClients;
 
   const enriched = visibleSites.map((s) => {
@@ -365,13 +407,53 @@ const SitesList: React.FC<SitesListProps> = ({
 
   const filtered = enriched.filter((s) => {
     const q = search.toLowerCase();
-    return (
-      (!q ||
-        s.name.toLowerCase().includes(q) ||
-        s.postcode.toLowerCase().includes(q)) &&
-      (!clientFilter || s.clientId === clientFilter) &&
-      (!allocationFilter || s.allocationPeriod === allocationFilter)
-    );
+
+    //
+    // SEARCH
+    //
+    const matchesSearch =
+      !q ||
+      s.name.toLowerCase().includes(q) ||
+      s.postcode.toLowerCase().includes(q);
+
+    //
+    // CLIENT FILTER
+    //
+    const matchesClient = !clientFilter || s.clientId === clientFilter;
+
+    //
+    // ALLOCATION FILTER
+    //
+    const matchesAllocation =
+      !allocationFilter || s.allocationPeriod === allocationFilter;
+
+    //
+    // STATS FILTER
+    //
+    let matchesStats = true;
+
+    //
+    // HIGH RISK
+    //
+    if (statsFilter === "HIGH_RISK") {
+      matchesStats = s.riskLevel === "High";
+    }
+
+    //
+    // NON COMPLIANT
+    //
+    if (statsFilter === "NON_COMPLIANT") {
+      matchesStats = s.overallStatus === "Non-Compliant";
+    }
+
+    //
+    // HAS WORKERS
+    //
+    if (statsFilter === "WORKERS") {
+      matchesStats = s.assignmentCount > 0;
+    }
+
+    return matchesSearch && matchesClient && matchesAllocation && matchesStats;
   });
 
   return (
@@ -396,51 +478,56 @@ const SitesList: React.FC<SitesListProps> = ({
         </div>
       )}
 
-      {/* Stat cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {[
-          {
-            label: "Total Sites",
-            value: totalSites,
-            icon: "location_city",
-            iconColor: "text-[#2e4150]",
-          },
-          {
-            label: "Total Workers",
-            value: totalWorkers,
-            icon: "group",
-            iconColor: "text-[#2e4150]",
-          },
-          {
-            label: "High Risk",
-            value: highRisk,
-            icon: "warning",
-            iconColor: "text-amber-500",
-          },
-          {
-            label: "Non-Compliant",
-            value: nonCompliant,
-            icon: "person_off",
-            iconColor: "text-red-600",
-          },
-        ].map((s) => (
-          <div
-            key={s.label}
-            className="bg-white rounded-2xl border border-[#e7ebf3] shadow-sm p-5 flex flex-col gap-3"
-          >
-            <div className="flex flex-col gap-1 sm:gap-3 justify-between items-left">
-              <span
-                className={`material-symbols-outlined text-[22px] sm:text-[30px] p-2 w-fit rounded-[12px] sm:p-3 bg-[#f2f6f9] ${s.iconColor}`}
-              >
-                {s.icon}
-              </span>
-              <p className="text-xs font-bold text-[#4c669a] uppercase tracking-wide">
-                {s.label}
+      {/* Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {stats.map((stat) => {
+          const active = statsFilter === stat.filter;
+
+          return (
+            <button
+              key={stat.label}
+              onClick={() => {
+                setStatsFilter(stat.filter);
+
+                //
+                // OPTIONAL REDIRECT
+                //
+                if (stat.filter === "WORKERS") {
+                  onNavigateAllocation();
+                }
+              }}
+              type="button"
+              className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm hover:shadow-md hover:-translate-y-1 transition-all cursor-pointer text-left border-b-[5px]"
+              style={{
+                borderBottomColor: active ? stat.borderColor : "transparent",
+              }}
+            >
+              <div className="flex justify-between items-start mb-4">
+                <div
+                  className="p-4 rounded-lg"
+                  style={{
+                    backgroundColor: stat.bgColor,
+                    color: stat.borderColor,
+                  }}
+                >
+                  <span className="material-symbols-outlined">{stat.icon}</span>
+                </div>
+
+                <span className="text-gray-400 text-[10px] font-bold uppercase tracking-wider bg-gray-50 px-2 py-0.5 rounded-full">
+                  {stat.trend}
+                </span>
+              </div>
+
+              <p className="text-base font-medium text-slate-500">
+                {stat.label}
               </p>
-              <p className="text-[30px] font-bold text-[#000]">{s.value}</p>
-            </div>
-          </div>
-        ))}
+
+              <p className="text-3xl font-black font-bold text-gray-900 mt-1">
+                {stat.value}
+              </p>
+            </button>
+          );
+        })}
       </div>
 
       {/* Table card */}

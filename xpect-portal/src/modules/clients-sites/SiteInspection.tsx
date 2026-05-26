@@ -7,7 +7,7 @@ interface Inspection {
   inspector: string;
   date: string;
   issues: number;
-  status: "PASS" | "FAIL";
+  status: "Pass" | "Fail";
 }
 
 interface Props {
@@ -20,76 +20,158 @@ const SiteInspection: React.FC<Props> = ({ onView, onCreate }) => {
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [monthFilter, setMonthFilter] = useState("ALL");
   const [search, setSearch] = useState("");
+  const [statsFilter, setStatsFilter] = useState("ALL");
   const { inspections } = useInspection();
   console.log(inspections);
 
   const filtered = inspections.filter((i) => {
+    //
+    // SEARCH
+    //
     const matchesSearch = i.siteName
       ?.toLowerCase()
       .includes(search.toLowerCase());
 
+    //
+    // STATUS FILTER
+    //
     const matchesStatus = statusFilter === "ALL" || i.status === statusFilter;
 
+    //
+    // MONTH FILTER
+    //
     const matchesMonth =
       monthFilter === "ALL" ||
       new Date(i.date).getMonth() === Number(monthFilter);
 
-    return matchesSearch && matchesStatus && matchesMonth;
+    //
+    // STATS FILTER
+    //
+    let matchesStats = true;
+
+    if (statsFilter === "PASSED") {
+      matchesStats = i.status === "Pass";
+    }
+
+    if (statsFilter === "FAILED") {
+      matchesStats = i.status === "Fail";
+    }
+
+    return matchesSearch && matchesStatus && matchesMonth && matchesStats;
   });
+  const total = inspections.length;
 
-  const total = filtered.length;
+  const passed = inspections.filter((i) => i.status === "Pass").length;
 
-  const passed = filtered.filter((i) => i.status === "Pass").length;
+  const failed = inspections.filter((i) => i.status === "Fail").length;
 
-  const failed = filtered.filter((i) => i.status === "Fail").length;
+  const complianceRate = total ? ((passed / total) * 100).toFixed(0) : 0;
+
+  const stats = [
+    {
+      label: "Total Inspections",
+      value: total,
+      icon: "fact_check",
+      trend: "All",
+      bgColor: "#eff6ff",
+      borderColor: "#2563eb",
+      filter: "ALL",
+    },
+
+    {
+      label: "Passed",
+      value: passed,
+      icon: "check_circle",
+      trend: "Compliant",
+      bgColor: "#f0fdf4",
+      borderColor: "#22c55e",
+      filter: "PASSED",
+    },
+
+    {
+      label: "Failed",
+      value: failed,
+      icon: "cancel",
+      trend: "Attention",
+      bgColor: "#fef2f2",
+      borderColor: "#ef4444",
+      filter: "FAILED",
+    },
+
+    {
+      label: "Compliance Rate",
+      value: `${complianceRate}%`,
+      icon: "analytics",
+      trend: "Performance",
+      bgColor: "#f5f3ff",
+      borderColor: "#7c3aed",
+      filter: "COMPLIANCE",
+    },
+  ];
 
   return (
     <div className="space-y-6 sm:p-10 py-4 px-6">
       {/* 🔷 STATS (Copied pattern) */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {[
-          {
-            label: "Total Inspections",
-            value: total,
-            icon: "fact_check",
-            color: "text-[#2e4150]",
-          },
-          {
-            label: "Passed",
-            value: passed,
-            icon: "check_circle",
-            color: "text-green-600",
-          },
-          {
-            label: "Failed",
-            value: failed,
-            icon: "cancel",
-            color: "text-red-600",
-          },
-          {
-            label: "Compliance Rate",
-            value: `${total ? ((passed / total) * 100).toFixed(0) : 0}%`,
-            icon: "analytics",
-            color: "text-[#2e4150]",
-          },
-        ].map((s) => (
-          <div
-            key={s.label}
-            className="bg-white rounded-2xl border border-[#e7ebf3] shadow-sm p-3 sm:p-4 flex flex-col gap-3 items-start justify-left"
-          >
-            <span
-              className={`material-symbols-outlined text-[22px] sm:text-[30px] p-2 sm:p-3 bg-[#f2f6f9] rounded-[12px] ${s.color}`}
+      {/* Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {stats.map((stat) => {
+          const active = statsFilter === stat.filter;
+
+          return (
+            <button
+              key={stat.label}
+              onClick={() => {
+                setStatsFilter(stat.filter);
+
+                //
+                // OPTIONAL REDIRECT
+                //
+                if (stat.filter === "FAILED") {
+                  setStatusFilter("Fail");
+                }
+
+                if (stat.filter === "COMPLIANCE") {
+                  setStatusFilter("Pass");
+                }
+
+                if (stat.filter === "ALL") {
+                  setStatusFilter("ALL");
+                }
+              }}
+              type="button"
+              className={`bg-white p-4 sm:p-6 rounded-2xl shadow-sm hover:shadow-md hover:-translate-y-1 transition-all cursor-pointer text-left border-b-[5px] ${
+                active ? "" : ""
+              }`}
+              style={{
+                borderBottomColor: active ? stat.borderColor : "transparent",
+              }}
             >
-              {s.icon}
-            </span>
-            <p className="text-xs font-bold text-[#4c669a] uppercase">
-              {s.label}
-            </p>
-            <p className="text-xl sm:text-[30px] font-bold text-black">
-              {s.value}
-            </p>
-          </div>
-        ))}
+              <div className="flex justify-between items-start mb-4">
+                <div
+                  className="p-4 rounded-lg"
+                  style={{
+                    backgroundColor: stat.bgColor,
+                    color: stat.borderColor,
+                  }}
+                >
+                  <span className="material-symbols-outlined">{stat.icon}</span>
+                </div>
+
+                <span className="text-gray-400 text-[10px] font-bold uppercase tracking-wider bg-gray-50 px-2 py-0.5 rounded-full">
+                  {stat.trend}
+                </span>
+              </div>
+
+              <p className="text-base font-medium text-slate-500">
+                {stat.label}
+              </p>
+
+              <p className="text-3xl font-black font-bold text-gray-900 mt-1">
+                {stat.value}
+              </p>
+            </button>
+          );
+        })}
       </div>
 
       {/* 🔷 TABLE CARD */}

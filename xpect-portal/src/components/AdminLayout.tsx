@@ -423,8 +423,9 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
 
         {/* Attendance */}
         {(canAccessModule(user, "admin attendance") ||
-          canAccessModule(user, "employee attendance") ||
-          canAccessModule(user, "regularization")) && (
+          canAccessModule(user, "regularization") ||
+          (user?.role !== "Admin" &&
+            canAccessModule(user, "employee attendance"))) && (
           <div>
             <button
               type="button"
@@ -463,11 +464,12 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
                     label: "Attendance",
                   },
 
-                  canAccessModule(user, "employee attendance") && {
-                    view: "employee-attendance",
-                    icon: "badge",
-                    label: "Employee Attendance",
-                  },
+                  user?.role !== "Admin" &&
+                    canAccessModule(user, "employee attendance") && {
+                      view: "employee-attendance",
+                      icon: "badge",
+                      label: "Employee Attendance",
+                    },
 
                   canAccessModule(user, "regularization") && {
                     view: "regularization",

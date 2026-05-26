@@ -1,21 +1,21 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 
 export enum PayType {
-  HOURLY = 'Hourly',
-  WEEKLY = 'Weekly',
-  MONTHLY = 'Monthly'
+  HOURLY = "Hourly",
+  WEEKLY = "Weekly",
+  MONTHLY = "Monthly",
 }
 
 export enum ShiftType {
-  MORNING = 'Morning',
-  EVENING = 'Evening',
-  NIGHT = 'Night'
+  MORNING = "Morning",
+  EVENING = "Evening",
+  NIGHT = "Night",
 }
 
 export enum ContractStatus {
-  ACTIVE = 'Active',
-  PAUSED = 'Paused',
-  ENDED = 'Ended'
+  ACTIVE = "Active",
+  PAUSED = "Paused",
+  ENDED = "Ended",
 }
 
 export interface EmploymentDetails {
@@ -40,15 +40,16 @@ interface EmploymentAllocationCardProps {
   onCancel?: () => void;
 }
 
-const EmploymentAllocationCard: React.FC<EmploymentAllocationCardProps> = ({ 
+const EmploymentAllocationCard: React.FC<EmploymentAllocationCardProps> = ({
   employmentDetails,
   employmentType,
   onEdit,
   onSave,
   isEditing = false,
-  onCancel
+  onCancel,
 }) => {
-  const [editedDetails, setEditedDetails] = useState<EmploymentDetails>(employmentDetails);
+  const [editedDetails, setEditedDetails] =
+    useState<EmploymentDetails>(employmentDetails);
 
   useEffect(() => {
     setEditedDetails(employmentDetails);
@@ -61,7 +62,7 @@ const EmploymentAllocationCard: React.FC<EmploymentAllocationCardProps> = ({
     shiftType,
     contractStatus,
     startDate,
-    endDate
+    endDate,
   } = isEditing ? editedDetails : employmentDetails;
 
   const handleSave = () => {
@@ -80,13 +81,13 @@ const EmploymentAllocationCard: React.FC<EmploymentAllocationCardProps> = ({
   const getContractStatusColor = (status?: ContractStatus) => {
     switch (status) {
       case ContractStatus.ACTIVE:
-        return 'bg-green-100 text-green-700';
+        return "bg-green-100 text-green-700";
       case ContractStatus.PAUSED:
-        return 'bg-amber-100 text-amber-700';
+        return "bg-amber-100 text-amber-700";
       case ContractStatus.ENDED:
-        return 'bg-red-100 text-red-700';
+        return "bg-red-100 text-red-700";
       default:
-        return 'bg-gray-100 text-gray-700';
+        return "bg-gray-100 text-gray-700";
     }
   };
 
@@ -94,7 +95,9 @@ const EmploymentAllocationCard: React.FC<EmploymentAllocationCardProps> = ({
     <div className="bg-white border border-[#e7ebf3] rounded-2xl overflow-hidden shadow-sm">
       <div className="px-4 sm:px-6 py-4 border-b border-[#e7ebf3] flex justify-between items-center bg-gray-50/30">
         <div className="flex items-center gap-2">
-          <span className="material-symbols-outlined text-[#000] text-xl">work</span>
+          <span className="material-symbols-outlined text-[#000] text-xl">
+            work
+          </span>
           <h2 className="text-sm sm:text-base font-black font-bold tracking-widest text-gray-900">
             Employment & Allocation Details
           </h2>
@@ -127,7 +130,7 @@ const EmploymentAllocationCard: React.FC<EmploymentAllocationCardProps> = ({
           )}
         </div>
       </div>
-      
+
       <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-12">
         <div>
           <p className="text-[#4c669a] text-[12px] font-black uppercase tracking-wider mb-1">
@@ -141,18 +144,24 @@ const EmploymentAllocationCard: React.FC<EmploymentAllocationCardProps> = ({
                 step="0.01"
                 min="0"
                 className="w-full h-10 rounded-lg border-[#e7ebf3] bg-gray-50 px-3 text-sm font-bold text-gray-900 outline-none focus:ring-[#135bec]"
-                value={editedDetails.hourlyPayRate || ''}
-                onChange={(e) => setEditedDetails(prev => ({ 
-                  ...prev, 
-                  hourlyPayRate: e.target.value ? parseFloat(e.target.value) : undefined 
-                }))}
+                value={editedDetails.hourlyPayRate || ""}
+                onChange={(e) =>
+                  setEditedDetails((prev) => ({
+                    ...prev,
+                    hourlyPayRate: e.target.value
+                      ? parseFloat(e.target.value)
+                      : undefined,
+                  }))
+                }
                 placeholder="0.00"
               />
               <span className="text-sm font-bold text-gray-500">/ hour</span>
             </div>
           ) : (
             <p className="text-sm font-bold text-gray-900">
-              {hourlyPayRate ? `$${hourlyPayRate.toFixed(2)} / hour` : 'Not provided'}
+              {hourlyPayRate
+                ? `$${hourlyPayRate.toFixed(2)} / hour`
+                : "Not provided"}
             </p>
           )}
         </div>
@@ -164,11 +173,13 @@ const EmploymentAllocationCard: React.FC<EmploymentAllocationCardProps> = ({
           {isEditing ? (
             <select
               className="w-full h-10 rounded-lg border-[#e7ebf3] bg-gray-50 px-3 text-sm font-bold text-gray-900 outline-none focus:ring-[#135bec]"
-              value={editedDetails.payType || ''}
-              onChange={(e) => setEditedDetails(prev => ({ 
-                ...prev, 
-                payType: e.target.value as PayType || undefined 
-              }))}
+              value={editedDetails.payType || ""}
+              onChange={(e) =>
+                setEditedDetails((prev) => ({
+                  ...prev,
+                  payType: (e.target.value as PayType) || undefined,
+                }))
+              }
             >
               <option value="">Select Pay Type</option>
               <option value={PayType.HOURLY}>{PayType.HOURLY}</option>
@@ -177,12 +188,12 @@ const EmploymentAllocationCard: React.FC<EmploymentAllocationCardProps> = ({
             </select>
           ) : (
             <p className="text-sm font-bold text-gray-900">
-              {payType || 'Not provided'}
+              {payType || "Not provided"}
             </p>
           )}
         </div>
 
-        <div>
+        {/* <div>
           <p className="text-[#4c669a] text-[12px] font-black uppercase tracking-wider mb-1">
             Work Location
           </p>
@@ -223,7 +234,7 @@ const EmploymentAllocationCard: React.FC<EmploymentAllocationCardProps> = ({
               }
             </p>
           )}
-        </div>
+        </div> */}
 
         <div>
           <p className="text-[#4c669a] text-[12px] font-black uppercase tracking-wider mb-1">
@@ -232,11 +243,13 @@ const EmploymentAllocationCard: React.FC<EmploymentAllocationCardProps> = ({
           {isEditing ? (
             <select
               className="w-full h-10 rounded-lg border-[#e7ebf3] bg-gray-50 px-3 text-sm font-bold text-gray-900 outline-none focus:ring-[#135bec]"
-              value={editedDetails.shiftType || ''}
-              onChange={(e) => setEditedDetails(prev => ({ 
-                ...prev, 
-                shiftType: e.target.value as ShiftType || undefined 
-              }))}
+              value={editedDetails.shiftType || ""}
+              onChange={(e) =>
+                setEditedDetails((prev) => ({
+                  ...prev,
+                  shiftType: (e.target.value as ShiftType) || undefined,
+                }))
+              }
             >
               <option value="">Select Shift Type</option>
               <option value={ShiftType.MORNING}>{ShiftType.MORNING}</option>
@@ -245,7 +258,7 @@ const EmploymentAllocationCard: React.FC<EmploymentAllocationCardProps> = ({
             </select>
           ) : (
             <p className="text-sm font-bold text-gray-900">
-              {shiftType || 'Not provided'}
+              {shiftType || "Not provided"}
             </p>
           )}
         </div>
@@ -257,25 +270,34 @@ const EmploymentAllocationCard: React.FC<EmploymentAllocationCardProps> = ({
           {isEditing ? (
             <select
               className="w-full h-10 rounded-lg border-[#e7ebf3] bg-gray-50 px-3 text-sm font-bold text-gray-900 outline-none focus:ring-[#135bec]"
-              value={editedDetails.contractStatus || ''}
-              onChange={(e) => setEditedDetails(prev => ({ 
-                ...prev, 
-                contractStatus: e.target.value as ContractStatus || undefined 
-              }))}
+              value={editedDetails.contractStatus || ""}
+              onChange={(e) =>
+                setEditedDetails((prev) => ({
+                  ...prev,
+                  contractStatus:
+                    (e.target.value as ContractStatus) || undefined,
+                }))
+              }
             >
               <option value="">Select Status</option>
-              <option value={ContractStatus.ACTIVE}>{ContractStatus.ACTIVE}</option>
-              <option value={ContractStatus.PAUSED}>{ContractStatus.PAUSED}</option>
-              <option value={ContractStatus.ENDED}>{ContractStatus.ENDED}</option>
+              <option value={ContractStatus.ACTIVE}>
+                {ContractStatus.ACTIVE}
+              </option>
+              <option value={ContractStatus.PAUSED}>
+                {ContractStatus.PAUSED}
+              </option>
+              <option value={ContractStatus.ENDED}>
+                {ContractStatus.ENDED}
+              </option>
             </select>
+          ) : contractStatus ? (
+            <span
+              className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${getContractStatusColor(contractStatus)}`}
+            >
+              {contractStatus}
+            </span>
           ) : (
-            contractStatus ? (
-              <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${getContractStatusColor(contractStatus)}`}>
-                {contractStatus}
-              </span>
-            ) : (
-              <p className="text-sm font-bold text-gray-900">Not provided</p>
-            )
+            <p className="text-sm font-bold text-gray-900">Not provided</p>
           )}
         </div>
 
@@ -287,27 +309,29 @@ const EmploymentAllocationCard: React.FC<EmploymentAllocationCardProps> = ({
             <input
               type="date"
               className="w-full h-10 rounded-lg border-[#e7ebf3] bg-gray-50 px-3 text-sm font-bold text-gray-900 outline-none focus:ring-[#135bec]"
-              value={editedDetails.startDate || ''}
-              onChange={(e) => setEditedDetails(prev => ({ 
-                ...prev, 
-                startDate: e.target.value || undefined 
-              }))}
+              value={editedDetails.startDate || ""}
+              onChange={(e) =>
+                setEditedDetails((prev) => ({
+                  ...prev,
+                  startDate: e.target.value || undefined,
+                }))
+              }
             />
           ) : (
             <p className="text-sm font-bold text-gray-900">
-              {startDate 
-                ? new Date(startDate).toLocaleDateString('en-GB', { 
-                    day: '2-digit', 
-                    month: 'long', 
-                    year: 'numeric' 
+              {startDate
+                ? new Date(startDate).toLocaleDateString("en-GB", {
+                    day: "2-digit",
+                    month: "long",
+                    year: "numeric",
                   })
-                : 'Not provided'
-              }
+                : "Not provided"}
             </p>
           )}
         </div>
 
-        {(employmentType === 'Temporary' || employmentType === 'Contractor') && (
+        {(employmentType === "Temporary" ||
+          employmentType === "Contractor") && (
           <div>
             <p className="text-[#4c669a] text-[12px] font-black uppercase tracking-wider mb-1">
               End Date
@@ -316,22 +340,23 @@ const EmploymentAllocationCard: React.FC<EmploymentAllocationCardProps> = ({
               <input
                 type="date"
                 className="w-full h-10 rounded-lg border-[#e7ebf3] bg-gray-50 px-3 text-sm font-bold text-gray-900 outline-none focus:ring-[#135bec]"
-                value={editedDetails.endDate || ''}
-                onChange={(e) => setEditedDetails(prev => ({
-                  ...prev,
-                  endDate: e.target.value || undefined
-                }))}
+                value={editedDetails.endDate || ""}
+                onChange={(e) =>
+                  setEditedDetails((prev) => ({
+                    ...prev,
+                    endDate: e.target.value || undefined,
+                  }))
+                }
               />
             ) : (
               <p className="text-sm font-bold text-gray-900">
                 {endDate
-                  ? new Date(endDate).toLocaleDateString('en-GB', {
-                      day: '2-digit',
-                      month: 'long',
-                      year: 'numeric'
+                  ? new Date(endDate).toLocaleDateString("en-GB", {
+                      day: "2-digit",
+                      month: "long",
+                      year: "numeric",
                     })
-                  : 'Not provided'
-                }
+                  : "Not provided"}
               </p>
             )}
           </div>

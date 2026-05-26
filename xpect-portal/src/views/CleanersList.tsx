@@ -112,7 +112,11 @@ const CleanersList: React.FC<CleanersListProps> = ({
       color: "blue",
       bgColor: "#eff6ff",
       borderColor: "#2563eb",
+      onClick: () => {
+        setSearchTerm("");
+      },
     },
+
     {
       label: "Pending Verification",
       value: pendingCount.toString(),
@@ -121,7 +125,11 @@ const CleanersList: React.FC<CleanersListProps> = ({
       color: "amber",
       bgColor: "#fffbeb",
       borderColor: "#f59e0b",
+      onClick: () => {
+        setSearchTerm("pending");
+      },
     },
+
     {
       label: "Verified Employees",
       value: verifiedCount.toString(),
@@ -130,7 +138,11 @@ const CleanersList: React.FC<CleanersListProps> = ({
       color: "green",
       bgColor: "#f0fdf4",
       borderColor: "#22c55e",
+      onClick: () => {
+        setSearchTerm("verified");
+      },
     },
+
     {
       label: "Invitations Sent",
       value: invitationsCount.toString(),
@@ -139,6 +151,9 @@ const CleanersList: React.FC<CleanersListProps> = ({
       color: "purple",
       bgColor: "#f3e8ff",
       borderColor: "#9333ea",
+      onClick: () => {
+        onNavigate("STAFF_INVITES");
+      },
     },
   ];
 
@@ -166,11 +181,22 @@ const CleanersList: React.FC<CleanersListProps> = ({
     { value: "Pending", label: "Pending" },
   ];
 
-  const filteredCleaners = completedCleaners.filter(
-    (c) =>
-      c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      c.email.toLowerCase().includes(searchTerm.toLowerCase()),
-  );
+  const filteredCleaners = completedCleaners.filter((c) => {
+    const term = searchTerm.toLowerCase();
+
+    if (term === "verified") {
+      return c.verificationStatus === VerificationStatus.VERIFIED;
+    }
+
+    if (term === "pending") {
+      return c.verificationStatus === VerificationStatus.PENDING;
+    }
+
+    return (
+      c.name.toLowerCase().includes(term) ||
+      c.email.toLowerCase().includes(term)
+    );
+  });
 
   const visibleIds = filteredCleaners.map((c) => c.id);
   const allVisibleSelected =
@@ -535,16 +561,18 @@ const CleanersList: React.FC<CleanersListProps> = ({
               <span className="material-symbols-outlined text-[20px] display-none sm:block">
                 person_add
               </span>
-              <span>Add Staff</span>
+              <span>Staff Invitations</span>
             </button>
           </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {stats.map((stat) => (
-            <div
+            <button
               key={stat.label}
-              className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm hover:shadow-md transition-shadow"
+              onClick={stat.onClick}
+              type="button"
+              className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm hover:shadow-md hover:-translate-y-1 transition-all cursor-pointer text-left"
               style={{}}
               onMouseEnter={(e) => {
                 e.currentTarget.style.borderBottomColor = stat.borderColor;
@@ -575,7 +603,7 @@ const CleanersList: React.FC<CleanersListProps> = ({
               <p className="text-3xl font-black text-gray-900 font-bold mt-1">
                 {stat.value}
               </p>
-            </div>
+            </button>
           ))}
         </div>
 
