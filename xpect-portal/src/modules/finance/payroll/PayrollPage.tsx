@@ -40,6 +40,9 @@ const PayrollPage: React.FC = () => {
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"ALL" | "PAID" | "PENDING">(
+    "ALL",
+  );
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkLoading, setBulkLoading] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
@@ -102,8 +105,20 @@ const PayrollPage: React.FC = () => {
 
   const filteredRows = useMemo(() => {
     let rows = tableRows;
+
+    // STATUS FILTER
+    if (statusFilter === "PAID") {
+      rows = rows.filter((r) => r.paymentStatus === "Paid");
+    }
+
+    if (statusFilter === "PENDING") {
+      rows = rows.filter((r) => r.paymentStatus === "Pending");
+    }
+
+    // SEARCH FILTER
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim();
+
       rows = rows.filter(
         (r) =>
           r.cleanerName.toLowerCase().includes(q) ||
@@ -112,6 +127,8 @@ const PayrollPage: React.FC = () => {
           (r.siteName && r.siteName.toLowerCase().includes(q)),
       );
     }
+
+    // SORTING
     if (sortValue === "name") {
       rows = [...rows].sort((a, b) =>
         a.cleanerName.localeCompare(b.cleanerName),
@@ -123,8 +140,9 @@ const PayrollPage: React.FC = () => {
         a.paymentStatus.localeCompare(b.paymentStatus),
       );
     }
+
     return rows;
-  }, [tableRows, searchQuery, sortValue]);
+  }, [tableRows, searchQuery, sortValue, statusFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filteredRows.length / pageSize));
   const paginatedRows = useMemo(() => {
@@ -376,7 +394,25 @@ const PayrollPage: React.FC = () => {
       </div>
 
       {/* Stats Cards */}
-      <PayrollStatsCards {...stats} />
+      <PayrollStatsCards
+        {...stats}
+        onTotalClick={() => {
+          setStatusFilter("ALL");
+          setCurrentPage(1);
+        }}
+        onEmployeesClick={() => {
+          setStatusFilter("ALL");
+          setCurrentPage(1);
+        }}
+        onProcessedClick={() => {
+          setStatusFilter("PAID");
+          setCurrentPage(1);
+        }}
+        onPendingClick={() => {
+          setStatusFilter("PENDING");
+          setCurrentPage(1);
+        }}
+      />
 
       {/* Payroll List Section */}
       <div className="space-y-4">

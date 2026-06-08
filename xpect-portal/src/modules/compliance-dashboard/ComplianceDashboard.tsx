@@ -33,9 +33,26 @@ const KPICard: React.FC<{
   iconColor: string;
   sub?: string;
   alert?: boolean;
-}> = ({ label, value, icon, iconBg, iconColor, sub, alert }) => (
+}> = ({ label, value, icon, iconBg, iconColor, sub, alert, onClick }) => (
   <div
-    className={`bg-white rounded-xl border sm:p-5 p-3 flex flex-col items-start gap-4 ${alert ? "border-red-200 bg-red-50" : "border-[#e7ebf3]"}`}
+    onClick={onClick}
+    className={`
+      bg-white rounded-2xl p-4 sm:p-6
+      shadow-sm
+      hover:shadow-md
+      hover:-translate-y-1
+      transition-all duration-200
+      cursor-pointer
+      border border-[#e7ebf3]
+    `}
+    onMouseEnter={(e) => {
+      e.currentTarget.style.borderBottomColor = borderColor;
+      e.currentTarget.style.borderBottomWidth = "5px";
+      e.currentTarget.style.borderBottomStyle = "solid";
+    }}
+    onMouseLeave={(e) => {
+      e.currentTarget.style.borderBottomColor = "transparent";
+    }}
   >
     <div
       className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${iconBg}`}
@@ -324,7 +341,7 @@ const ComplianceDashboard: React.FC<ComplianceDashboardProps> = ({
                   Dashboard
                 </h1>
                 <p className="text-base text-[#6b7a99]">
-                  Company-wide compliance monitoring — ISO 45001 / ISO 9001
+                  Monitor workforce compliance and operational performance.
                 </p>
               </div>
             </div>
@@ -340,14 +357,14 @@ const ComplianceDashboard: React.FC<ComplianceDashboardProps> = ({
                 </span>
               </div>
             )}
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#f5f7fa] border border-[#e7ebf3]">
+            {/* <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#f5f7fa] border border-[#e7ebf3]">
               <span className="material-symbols-outlined text-[16px] text-[#6b7a99]">
                 schedule
               </span>
               <span className="text-xs text-[#6b7a99]">
                 Updated {lastUpdated}
               </span>
-            </div>
+            </div> */}
           </div>
         </div>
       </div>
@@ -367,6 +384,8 @@ const ComplianceDashboard: React.FC<ComplianceDashboardProps> = ({
                 iconBg="bg-[#2e4150]/10"
                 iconColor="text-[#2e4150]"
                 sub="Site assignments"
+                onClick={() => onNavigate("CLEANERS_LIST")}
+                borderColor="#2563eb"
               />
               <KPICard
                 label="Compliant Staff"
@@ -375,6 +394,8 @@ const ComplianceDashboard: React.FC<ComplianceDashboardProps> = ({
                 iconBg="bg-green-100"
                 iconColor="text-green-600"
                 sub={`${Math.round((staffSummary.compliant / staffSummary.total) * 100)}% compliance rate`}
+                onClick={() => onNavigate("CLEANERS_LIST")}
+                borderColor="#22c55e"
               />
               <KPICard
                 label="Non-Compliant"
@@ -384,6 +405,8 @@ const ComplianceDashboard: React.FC<ComplianceDashboardProps> = ({
                 iconColor="text-red-600"
                 sub="Cannot be allocated"
                 alert={staffSummary.nonCompliant > 0}
+                onClick={() => onNavigate("CLEANERS_LIST")}
+                borderColor="#ef4444"
               />
               <KPICard
                 label="Expiring Training"
@@ -393,12 +416,19 @@ const ComplianceDashboard: React.FC<ComplianceDashboardProps> = ({
                 iconColor="text-amber-600"
                 sub={`${trainingExpiry.length} expiring within 90 days`}
                 alert={trainingExpiry.length > 0}
+                onClick={() => onNavigate("TRAINING_CERTIFICATION")}
+                borderColor="#f97316"
               />
             </div>
 
             {/* Row 2: Training + Documents */}
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
-              <TrainingExpiryWidget records={trainingExpiry} />
+              <TrainingExpiryWidget
+                records={trainingExpiry}
+                onNavigateToTraining={() =>
+                  onNavigate("TRAINING_CERTIFICATION" as AppView)
+                }
+              />
               <DocumentStatusWidget
                 summary={documentSummary}
                 onNavigateToDocControl={() =>

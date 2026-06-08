@@ -63,12 +63,25 @@ const COMPLIANCE_VIEWS: AppView[] = [
   "STAFF_INVITES",
   "TRAINING_CERTIFICATION",
 ];
-const CLIENT_SITES_VIEWS: AppView[] = ["CLIENTS_SITES"];
+const CLIENT_SITES_VIEWS: AppView[] = [
+  "CLIENTS_SITES",
+  "SITES",
+  "SITE_ALLOCATION",
+  "INSPECTION",
+  "PPE",
+  "SITE_DETAIL",
+  "INSPECTION_DETAIL",
+];
 const DOC_CONTROL_VIEWS: AppView[] = ["DOCUMENT_CONTROL"];
 const RISK_COSHH_VIEWS: AppView[] = ["RISK_COSHH"];
 const INCIDENTS_VIEWS: AppView[] = ["INCIDENTS"];
 const FINANCE_VIEWS: AppView[] = ["FINANCE"];
-const ATTENDANCE_VIEWS: AppView[] = ["ATTENDANCE"];
+const ATTENDANCE_VIEWS: AppView[] = [
+  "ATTENDANCE",
+  "ADMIN_ATTENDANCE",
+  "EMPLOYEE_ATTENDANCE",
+  "REGULARIZATION",
+];
 
 const AdminLayout: React.FC<AdminLayoutProps> = ({
   children,
@@ -501,7 +514,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
                         }
                       }}
                       className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all cursor-pointer ${
-                        currentView === "ATTENDANCE" &&
+                        ATTENDANCE_VIEWS.includes(currentView) &&
                         activeAttendanceView === view
                           ? "bg-white/15 text-white"
                           : "text-white/60 hover:bg-white/10 hover:text-white"
@@ -620,7 +633,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
                         }
                       }}
                       className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all cursor-pointer ${
-                        currentView === "CLIENTS_SITES" &&
+                        CLIENT_SITES_VIEWS.includes(currentView) &&
                         (activeCSView === csView ||
                           (csView === "clients" &&
                             activeCSView === "client-detail") ||

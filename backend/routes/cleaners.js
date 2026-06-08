@@ -1,6 +1,10 @@
 import express from "express";
 import Cleaner from "../models/Cleaner.js";
 import PayrollRecord from "../models/PayrollRecord.js";
+import TrainingRecord from "../models/TrainingRecord.js";
+import Timesheet from "../models/Timesheet.js";
+import AttendanceRegularization from "../models/AttendanceRegularization.js";
+import Invitation from "../models/Invitation.js";
 import dotenv from "dotenv";
 dotenv.config();
 import {
@@ -175,9 +179,52 @@ router.post("/bulk-delete", async (req, res) => {
       });
     }
 
-    const result = await Cleaner.deleteMany({ id: { $in: validIds } });
+    const cleaners = await Cleaner.find({
+      id: { $in: validIds },
+    });
 
-    res.json({ deletedCount: result.deletedCount });
+    // Delete cleaners
+    const result = await Cleaner.deleteMany({
+      id: { $in: validIds },
+    });
+
+    await PayrollRecord.deleteMany({
+      workerId: { $in: validIds },
+    });
+
+    await TrainingRecord.deleteMany({
+      cleanerId: { $in: validIds },
+    });
+
+    await AttendanceRegularization.deleteMany({
+      cleanerId: { $in: validIds },
+    });
+
+    await Timesheet.deleteMany({
+      workerId: { $in: validIds },
+    });
+
+    await Invitation.deleteMany({
+      cleanerId: { $in: validIds },
+    });
+
+    await User.deleteMany({
+      cleanerId: { $in: validIds },
+    });
+
+    // Activity logs
+    for (const cleaner of cleaners) {
+      await logCleanerActivity.deleted(
+        "admin-001",
+        "Admin",
+        cleaner.id,
+        cleaner.name,
+      );
+    }
+
+    res.json({
+      deletedCount: result.deletedCount,
+    });
   } catch (error) {
     res.status(500).json({
       error: "Failed to delete staff",
@@ -701,17 +748,61 @@ router.patch("/:id", async (req, res) => {
 // DELETE cleaner
 router.delete("/:id", async (req, res) => {
   try {
-    const cleaner = await Cleaner.findOneAndDelete({ id: req.params.id });
+    const cleanerId = req.params.id;
+
+    console.log("id", cleanerId);
+
+    // Find cleaner first
+    const cleaner = await Cleaner.findOne({ id: cleanerId });
 
     if (!cleaner) {
-      return res.status(404).json({ error: "Cleaner not found" });
+      return res.status(404).json({
+        error: "Cleaner not found",
+      });
     }
 
-    res.json({ message: "Cleaner deleted successfully", cleaner });
+    // Delete cleaner
+    await Cleaner.deleteOne({ id: cleanerId });
+
+    // Delete payroll records
+    await PayrollRecord.deleteMany({
+      workerId: cleanerId,
+    });
+
+    // Delete training records
+    await TrainingRecord.deleteMany({
+      cleanerId,
+    });
+
+    // Delete attendance regularization
+    await AttendanceRegularization.deleteMany({
+      cleanerId,
+    });
+
+    // Delete timesheets
+    await Timesheet.deleteMany({
+      workerId: cleanerId,
+    });
+
+    // Delete invitations
+    await Invitation.deleteMany({
+      cleanerId,
+    });
+
+    // Delete user account
+    await User.deleteOne({
+      cleanerId,
+    });
+
+    res.json({
+      success: true,
+      message: "Cleaner and related records deleted successfully",
+    });
   } catch (error) {
-    res
-      .status(500)
-      .json({ error: "Failed to delete cleaner", message: error.message });
+    res.status(500).json({
+      error: "Failed to delete cleaner",
+      message: error.message,
+    });
   }
 });
 

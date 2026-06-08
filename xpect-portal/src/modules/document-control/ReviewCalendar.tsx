@@ -56,7 +56,9 @@ const StatCard: React.FC<{
     <div>
       <p className="text-sm font-semibold text-[#4c669a]">{label}</p>
 
-      <p className="text-3xl font-black text-[#0d121b] mt-1">{value}</p>
+      <p className="text-3xl font-bold font-black text-[#0d121b] mt-1">
+        {value}
+      </p>
     </div>
   </button>
 );

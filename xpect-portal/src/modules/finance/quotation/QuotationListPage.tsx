@@ -23,6 +23,9 @@ const QuotationListPage: React.FC = () => {
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
   const [searchValue, setSearchValue] = useState("");
+  const [statusFilter, setStatusFilter] = useState<
+    "ALL" | "DRAFT" | "SENT" | "ACCEPTED" | "REJECTED"
+  >("ALL");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkLoading, setBulkLoading] = useState(false);
 
@@ -32,7 +35,7 @@ const QuotationListPage: React.FC = () => {
 
   useEffect(() => {
     setSelectedIds(new Set());
-  }, [searchValue, sortValue]);
+  }, [searchValue, sortValue, statusFilter]);
 
   const tableRows = useMemo((): QuotationTableRow[] => {
     return quotations.map((q: Quotation) => ({
@@ -51,8 +54,28 @@ const QuotationListPage: React.FC = () => {
 
   const filteredRows = useMemo(() => {
     let rows = tableRows;
+
+    // STATUS FILTER
+    if (statusFilter === "DRAFT") {
+      rows = rows.filter((r) => r.status === "Draft");
+    }
+
+    if (statusFilter === "SENT") {
+      rows = rows.filter((r) => r.status === "Sent");
+    }
+
+    if (statusFilter === "ACCEPTED") {
+      rows = rows.filter((r) => r.status === "Accepted");
+    }
+
+    if (statusFilter === "REJECTED") {
+      rows = rows.filter((r) => r.status === "Rejected");
+    }
+
+    // SEARCH
     if (searchValue.trim()) {
       const q = searchValue.toLowerCase().trim();
+
       rows = rows.filter(
         (r) =>
           r.quotationNo.toLowerCase().includes(q) ||
@@ -60,6 +83,8 @@ const QuotationListPage: React.FC = () => {
           r.clientEmail.toLowerCase().includes(q),
       );
     }
+
+    // SORT
     if (sortValue === "quotationNo") {
       rows = [...rows].sort((a, b) =>
         a.quotationNo.localeCompare(b.quotationNo),
@@ -71,8 +96,9 @@ const QuotationListPage: React.FC = () => {
     } else if (sortValue === "status") {
       rows = [...rows].sort((a, b) => a.status.localeCompare(b.status));
     }
+
     return rows;
-  }, [tableRows, searchValue, sortValue]);
+  }, [tableRows, searchValue, sortValue, statusFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filteredRows.length / pageSize));
   const paginatedRows = useMemo(() => {
@@ -234,7 +260,30 @@ const QuotationListPage: React.FC = () => {
         </h1>
       </div>
 
-      <QuotationStatsCards stats={stats} />
+      <QuotationStatsCards
+        stats={stats}
+        activeFilter={statusFilter}
+        onTotalClick={() => {
+          setStatusFilter("ALL");
+          setCurrentPage(1);
+        }}
+        onDraftClick={() => {
+          setStatusFilter("DRAFT");
+          setCurrentPage(1);
+        }}
+        onSentClick={() => {
+          setStatusFilter("SENT");
+          setCurrentPage(1);
+        }}
+        onAcceptedClick={() => {
+          setStatusFilter("ACCEPTED");
+          setCurrentPage(1);
+        }}
+        onRejectedClick={() => {
+          setStatusFilter("REJECTED");
+          setCurrentPage(1);
+        }}
+      />
 
       <div className="space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">

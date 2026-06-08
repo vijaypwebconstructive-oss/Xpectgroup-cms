@@ -3,10 +3,12 @@ import { TrainingExpiry } from "./types";
 
 interface TrainingExpiryWidgetProps {
   records: TrainingExpiry[];
+  onNavigateToTraining?: () => void;
 }
 
 const TrainingExpiryWidget: React.FC<TrainingExpiryWidgetProps> = ({
   records,
+  onNavigateToTraining,
 }) => {
   const getRowStyle = (days: number) => {
     if (days <= 7)
@@ -33,20 +35,30 @@ const TrainingExpiryWidget: React.FC<TrainingExpiryWidgetProps> = ({
   return (
     <div className="bg-white rounded-xl border border-[#e7ebf3] flex flex-col">
       <div className="p-3 border-b border-[#e7ebf3] flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className="material-symbols-outlined text-[20px] text-amber-600">
-            school
-          </span>
-          <div>
-            <h3 className="text-sm font-bold text-[#0d121b]">
-              Training Expiry
-            </h3>
-            <p className="text-xs text-[#6b7a99]">Expiring within 90 days</p>
+        <div className="flex items-center justify-between w-[100%] gap-2">
+          <div className="flex items-center gap-2">
+            <span className="material-symbols-outlined text-[20px] text-amber-600">
+              school
+            </span>
+            <div>
+              <h3 className="text-sm font-bold text-[#0d121b]">
+                Training Expiry
+              </h3>
+              <p className="text-xs text-[#6b7a99]">Expiring within 90 days</p>
+            </div>
           </div>
+          <button
+            onClick={onNavigateToTraining}
+            className="text-sm font-medium text-blue-600 hover:text-blue-700"
+          >
+            View All
+          </button>
         </div>
         {urgentCount > 0 && (
           <span className="px-2.5 py-1 rounded-full bg-amber-100 text-amber-700 text-xs font-bold flex items-center gap-1">
-            <span className="material-symbols-outlined text-[14px]">warning</span>
+            <span className="material-symbols-outlined text-[14px]">
+              warning
+            </span>
             {urgentCount} expiring
           </span>
         )}

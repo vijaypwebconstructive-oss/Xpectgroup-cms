@@ -19,6 +19,9 @@ const InvoiceListPage: React.FC = () => {
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
   const [searchValue, setSearchValue] = useState("");
+  const [statusFilter, setStatusFilter] = useState<
+    "ALL" | "PAID" | "OVERDUE" | "PENDING"
+  >("ALL");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkLoading, setBulkLoading] = useState(false);
 
@@ -28,7 +31,7 @@ const InvoiceListPage: React.FC = () => {
 
   useEffect(() => {
     setSelectedIds(new Set());
-  }, [searchValue, sortValue]);
+  }, [searchValue, sortValue, statusFilter]);
 
   const tableRows = useMemo((): InvoiceTableRow[] => {
     return invoices.map((inv) => ({
@@ -46,11 +49,26 @@ const InvoiceListPage: React.FC = () => {
         | "Sent",
     }));
   }, [invoices]);
-
   const filteredRows = useMemo(() => {
     let rows = tableRows;
+
+    // STATUS FILTER
+    if (statusFilter === "PAID") {
+      rows = rows.filter((r) => r.status === "Paid");
+    }
+
+    if (statusFilter === "OVERDUE") {
+      rows = rows.filter((r) => r.status === "Overdue");
+    }
+
+    if (statusFilter === "PENDING") {
+      rows = rows.filter((r) => r.status === "Pending");
+    }
+
+    // SEARCH
     if (searchValue.trim()) {
       const q = searchValue.toLowerCase().trim();
+
       rows = rows.filter(
         (r) =>
           r.invoiceNo.toLowerCase().includes(q) ||
@@ -58,6 +76,8 @@ const InvoiceListPage: React.FC = () => {
           r.clientPhone.toLowerCase().includes(q),
       );
     }
+
+    // SORT
     if (sortValue === "invoiceNo") {
       rows = [...rows].sort((a, b) => a.invoiceNo.localeCompare(b.invoiceNo));
     } else if (sortValue === "date") {
@@ -67,8 +87,9 @@ const InvoiceListPage: React.FC = () => {
     } else if (sortValue === "status") {
       rows = [...rows].sort((a, b) => a.status.localeCompare(b.status));
     }
+
     return rows;
-  }, [tableRows, searchValue, sortValue]);
+  }, [tableRows, searchValue, sortValue, statusFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filteredRows.length / pageSize));
   const paginatedRows = useMemo(() => {
@@ -243,7 +264,26 @@ const InvoiceListPage: React.FC = () => {
         </h1>
       </div>
 
-      <InvoiceStatsCards stats={stats} />
+      <InvoiceStatsCards
+        stats={stats}
+        activeFilter={statusFilter}
+        onTotalClick={() => {
+          setStatusFilter("ALL");
+          setCurrentPage(1);
+        }}
+        onPaidClick={() => {
+          setStatusFilter("PAID");
+          setCurrentPage(1);
+        }}
+        onOverdueClick={() => {
+          setStatusFilter("OVERDUE");
+          setCurrentPage(1);
+        }}
+        onPendingClick={() => {
+          setStatusFilter("PENDING");
+          setCurrentPage(1);
+        }}
+      />
 
       <div className="space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">

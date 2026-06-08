@@ -1317,7 +1317,7 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
                   <div className="flex-1">
                     <p className="text-sm text-gray-600 mb-2">
                       Please upload a recent passport-size photograph (JPG, PNG,
-                      max 5MB)
+                      max 100kb)
                     </p>
                     {passportPhotoFile && (
                       <div className="flex items-center gap-2 text-sm text-gray-500">
@@ -1624,9 +1624,9 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
                     <h3 className="font-black font-bold tracking-widest text-sm text-white">
                       Right to Work – Share Code
                     </h3>
-                    <p className="text-[10px] text-white/80 font-bold uppercase tracking-tight">
+                    {/* <p className="text-[10px] text-white/80 font-bold uppercase tracking-tight">
                       (How to get it)
-                    </p>
+                    </p> */}
                   </div>
                 </div>
               </div>
@@ -1636,7 +1636,7 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
                     Since you are not a UK or Irish citizen, you must provide a
                     Share Code from the UK Government website.
                   </p>
-                  <p className="text-[14px] font-semibold font-black uppercase tracking-tight text-gray-600">
+                  <p className="text-[14px] font-semibold font-black  text-gray-600">
                     This is required by the UK Home Office
                   </p>
                 </div>
@@ -2032,7 +2032,7 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
                             e.stopPropagation();
                             removeUploadedFile("termDatesDocument");
                           }}
-                          className="text-red-500 hover:text-red-700"
+                          className="text-red-500 hover:text-red-700 transition-colors"
                         >
                           <span className="material-symbols-outlined text-base">
                             close
@@ -2105,8 +2105,8 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
                   Upload one (Required):
                 </p>
                 <p className="text-base text-gray-500 mt-1">
-                  Please provide a clear photo or scan of one of the following
-                  documents to verify your identity.
+                  Upload a clear photo or scan of any one of the following
+                  identity documents for identity verification (Max 100KB).
                 </p>
               </div>
               {validationErrors.identityProof && (
@@ -2181,9 +2181,29 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
                         <span className="material-symbols-outlined text-sm font-bold">
                           cloud_upload
                         </span>
-                        {uploadedFiles[doc.key]
-                          ? uploadedFiles[doc.key]!.name
-                          : "Upload File"}
+                        {uploadedFiles[doc.key] ? (
+                          <div className="flex items-center gap-2">
+                            <span className="truncate max-w-[150px]">
+                              {uploadedFiles[doc.key]!.name}
+                            </span>
+
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                removeUploadedFile(doc.key);
+                              }}
+                              className="text-red-500 hover:text-red-700 transition-colors"
+                            >
+                              <span className="material-symbols-outlined text-sm">
+                                close
+                              </span>
+                            </button>
+                          </div>
+                        ) : (
+                          "Upload File"
+                        )}
                       </label>
                     </div>
                   </div>
@@ -2219,6 +2239,7 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
                   }`}
                 >
                   <input
+                    id="salary-slip-input"
                     type="file"
                     accept=".pdf,.jpg,.jpeg,.png"
                     className="hidden"
@@ -2258,11 +2279,15 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
                     <button
                       type="button"
                       onClick={(e) => {
+                        e.preventDefault();
                         e.stopPropagation();
-                        handleFileUpload("salarySlip", null);
-                        const fileInput = document.querySelector(
-                          'input[type="file"]',
+
+                        removeUploadedFile("salarySlip");
+
+                        const fileInput = document.getElementById(
+                          "salary-slip-input",
                         ) as HTMLInputElement;
+
                         if (fileInput) {
                           fileInput.value = "";
                         }
@@ -2500,9 +2525,41 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
                       Upload DBS Certificate
                     </h3>
                     <p className="text-xs text-gray-500 mt-2 font-medium">
-                      {uploadedFiles.dbsCertificate
-                        ? uploadedFiles.dbsCertificate.name
-                        : "Please upload a clear scan or photo of your certificate."}
+                      {uploadedFiles.dbsCertificate ? (
+                        <div className="flex items-center gap-2 mt-2">
+                          <span className="text-xs text-gray-700 font-medium truncate max-w-[220px]">
+                            {uploadedFiles.dbsCertificate.name}
+                          </span>
+
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+
+                              removeUploadedFile("dbsCertificate");
+
+                              const fileInput = document.getElementById(
+                                "dbs-certificate-input",
+                              ) as HTMLInputElement;
+
+                              if (fileInput) {
+                                fileInput.value = "";
+                              }
+                            }}
+                            className="text-red-500 hover:text-red-700 transition-colors"
+                          >
+                            <span className="material-symbols-outlined text-sm">
+                              close
+                            </span>
+                          </button>
+                        </div>
+                      ) : (
+                        <p className="text-xs text-gray-500 mt-2 font-medium">
+                          Please upload a clear scan or photo of your
+                          certificate.
+                        </p>
+                      )}
                     </p>
                     <p className="text-[14px] text-[#444] font-black mt-4 font-semibold ">
                       Authority: Disclosure and Barring Service
