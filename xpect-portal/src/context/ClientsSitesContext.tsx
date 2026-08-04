@@ -13,6 +13,7 @@ import {
   WorkerAssignment,
 } from "../modules/clients-sites/types";
 import api from "../services/api";
+import { shouldFetchProviderData } from "../utils/lazyProvider";
 
 export const daysUntil = (dateStr: string): number => {
   const now = new Date();
@@ -131,14 +132,22 @@ export const ClientsSitesProvider: React.FC<ClientsSitesProviderProps> = ({
   }, [refreshClients, refreshSites, refreshAssignments]);
 
   useEffect(() => {
+    if (!shouldFetchProviderData()) {
+      return;
+    }
+
     const interval = setInterval(() => {
       refreshSites();
     }, 30000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [refreshSites]);
 
   useEffect(() => {
+    if (!shouldFetchProviderData()) {
+      return;
+    }
+
     refreshAll();
   }, [refreshAll, allocationHistoryFilter]);
 

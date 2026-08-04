@@ -11,6 +11,9 @@ import {
 } from "../types";
 import api from "../services/api";
 import { clearEmployeeSession } from "../utils/auth";
+import EmploymentContractStep from "./EmploymentContractStep";
+import { generateContract } from "./generateContract";
+import { overlayFields } from "../utils/overlayFields";
 
 interface OnboardingFlowProps {
   onComplete: () => void;
@@ -77,6 +80,15 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
 
   // Employment type state
   const [employmentType, setEmploymentType] = useState<EmploymentType | null>(
+    null,
+  );
+
+  // Employment Contract
+  const [contractRead, setContractRead] = useState(false);
+  const [contractAccepted, setContractAccepted] = useState(false);
+  const [contractViewed, setContractViewed] = useState(false);
+
+  const [employeeSignature, setEmployeeSignature] = useState<string | null>(
     null,
   );
 
@@ -157,12 +169,25 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
 
   const [usernameExists, setUsernameExists] = useState(false);
 
-  // Helper function to convert File to base64 (for autosave)
+  // Cache for base64 conversions so we never re-encode the same file twice
+  const fileCacheRef = React.useRef<Record<string, string>>({});
+
+  const fileCacheKey = (file: File) =>
+    `${file.name}-${file.size}-${file.lastModified}`;
+
   const fileToBase64 = (file: File): Promise<string> => {
+    const key = fileCacheKey(file);
+    if (fileCacheRef.current[key]) {
+      return Promise.resolve(fileCacheRef.current[key]);
+    }
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.readAsDataURL(file);
-      reader.onload = () => resolve(reader.result as string);
+      reader.onload = () => {
+        const result = reader.result as string;
+        fileCacheRef.current[key] = result;
+        resolve(result);
+      };
       reader.onerror = (error) => reject(error);
     });
   };
@@ -170,82 +195,12 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
   // Collect all form data into a serializable object for autosave
   const collectFormData = async (): Promise<any> => {
     // Convert files to base64 for storage (so they can be restored on resume)
-    const fileData: any = {};
-    if (uploadedFiles.shareCodeScreenshot) {
-      try {
-        fileData.shareCodeScreenshot = await fileToBase64(
-          uploadedFiles.shareCodeScreenshot,
-        );
-        fileData.shareCodeScreenshotName =
-          uploadedFiles.shareCodeScreenshot.name;
-      } catch (err) {
-        console.warn("Failed to convert shareCodeScreenshot to base64:", err);
-      }
-    }
-    if (uploadedFiles.passport) {
-      try {
-        fileData.passport = await fileToBase64(uploadedFiles.passport);
-        fileData.passportName = uploadedFiles.passport.name;
-      } catch (err) {
-        console.warn("Failed to convert passport to base64:", err);
-      }
-    }
-    if (uploadedFiles.brp) {
-      try {
-        fileData.brp = await fileToBase64(uploadedFiles.brp);
-        fileData.brpName = uploadedFiles.brp.name;
-      } catch (err) {
-        console.warn("Failed to convert brp to base64:", err);
-      }
-    }
-    if (uploadedFiles.residenceCard) {
-      try {
-        fileData.residenceCard = await fileToBase64(
-          uploadedFiles.residenceCard,
-        );
-        fileData.residenceCardName = uploadedFiles.residenceCard.name;
-      } catch (err) {
-        console.warn("Failed to convert residenceCard to base64:", err);
-      }
-    }
-    if (uploadedFiles.drivingLicence) {
-      try {
-        fileData.drivingLicence = await fileToBase64(
-          uploadedFiles.drivingLicence,
-        );
-        fileData.drivingLicenceName = uploadedFiles.drivingLicence.name;
-      } catch (err) {
-        console.warn("Failed to convert drivingLicence to base64:", err);
-      }
-    }
-    if (uploadedFiles.termDatesDocument) {
-      try {
-        fileData.termDatesDocument = await fileToBase64(
-          uploadedFiles.termDatesDocument,
-        );
-        fileData.termDatesDocumentName = uploadedFiles.termDatesDocument.name;
-      } catch (err) {
-        console.warn("Failed to convert termDatesDocument to base64:", err);
-      }
-    }
-    if (uploadedFiles.dbsCertificate) {
-      try {
-        fileData.dbsCertificate = await fileToBase64(
-          uploadedFiles.dbsCertificate,
-        );
-        fileData.dbsCertificateName = uploadedFiles.dbsCertificate.name;
-      } catch (err) {
-        console.warn("Failed to convert dbsCertificate to base64:", err);
-      }
-    }
-    if (uploadedFiles.salarySlip) {
-      try {
-        fileData.salarySlip = await fileToBase64(uploadedFiles.salarySlip);
-        fileData.salarySlipName = uploadedFiles.salarySlip.name;
-      } catch (err) {
-        console.warn("Failed to convert salarySlip to base64:", err);
-      }
-    }
+
+    console.time("Collect Form Data");
+
+    // existing code
+
+    console.timeEnd("Collect Form Data");
 
     return {
       personalDetails,
@@ -266,7 +221,9 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
       hasDBS,
       declarations,
       accountDetails,
-      ...fileData, // Include all file base64 data
+      contractRead,
+      contractAccepted,
+      contractViewed, // Include all file base64 data
     };
   };
 
@@ -282,14 +239,12 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
 
     try {
       const formData = await collectFormData();
+
       await api.invitations.saveProgress(
         inviteToken,
         currentStep,
         formData,
         isStepCompleted,
-      );
-      console.log(
-        `[OnboardingFlow] Progress saved for step ${currentStep} (completed: ${isStepCompleted})`,
       );
     } catch (err: any) {
       console.error("[OnboardingFlow] Failed to save progress:", err);
@@ -326,6 +281,18 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
         console.log(
           `[OnboardingFlow] Loading saved progress - currentStep: ${saved.currentStep}, lastCompletedStep: ${saved.lastCompletedStep}, savedCurrentStep: ${savedCurrentStep}`,
         );
+
+        if (formData.contractRead !== undefined) {
+          setContractRead(formData.contractRead);
+        }
+
+        if (formData.contractAccepted !== undefined) {
+          setContractAccepted(formData.contractAccepted);
+        }
+
+        if (formData.contractViewed !== undefined) {
+          setContractViewed(formData.contractViewed);
+        }
 
         // Restore citizenshipStatus FIRST (needed for step calculation)
         if (formData.citizenshipStatus !== undefined) {
@@ -582,12 +549,14 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
           // Pass tokenFromStorage directly to avoid state timing issues
           const resumeStep = await loadSavedProgress(tokenFromStorage);
           // Always set the step (even if it's 1) to ensure it's set before component renders
+
           console.log(
             `[OnboardingFlow] Setting step to ${resumeStep} before rendering form (current step state: ${step})`,
           );
           setStep(resumeStep);
 
           // Wait a bit longer to ensure state update is processed and prevent autosave from triggering
+
           await new Promise((resolve) => setTimeout(resolve, 300));
         } else if (data.status === "COMPLETED") {
           // Invitation already completed - redirect to thank you page
@@ -629,6 +598,7 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
     }
   }, [inviteToken, isVerified, checkingToken]);
 
+  // Mark initial load as complete after progress is loaded
   // Mark initial load as complete after progress is loaded
   useEffect(() => {
     if (isVerified && !checkingToken) {
@@ -761,7 +731,7 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
     if (!isBritishOrIrish) steps.push(3);
     if (isNonEU) steps.push(4);
     if (isStudentVisa) steps.push(5);
-    steps.push(6, 7, 8, 9, 10);
+    steps.push(6, 7, 8, 9, 10, 11);
     return steps;
   };
 
@@ -770,83 +740,54 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
   const currentStepIndex = activeSteps.indexOf(step);
   const displayStep = currentStepIndex + 1;
 
-  // const handleNext = async () => {
-  //   // First check if step is valid (without setting errors)
-
-  //   if (step === 2) {
-  //     const usernameValid = await validateUsername();
-
-  //     if (!usernameValid) {
-  //       return;
-  //     }
-  //   }
-  //   if (!checkStepValidity()) {
-  //     // If invalid, run validateStep to show errors
-  //     validateStep();
-  //     return;
-  //   }
-
-  //   // Save progress for current step (marking it as completed) before moving to next step
-  //   if (inviteToken) {
-  //     await saveProgressOnStepChange(step, true); // Mark current step as completed
-  //   }
-
-  //   if (currentStepIndex < totalSteps - 1) {
-  //     setValidationErrors({}); // Clear errors when moving to next step
-  //     const nextStep = activeSteps[currentStepIndex + 1];
-  //     setStep(nextStep);
-
-  //     // Save progress for the new step (not completed yet, just starting)
-  //     if (inviteToken) {
-  //       await saveProgressOnStepChange(nextStep, false);
-  //     }
-  //   } else {
-  //     // Final step "Submit Application" - create new cleaner
-  //     submitApplication();
-  //   }
-  // };
-
   const handleNext = async () => {
-    try {
-      setIsNextLoading(true);
+    const valid = checkStepValidity();
 
-      // First check if step is valid
-      if (step === 2) {
-        const usernameValid = await validateUsername();
+    if (!valid) {
+      validateStep();
+      return;
+    }
 
-        if (!usernameValid) {
-          return;
-        }
-      }
+    if (currentStepIndex < totalSteps - 1) {
+      const nextStep = activeSteps[currentStepIndex + 1];
 
-      if (!checkStepValidity()) {
-        validateStep();
-        return;
-      }
+      setValidationErrors({});
+      setStep(nextStep);
+      console.log("========== NEXT ==========");
+      console.log("Current Step:", step);
+      console.log("Current Index:", currentStepIndex);
+      console.log("Active Steps:", activeSteps);
 
-      // Save progress
       if (inviteToken) {
         await saveProgressOnStepChange(step, true);
       }
+    } else {
+      setIsNextLoading(true);
 
-      if (currentStepIndex < totalSteps - 1) {
-        setValidationErrors({});
-
-        const nextStep = activeSteps[currentStepIndex + 1];
-
-        setStep(nextStep);
-
-        if (inviteToken) {
-          await saveProgressOnStepChange(nextStep, false);
-        }
-      } else {
+      try {
         await submitApplication();
+      } finally {
+        setIsNextLoading(false);
       }
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setIsNextLoading(false);
     }
+  };
+
+  const createDocument = async (
+    file: File,
+    id: string,
+    name: string,
+    type: "IMG" | "PDF",
+    status: DocumentStatus = DocumentStatus.PENDING,
+  ): Promise<Document> => {
+    return {
+      id,
+      name,
+      type,
+      uploadDate: new Date().toISOString().split("T")[0],
+      status,
+      fileName: file.name,
+      fileUrl: await fileToBase64(file),
+    };
   };
 
   const submitApplication = async () => {
@@ -854,145 +795,156 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
     const applicationRef = `XPG-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
 
     // Helper function to convert file to base64
-    const fileToBase64 = (file: File): Promise<string> => {
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = (error) => reject(error);
-      });
-    };
 
     // Create documents array from uploaded files
-    const documents: Document[] = [];
+
     const today = new Date().toISOString().split("T")[0];
 
     // Process all files asynchronously
-    const filePromises: Promise<void>[] = [];
-
-    if (uploadedFiles.passport) {
-      filePromises.push(
-        fileToBase64(uploadedFiles.passport).then((fileUrl) => {
-          documents.push({
-            id: "passport-" + Date.now(),
-            name: "Passport",
-            type: "IMG",
-            uploadDate: today,
-            status: DocumentStatus.PENDING,
-            fileName: uploadedFiles.passport!.name,
-            fileUrl,
-          });
-        }),
-      );
-    }
-    if (uploadedFiles.brp) {
-      filePromises.push(
-        fileToBase64(uploadedFiles.brp).then((fileUrl) => {
-          documents.push({
-            id: "brp-" + Date.now(),
-            name: "Biometric Residence Permit (BRP)",
-            type: "IMG",
-            uploadDate: today,
-            status: DocumentStatus.PENDING,
-            fileName: uploadedFiles.brp!.name,
-            fileUrl,
-          });
-        }),
-      );
-    }
-    if (uploadedFiles.residenceCard) {
-      filePromises.push(
-        fileToBase64(uploadedFiles.residenceCard).then((fileUrl) => {
-          documents.push({
-            id: "residence-" + Date.now(),
-            name: "UK Residence Card / Frontier Worker Permit",
-            type: "IMG",
-            uploadDate: today,
-            status: DocumentStatus.PENDING,
-            fileName: uploadedFiles.residenceCard!.name,
-            fileUrl,
-          });
-        }),
-      );
-    }
-    if (uploadedFiles.drivingLicence) {
-      filePromises.push(
-        fileToBase64(uploadedFiles.drivingLicence).then((fileUrl) => {
-          documents.push({
-            id: "licence-" + Date.now(),
-            name: "Driving Licence",
-            type: "IMG",
-            uploadDate: today,
-            status: DocumentStatus.PENDING,
-            fileName: uploadedFiles.drivingLicence!.name,
-            fileUrl,
-          });
-        }),
-      );
-    }
-    if (uploadedFiles.shareCodeScreenshot) {
-      filePromises.push(
-        fileToBase64(uploadedFiles.shareCodeScreenshot).then((fileUrl) => {
-          documents.push({
-            id: "sharecode-" + Date.now(),
-            name: "RTW Share Code Screenshot",
-            type: "IMG",
-            uploadDate: today,
-            status: DocumentStatus.PENDING,
-            fileName: uploadedFiles.shareCodeScreenshot!.name,
-            fileUrl,
-          });
-        }),
-      );
-    }
-    if (uploadedFiles.termDatesDocument) {
-      filePromises.push(
-        fileToBase64(uploadedFiles.termDatesDocument).then((fileUrl) => {
-          documents.push({
-            id: "termdates-" + Date.now(),
-            name: "Official Term Dates",
-            type: "PDF",
-            uploadDate: today,
-            status: DocumentStatus.PENDING,
-            fileName: uploadedFiles.termDatesDocument!.name,
-            fileUrl,
-          });
-        }),
-      );
-    }
-    if (uploadedFiles.dbsCertificate) {
-      filePromises.push(
-        fileToBase64(uploadedFiles.dbsCertificate).then((fileUrl) => {
-          documents.push({
-            id: "dbs-" + Date.now(),
-            name: "DBS Certificate",
-            type: "IMG",
-            uploadDate: today,
-            status: hasDBS ? DocumentStatus.VERIFIED : DocumentStatus.PENDING,
-            fileName: uploadedFiles.dbsCertificate!.name,
-            fileUrl,
-          });
-        }),
-      );
-    }
-    if (uploadedFiles.salarySlip) {
-      filePromises.push(
-        fileToBase64(uploadedFiles.salarySlip).then((fileUrl) => {
-          documents.push({
-            id: "salaryslip-" + Date.now(),
-            name: "Last 3 Month Salary Slip",
-            type: "PDF",
-            uploadDate: today,
-            status: DocumentStatus.PENDING,
-            fileName: uploadedFiles.salarySlip!.name,
-            fileUrl,
-          });
-        }),
-      );
-    }
 
     // Wait for all files to be processed
-    await Promise.all(filePromises);
+
+    const overlayData = {
+      employeeName: personalDetails.name,
+      employeeAddress: personalDetails.address,
+
+      contractDate: new Date().toLocaleDateString(),
+
+      salary:
+        invitation?.salaryAmount && invitation?.salaryType
+          ? `£${invitation.salaryAmount} / ${invitation.salaryType}`
+          : "",
+
+      Ownername: invitation?.senderName || "",
+
+      designation: invitation?.senderDesignation || "",
+
+      ownerDate: new Date().toLocaleDateString(),
+
+      employeeDate: new Date().toLocaleDateString(),
+
+      employeeSignature,
+
+      ownerSignature: null,
+    };
+
+    const pdfBytes = await generateContract({
+      pdfUrl: "/contract.pdf",
+      overlayFields,
+      overlayData,
+      previewWidth: 850,
+    });
+
+    // ✅ STEP 4 - Convert to Blob
+    const contractBlob = new Blob([pdfBytes], {
+      type: "application/pdf",
+    });
+
+    // ✅ STEP 5 - Convert Blob to File
+    const contractFile = new File([contractBlob], "EmploymentContract.pdf", {
+      type: "application/pdf",
+    });
+
+    const documents: Document[] = [];
+
+    documents.push(
+      await createDocument(
+        contractFile,
+        `contract-${Date.now()}`,
+        "Signed Employment Contract",
+        "PDF",
+        DocumentStatus.VERIFIED,
+      ),
+    );
+
+    if (uploadedFiles.passport) {
+      documents.push(
+        await createDocument(
+          uploadedFiles.passport,
+          `passport-${Date.now()}`,
+          "Passport",
+          "IMG",
+        ),
+      );
+    }
+
+    if (uploadedFiles.brp) {
+      documents.push(
+        await createDocument(
+          uploadedFiles.brp,
+          `brp-${Date.now()}`,
+          "Biometric Residence Permit",
+          "IMG",
+        ),
+      );
+    }
+
+    if (uploadedFiles.residenceCard) {
+      documents.push(
+        await createDocument(
+          uploadedFiles.residenceCard,
+          `residence-${Date.now()}`,
+          "Residence Card",
+          "IMG",
+        ),
+      );
+    }
+
+    if (uploadedFiles.drivingLicence) {
+      documents.push(
+        await createDocument(
+          uploadedFiles.drivingLicence,
+          `licence-${Date.now()}`,
+          "Driving Licence",
+          "IMG",
+        ),
+      );
+    }
+
+    if (uploadedFiles.shareCodeScreenshot) {
+      documents.push(
+        await createDocument(
+          uploadedFiles.shareCodeScreenshot,
+          `sharecode-${Date.now()}`,
+          "Share Code Screenshot",
+          "IMG",
+        ),
+      );
+    }
+
+    if (uploadedFiles.termDatesDocument) {
+      documents.push(
+        await createDocument(
+          uploadedFiles.termDatesDocument,
+          `termdates-${Date.now()}`,
+          "Term Dates",
+          "PDF",
+        ),
+      );
+    }
+
+    if (uploadedFiles.dbsCertificate) {
+      documents.push(
+        await createDocument(
+          uploadedFiles.dbsCertificate,
+          `dbs-${Date.now()}`,
+          "DBS Certificate",
+          "IMG",
+          hasDBS ? DocumentStatus.VERIFIED : DocumentStatus.PENDING,
+        ),
+      );
+    }
+
+    if (uploadedFiles.salarySlip) {
+      documents.push(
+        await createDocument(
+          uploadedFiles.salarySlip,
+          `salary-${Date.now()}`,
+          "Salary Slip",
+          "PDF",
+        ),
+      );
+    }
 
     const newCleaner: Cleaner = {
       id: Date.now().toString(),
@@ -1013,6 +965,15 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
       visaOther: visaOther || undefined,
       shareCode: shareCode || undefined,
       uniName: uniName || undefined,
+      contract: {
+        read: contractRead,
+        accepted: contractAccepted,
+        acceptedAt: new Date().toISOString(),
+
+        signedAt: new Date().toISOString(),
+
+        version: "1.0",
+      },
       courseName: courseName || undefined,
       termStart: termStart || undefined,
       termEnd: termEnd || undefined,
@@ -2675,6 +2636,22 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
         );
       case 10:
         return (
+          <EmploymentContractStep
+            invitation={invitation}
+            personalDetails={personalDetails}
+            contractRead={contractRead}
+            contractAccepted={contractAccepted}
+            setContractRead={setContractRead}
+            setContractAccepted={setContractAccepted}
+            validationErrors={validationErrors}
+            displayStep={displayStep}
+            employeeSignature={employeeSignature}
+            setEmployeeSignature={setEmployeeSignature}
+          />
+        );
+
+      case 11:
+        return (
           <div className="space-y-6 animate-in fade-in duration-700">
             <h2 className="text-l font-semibold border-b pb-4 uppercase tracking-wider text-gray-500 text-base">
               Step {displayStep}: Final Declarations
@@ -2834,6 +2811,8 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
         preferredShiftPattern !== "Any"
       );
     } else if (step === 10) {
+      return !!(contractRead && contractAccepted && employeeSignature);
+    } else if (step === 11) {
       return !!(
         declarations.accuracy &&
         declarations.rtw &&
@@ -2997,19 +2976,44 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
         isValid = false;
       }
     } else if (step === 10) {
+      // Employment Contract Validation
+
+      if (!contractRead) {
+        errors.contractRead =
+          "Please confirm that you have read the employment contract.";
+        isValid = false;
+      }
+
+      if (!contractAccepted) {
+        errors.contractAccepted =
+          "You must accept the employment contract before continuing.";
+        isValid = false;
+      }
+
+      if (!employeeSignature) {
+        errors.employeeSignature =
+          "Please sign the employment contract before continuing.";
+        isValid = false;
+      }
+    } else if (step === 11) {
+      // Final Declarations Validation
+
       if (!declarations.accuracy) {
         errors.accuracy = "You must confirm the information is accurate";
         isValid = false;
       }
+
       if (!declarations.rtw) {
         errors.rtw = "You must consent to Right-to-Work verification";
         isValid = false;
       }
+
       if (!declarations.approval) {
         errors.approval =
           "You must understand employment is subject to approval";
         isValid = false;
       }
+
       if (!declarations.gdpr) {
         errors.gdpr = "You must consent to secure storage of your data";
         isValid = false;

@@ -28,6 +28,36 @@ const DeclarationsSchema = new mongoose.Schema(
   { _id: false },
 );
 
+const ContractSchema = new mongoose.Schema(
+  {
+    read: {
+      type: Boolean,
+      default: false,
+    },
+    accepted: {
+      type: Boolean,
+      default: false,
+    },
+    acceptedAt: {
+      type: Date,
+    },
+    signedAt: {
+      type: Date,
+    },
+    version: {
+      type: String,
+      default: "1.0",
+    },
+    pdfUrl: {
+      type: String,
+    },
+    fileName: {
+      type: String,
+    },
+  },
+  { _id: false },
+);
+
 const CleanerSchema = new mongoose.Schema(
   {
     id: { type: String, required: true, unique: true },
@@ -70,6 +100,11 @@ const CleanerSchema = new mongoose.Schema(
     termEnd: { type: String },
     workPreference: { type: String, enum: ["Full-Time", "Part-Time"] },
     declarations: { type: DeclarationsSchema, required: true },
+
+    contract: {
+      type: ContractSchema,
+    },
+
     documents: [DocumentSchema],
 
     accountDetails: {

@@ -45,9 +45,23 @@ const StaffInvites: React.FC<StaffInvitesProps> = () => {
     return `${window.location.origin}/onboarding/auth/${inviteToken}`;
   };
 
-  const handleSendInvite = async (name: string, email: string) => {
+  const handleSendInvite = async (
+    name: string,
+    email: string,
+    senderName: string,
+    senderDesignation: string,
+    salaryType: string,
+    salaryAmount: number,
+  ) => {
     try {
-      await api.invitations.send(name, email);
+      await api.invitations.send({
+        employeeName: name,
+        email,
+        senderName,
+        senderDesignation,
+        salaryType,
+        salaryAmount,
+      });
 
       // Refresh invitations list
       await fetchInvitations();
@@ -249,12 +263,14 @@ const StaffInvites: React.FC<StaffInvitesProps> = () => {
                     </td>
                     <td className="px-[16px] sm:px-6 py-4">
                       <span
-                        className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider text-nowrap ${getStatusStyles(invitation.status)}`}
+                        className={` text-xs  font-bold px-2 py-1 rounded-full ${getStatusStyles(invitation.status)}`}
                       >
-                        {invitation.status === "COMPLETED"
-                          ? "Completed"
-                          : invitation.currentStepName}
+                        {invitation.status}
                       </span>
+
+                      <p className="  sm:text-base font-bold text-xs text-gray-500 mt-1">
+                        {invitation.currentStepName}
+                      </p>
                     </td>
                     <td className="px-[16px] sm:px-6 py-4 text-sm font-medium text-[#0d121b]">
                       Onboarding

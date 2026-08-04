@@ -25,9 +25,28 @@ const InvitationSchema = new mongoose.Schema(
       unique: true,
       default: () => randomUUID(),
     },
+    senderName: {
+      type: String,
+      required: true,
+    },
+
+    senderDesignation: {
+      type: String,
+      required: true,
+    },
     otp: {
       type: String,
       required: false,
+    },
+    salaryType: {
+      type: String,
+      enum: ["Hourly", "Weekly", "Monthly"],
+      required: true,
+    },
+    salaryAmount: {
+      type: Number,
+      required: true,
+      min: 0,
     },
     otpExpiresAt: {
       type: Date,

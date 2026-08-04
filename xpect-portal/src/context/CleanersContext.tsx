@@ -7,6 +7,7 @@ import React, {
 } from "react";
 import { Cleaner } from "../types";
 import api from "../services/api";
+import { shouldFetchProviderData } from "../utils/lazyProvider";
 
 interface CleanersContextType {
   cleaners: Cleaner[];
@@ -67,6 +68,10 @@ export const CleanersProvider: React.FC<CleanersProviderProps> = ({
   };
 
   useEffect(() => {
+    if (!shouldFetchProviderData()) {
+      return;
+    }
+
     fetchCleaners();
   }, []);
 

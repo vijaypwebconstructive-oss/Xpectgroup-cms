@@ -58,13 +58,34 @@ export const verifyOnboardingToken = (token) => {
 // POST /api/invitations/send - Send invitation
 router.post("/send", async (req, res) => {
   try {
-    const { employeeName, email } = req.body;
+    const {
+      employeeName,
+      email,
+      senderName,
+      senderDesignation,
+      salaryType,
+      salaryAmount,
+    } = req.body;
 
     // Validation
-    if (!employeeName || !email) {
+    if (
+      !employeeName ||
+      !email ||
+      !senderName ||
+      !senderDesignation ||
+      !salaryType ||
+      salaryAmount === undefined
+    ) {
       return res.status(400).json({
         error: "Validation error",
-        message: "Employee name and email are required",
+        message: "All fields are required",
+      });
+    }
+
+    if (Number(salaryAmount) <= 0) {
+      return res.status(400).json({
+        error: "Validation error",
+        message: "Salary amount must be greater than 0",
       });
     }
 
@@ -120,9 +141,13 @@ router.post("/send", async (req, res) => {
 
     // Create invitation
     const invitation = new Invitation({
-      employeeName: employeeName.trim(),
+      employeeName,
       email: normalizedEmail,
-      otp: hashedOTP, // Store hashed OTP
+      senderName,
+      senderDesignation,
+      salaryType,
+      salaryAmount,
+      otp: hashedOTP,
       otpExpiresAt,
       status: "SENT",
     });
@@ -274,6 +299,16 @@ router.post("/verify-otp", async (req, res) => {
       message: error.message,
     });
   }
+});
+
+router.get("/", async (req, res) => {
+  console.time("Invitation API");
+
+  const invitations = await Invitation.find();
+
+  console.timeEnd("Invitation API");
+
+  res.json(invitations);
 });
 
 router.get("/", async (req, res) => {
@@ -554,7 +589,7 @@ router.post("/:inviteToken/progress", async (req, res) => {
     const { step, formData, isStepCompleted } = req.body;
 
     // Validation
-    if (!step || typeof step !== "number" || step < 1 || step > 10) {
+    if (!step || typeof step !== "number" || step < 1 || step > 11) {
       return res.status(400).json({
         error: "Validation error",
         message: "Valid step number (1-10) is required",
@@ -605,6 +640,9 @@ router.post("/:inviteToken/progress", async (req, res) => {
       // User can progress forward (step >= lastCompletedStep) but not backward beyond lastCompletedStep
       // Note: Steps can be conditional (e.g., step 3 skipped for UK/Irish citizens),
       // so we allow any step >= lastCompletedStep to support conditional step flow
+      console.log("Incoming Step:", step);
+
+      console.log("Existing Progress:", existingProgress?.lastCompletedStep);
       if (step < existingProgress.lastCompletedStep) {
         // Don't allow going backwards beyond last completed step
         return res.status(400).json({
@@ -649,7 +687,11 @@ router.post("/:inviteToken/progress", async (req, res) => {
     );
 
     // Update invitation onboarding progress percentage based on lastCompletedStep
-    const progressPercentage = Math.round((lastCompletedStep / 10) * 100);
+    const TOTAL_STEPS = 11;
+
+    const progressPercentage = Math.round(
+      (lastCompletedStep / TOTAL_STEPS) * 100,
+    );
     invitation.onboardingProgress = progressPercentage;
 
     invitation.lastActivityAt = new Date();

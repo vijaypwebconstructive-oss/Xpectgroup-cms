@@ -8,6 +8,7 @@ import React, {
 } from "react";
 import type { SystemUser } from "../modules/user-access/types";
 import api from "../services/api";
+import { shouldFetchProviderData } from "../utils/lazyProvider";
 
 interface UserAccessContextType {
   users: SystemUser[];
@@ -62,6 +63,9 @@ export const UserAccessProvider: React.FC<UserAccessProviderProps> = ({
   }, []);
 
   useEffect(() => {
+    if (!shouldFetchProviderData()) {
+      return;
+    }
     refreshUsers();
   }, [refreshUsers]);
 

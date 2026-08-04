@@ -184,3 +184,24 @@ aside.financeSidebar {
   height: 100%;
   padding-top: 50px;
 }
+
+.react-pdf__Document {
+  height: 650px;
+  width: 100%;
+  overflow-y: scroll;
+}
+
+img.signature-image {
+  position: absolute;
+  bottom: 0;
+  right: 30px;
+  width: 100px;
+}
+
+.react-pdf__Page__textContent {
+  display: none !important;
+}
+
+.react-pdf__Page__annotations {
+  display: none !important;
+}

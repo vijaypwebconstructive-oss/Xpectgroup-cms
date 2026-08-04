@@ -130,6 +130,10 @@ const TimesheetSchema = new mongoose.Schema(
   },
 );
 
+TimesheetSchema.index({ siteId: 1, createdAt: 1 });
+TimesheetSchema.index({ workerId: 1, createdAt: 1 });
+TimesheetSchema.index({ createdAt: 1 });
+
 const Timesheet = mongoose.model("Timesheet", TimesheetSchema);
 
 export default Timesheet;

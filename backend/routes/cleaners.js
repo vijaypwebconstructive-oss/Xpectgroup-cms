@@ -351,12 +351,30 @@ router.get("/:id", async (req, res) => {
 });
 
 // POST create new cleaner
+
 router.post("/", async (req, res) => {
   try {
-    // Check if cleaner with same email or id already exists
+    const {
+      id,
+      email,
+      name,
+      accountDetails,
+      source = "admin",
+      ...cleanerData
+    } = req.body;
+
+    // Validate required fields
+    if (!accountDetails?.username || !accountDetails?.password) {
+      return res.status(400).json({
+        error: "Missing credentials",
+        message: "Username and password are required",
+      });
+    }
+
+    // Check existing cleaner
     const existingCleaner = await Cleaner.findOne({
-      $or: [{ email: req.body.email }, { id: req.body.id }],
-    });
+      $or: [{ email }, { id }],
+    }).lean();
 
     if (existingCleaner) {
       return res.status(400).json({
@@ -365,54 +383,84 @@ router.post("/", async (req, res) => {
       });
     }
 
-    const cleaner = new Cleaner(req.body);
-    console.log("cleaner", cleaner);
-    const passwordHash = await bcrypt.hash(cleaner.accountDetails.password, 10);
-    // if (
-    //   !cleaner.accountDetails?.username ||
-    //   !cleaner.accountDetails?.password
-    // ) {
-    //   return res.status(400).json({
-    //     error: "Missing credentials",
-    //     message: "Username and password are required",
-    //   });
-    // }
-    await User.create({
-      username: cleaner.accountDetails.username,
-      email: cleaner.email,
-      passwordHash,
-      role: "Default",
-      modules: ["employee attendance"],
-      cleanerId: cleaner.id,
+    // Hash password
+    const passwordHash = await bcrypt.hash(accountDetails.password, 10);
+
+    // Create cleaner instance
+    const cleaner = new Cleaner({
+      id,
+      email,
+      name,
+      accountDetails,
+      ...cleanerData,
     });
 
-    await sendERPAccessEmail(
-      cleaner.email,
-      cleaner.name,
-      cleaner.accountDetails.username,
-      `${process.env.FRONTEND_URL}/login`,
-    );
-    await cleaner.save();
-    // Log activity: Cleaner created (detect if from onboarding or admin)
-    const source = req.body.source || "admin"; // Check if source is provided
-    await logCleanerActivity.created(
-      source === "onboarding" ? req.body.email : "admin-001",
-      source === "onboarding" ? req.body.name : "Admin",
-      cleaner.id,
-      cleaner.name,
-      source,
-    );
+    // Save cleaner & create user simultaneously
+    await Promise.all([
+      cleaner.save(),
 
-    res.status(201).json(cleaner);
+      User.create({
+        username: accountDetails.username,
+        email,
+        passwordHash,
+        role: "Default",
+        modules: ["employee attendance"],
+        cleanerId: id,
+      }),
+    ]);
+
+    // Return response immediately
+    res.status(201).json({
+      success: true,
+      message: "Cleaner created successfully",
+      cleaner,
+    });
+
+    // -------------------------
+    // Background Tasks
+    // -------------------------
+
+    sendERPAccessEmail(
+      email,
+      name,
+      accountDetails.username,
+      `${process.env.FRONTEND_URL}/login`,
+    ).catch((err) => {
+      console.error("Email Error:", err);
+    });
+
+    logCleanerActivity
+      .created(
+        source === "onboarding" ? email : "admin-001",
+        source === "onboarding" ? name : "Admin",
+        id,
+        name,
+        source,
+      )
+      .catch((err) => {
+        console.error("Activity Log Error:", err);
+      });
   } catch (error) {
+    console.error("Create Cleaner Error:", error);
+
     if (error.name === "ValidationError") {
-      return res
-        .status(400)
-        .json({ error: "Validation error", message: error.message });
+      return res.status(400).json({
+        error: "Validation error",
+        message: error.message,
+      });
     }
-    res
-      .status(500)
-      .json({ error: "Failed to create cleaner", message: error.message });
+
+    if (error.code === 11000) {
+      return res.status(409).json({
+        error: "Duplicate entry",
+        message: "Cleaner already exists.",
+      });
+    }
+
+    return res.status(500).json({
+      error: "Internal Server Error",
+      message: error.message,
+    });
   }
 });
 

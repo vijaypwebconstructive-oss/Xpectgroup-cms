@@ -1,6 +1,14 @@
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  useCallback,
+} from "react";
 
 import api from "../services/api";
+import { shouldFetchProviderData } from "../utils/lazyProvider";
 
 import { Timesheet } from "../types";
 
@@ -27,7 +35,7 @@ export const AttendanceProvider = ({
 
   const [loading, setLoading] = useState(true);
 
-  const refresh = async () => {
+  const refresh = useCallback(async () => {
     try {
       setLoading(true);
 
@@ -37,9 +45,12 @@ export const AttendanceProvider = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
+    if (!shouldFetchProviderData()) {
+      return;
+    }
     refresh();
   }, []);
 

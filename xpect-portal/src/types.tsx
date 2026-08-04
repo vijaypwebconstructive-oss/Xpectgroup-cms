@@ -5,6 +5,12 @@ export enum VerificationStatus {
   REJECTED = "Rejected",
 }
 
+export enum ContractSigningStatus {
+  NOT_STARTED = "Not Started",
+  PENDING = "Pending",
+  SIGNED = "Signed",
+}
+
 export enum EmploymentType {
   CONTRACTOR = "Contractor",
   PERMANENT = "Permanent",
@@ -33,6 +39,21 @@ export interface Document {
   status: DocumentStatus;
   fileUrl?: string; // Base64 or URL
   fileName?: string;
+}
+
+export interface EmploymentContract {
+  version: string;
+  accepted: boolean;
+  acceptedAt?: string;
+  signedAt?: string;
+  signature?: string; // Base64 or URL
+  signedPdf?: string; // Generated signed contract PDF
+  status: ContractSigningStatus;
+
+  // Audit Information
+  ipAddress?: string;
+  userAgent?: string;
+  device?: string;
 }
 
 export interface Cleaner {
@@ -68,6 +89,7 @@ export interface Cleaner {
     gdpr: boolean;
   };
   documents?: Document[];
+  employmentContract?: EmploymentContract;
 
   // Employment Allocation Details
   hourlyPayRate?: number;

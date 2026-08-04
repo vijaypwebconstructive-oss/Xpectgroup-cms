@@ -155,164 +155,6 @@ router.delete("/clients/:id", async (req, res) => {
 router.get("/sites", async (req, res) => {
   try {
     const docs = await Site.find().sort({ createdAt: -1 }).lean();
-    // //
-    // // GET SITE WORKED HOURS
-    // //
-    // const { period = "current" } = req.query;
-
-    // const list = await Promise.all(
-    //   docs.map(async (d) => {
-    //     //
-    //     // START DATE
-    //     //
-    //     const startDate = new Date();
-
-    //     //
-    //     // END DATE
-    //     //
-    //     const endDate = new Date();
-
-    //     //
-    //     // MONTHLY
-    //     //
-    //     if (d.allocationPeriod === "Monthly") {
-    //       //
-    //       // CURRENT MONTH
-    //       //
-    //       if (period === "current") {
-    //         startDate.setDate(1);
-
-    //         startDate.setHours(0, 0, 0, 0);
-    //       }
-
-    //       //
-    //       // PREVIOUS MONTH
-    //       //
-    //       if (period === "previous-month") {
-    //         startDate.setMonth(startDate.getMonth() - 1);
-
-    //         startDate.setDate(1);
-
-    //         startDate.setHours(0, 0, 0, 0);
-
-    //         endDate.setDate(0);
-
-    //         endDate.setHours(23, 59, 59, 999);
-    //       }
-    //     }
-
-    //     //
-    //     // WEEKLY
-    //     //
-    //     else {
-    //       //
-    //       // CURRENT WEEK
-    //       //
-    //       if (period === "current") {
-    //         const day = startDate.getDay();
-
-    //         const diff = startDate.getDate() - day + (day === 0 ? -6 : 1);
-
-    //         startDate.setDate(diff);
-
-    //         startDate.setHours(0, 0, 0, 0);
-    //       }
-
-    //       //
-    //       // PREVIOUS WEEK
-    //       //
-    //       if (period === "previous-week") {
-    //         const day = startDate.getDay();
-
-    //         const diff = startDate.getDate() - day + (day === 0 ? -6 : 1);
-
-    //         //
-    //         // PREVIOUS MONDAY
-    //         //
-    //         startDate.setDate(diff - 7);
-
-    //         startDate.setHours(0, 0, 0, 0);
-
-    //         //
-    //         // PREVIOUS SUNDAY
-    //         //
-    //         endDate.setDate(diff - 1);
-
-    //         endDate.setHours(23, 59, 59, 999);
-    //       }
-    //     } //
-    //     // GET TIMESHEETS
-    //     //
-    //     const timesheets = await Timesheet.find({
-    //       siteId: d.id,
-
-    //       clockOut: {
-    //         $ne: "",
-    //       },
-
-    //       createdAt: {
-    //         $gte: startDate,
-
-    //         $lte: endDate,
-    //       },
-    //     }).lean();
-
-    //     //
-    //     // TOTAL HOURS
-    //     //
-    //     const totalWorkedHours = timesheets.reduce(
-    //       (sum, t) => sum + Number(t.workedHours || 0),
-    //       0,
-    //     );
-
-    //     return {
-    //       id: d.id,
-
-    //       clientId: d.clientId,
-
-    //       name: d.name,
-
-    //       address: d.address || "",
-
-    //       postcode: d.postcode || "",
-
-    //       riskLevel: d.riskLevel || "Low",
-
-    //       requiredTrainings: d.requiredTrainings || [],
-
-    //       emergencyContact: d.emergencyContact || "",
-
-    //       emergencyPhone: d.emergencyPhone || "",
-
-    //       accessInstructions: d.accessInstructions || "",
-
-    //       activeWorkers: d.activeWorkers ?? 0,
-
-    //       relation: d.relation,
-
-    //       inspectionFrequency: d.inspectionFrequency || "Monthly",
-
-    //       complianceDocuments: (d.complianceDocuments || []).map((cd) => ({
-    //         key: cd.key,
-    //         name: cd.name || "",
-    //         dataUrl: cd.dataUrl || "",
-    //       })),
-
-    //       allocationPeriod: d.allocationPeriod || "Weekly",
-
-    //       allocatedHours: d.allocatedHours ?? 0,
-
-    //       geoFence: d.geoFence || {
-    //         enabled: false,
-    //       },
-
-    //       //
-    //       // IMPORTANT
-    //       //
-    //       totalWorkedHours: Number(totalWorkedHours.toFixed(2)),
-    //     };
-    //   }),
-    // );
 
     //
     // GET SITE WORKED HOURS
@@ -827,6 +669,23 @@ router.post("/assignments", async (req, res) => {
       .status(500)
       .json({ error: "Failed to create assignment", message: err.message });
   }
+});
+
+router.get("/sites", async (req, res) => {
+  console.time("TOTAL");
+
+  console.time("Site.find");
+  const docs = await Site.find().sort({ createdAt: -1 }).lean();
+  console.timeEnd("Site.find");
+
+  console.time("Generate Response");
+
+  // existing Promise.all code
+
+  console.timeEnd("Generate Response");
+  console.timeEnd("TOTAL");
+
+  res.json(list);
 });
 
 router.delete("/assignments", async (req, res) => {

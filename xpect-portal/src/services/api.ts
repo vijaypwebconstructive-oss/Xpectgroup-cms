@@ -306,13 +306,20 @@ export const api = {
       );
     },
 
-    send: async (employeeName: string, email: string) => {
+    send: async (data: {
+      employeeName: string;
+      email: string;
+      senderName: string;
+      senderDesignation: string;
+      salaryType: string;
+      salaryAmount: number;
+    }) => {
       return fetchWithErrorHandling(`${API_BASE_URL}/invitations/send`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ employeeName, email }),
+        body: JSON.stringify(data),
       });
     },
 

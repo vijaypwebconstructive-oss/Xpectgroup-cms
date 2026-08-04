@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import api from "../services/api";
+import { shouldFetchProviderData } from "../utils/lazyProvider";
 
 interface InspectionContextType {
   inspections: any[];
@@ -8,7 +9,6 @@ interface InspectionContextType {
   deleteInspection: (id: string) => Promise<void>;
 }
 
-
 const InspectionContext = createContext<InspectionContextType | null>(null);
 
 export const InspectionProvider = ({ children }) => {
@@ -16,6 +16,9 @@ export const InspectionProvider = ({ children }) => {
 
   // 🔥 Load from backend
   useEffect(() => {
+    if (!shouldFetchProviderData()) {
+      return;
+    }
     loadInspections();
   }, []);
 
@@ -26,25 +29,25 @@ export const InspectionProvider = ({ children }) => {
 
   const deleteInspection = async (id: string) => {
     await api.inspections.delete(id);
-  
-    setInspections(prev => prev.filter(i => i._id !== id));
+
+    setInspections((prev) => prev.filter((i) => i._id !== id));
   };
 
   // 🔥 Create
   const addInspection = async (data: any) => {
     const saved = await api.inspections.create(data);
 
-    setInspections(prev => [saved, ...prev]);
+    setInspections((prev) => [saved, ...prev]);
 
     return saved;
   };
 
   // 🔥 Get by ID (FIXED)
   const getInspectionById = async (id: string) => {
-    const local = inspections.find(i => i._id === id);
-  
+    const local = inspections.find((i) => i._id === id);
+
     if (local) return local;
-  
+
     // fallback to backend
     const data = await api.inspections.getById(id);
     return data;
@@ -52,7 +55,12 @@ export const InspectionProvider = ({ children }) => {
 
   return (
     <InspectionContext.Provider
-      value={{ inspections, addInspection, getInspectionById,  deleteInspection}}
+      value={{
+        inspections,
+        addInspection,
+        getInspectionById,
+        deleteInspection,
+      }}
     >
       {children}
     </InspectionContext.Provider>
