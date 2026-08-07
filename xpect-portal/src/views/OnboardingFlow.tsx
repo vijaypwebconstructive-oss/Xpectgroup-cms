@@ -193,37 +193,117 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
   };
 
   // Collect all form data into a serializable object for autosave
+  // Collect all form data into a serializable object for autosave
   const collectFormData = async (): Promise<any> => {
-    // Convert files to base64 for storage (so they can be restored on resume)
-
     console.time("Collect Form Data");
 
-    // existing code
+    // Convert uploaded files to base64
+    const [
+      shareCodeScreenshot,
+      passport,
+      brp,
+      residenceCard,
+      drivingLicence,
+      termDatesDocument,
+      dbsCertificate,
+      salarySlip,
+    ] = await Promise.all([
+      uploadedFiles.shareCodeScreenshot
+        ? fileToBase64(uploadedFiles.shareCodeScreenshot)
+        : null,
+
+      uploadedFiles.passport ? fileToBase64(uploadedFiles.passport) : null,
+
+      uploadedFiles.brp ? fileToBase64(uploadedFiles.brp) : null,
+
+      uploadedFiles.residenceCard
+        ? fileToBase64(uploadedFiles.residenceCard)
+        : null,
+
+      uploadedFiles.drivingLicence
+        ? fileToBase64(uploadedFiles.drivingLicence)
+        : null,
+
+      uploadedFiles.termDatesDocument
+        ? fileToBase64(uploadedFiles.termDatesDocument)
+        : null,
+
+      uploadedFiles.dbsCertificate
+        ? fileToBase64(uploadedFiles.dbsCertificate)
+        : null,
+
+      uploadedFiles.salarySlip ? fileToBase64(uploadedFiles.salarySlip) : null,
+    ]);
 
     console.timeEnd("Collect Form Data");
 
     return {
+      // Personal Details
       personalDetails,
+
+      // Citizenship & Visa
       citizenshipStatus,
       visaType,
       visaOther,
-      passportPhoto, // Already base64
+
+      // Passport Photo
+      passportPhoto,
+
+      // Right to Work
       shareCode,
+
+      // Student Visa
       uniName,
       courseName,
       termStart,
       termEnd,
       hasAgreedToHours,
+
+      // Employment
       workPreference,
       availabilityToStart,
       preferredShiftPattern,
       employmentType,
+
+      // DBS
       hasDBS,
+
+      // Declarations
       declarations,
+
+      // Account
       accountDetails,
+
+      // Contract
       contractRead,
       contractAccepted,
-      contractViewed, // Include all file base64 data
+      contractViewed,
+
+      // Uploaded Files (Base64 + Original File Names)
+
+      shareCodeScreenshot,
+      shareCodeScreenshotName: uploadedFiles.shareCodeScreenshot?.name ?? null,
+
+      passport,
+      passportName: uploadedFiles.passport?.name ?? null,
+
+      brp,
+      brpName: uploadedFiles.brp?.name ?? null,
+
+      residenceCard,
+      residenceCardName: uploadedFiles.residenceCard?.name ?? null,
+
+      drivingLicence,
+      drivingLicenceName: uploadedFiles.drivingLicence?.name ?? null,
+
+      termDatesDocument,
+      termDatesDocumentName: uploadedFiles.termDatesDocument?.name ?? null,
+
+      dbsCertificate,
+      dbsCertificateName: uploadedFiles.dbsCertificate?.name ?? null,
+
+      salarySlip,
+      salarySlipName: uploadedFiles.salarySlip?.name ?? null,
     };
   };
 

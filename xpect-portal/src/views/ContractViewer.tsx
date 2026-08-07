@@ -4,10 +4,12 @@ import { useState, useRef, useEffect, forwardRef } from "react";
 import "react-pdf/dist/Page/TextLayer.css";
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import { overlayFields } from "../utils/overlayFields";
-pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-  "pdfjs-dist/build/pdf.worker.min.mjs",
-  import.meta.url,
-).href;
+// pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+//   "pdfjs-dist/build/pdf.worker.min.mjs",
+//   import.meta.url,
+// ).href;
+
+pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.mjs`;
 interface Props {
   pdfUrl: string;
   invitation: any;

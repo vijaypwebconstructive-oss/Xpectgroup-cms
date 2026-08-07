@@ -20,8 +20,8 @@ export const overlayFields = [
   {
     id: "salary",
     page: 5,
-    x: 160,
-    y: 344,
+    x: 135,
+    y: 367,
   },
   {
     id: "employeeSignature",
