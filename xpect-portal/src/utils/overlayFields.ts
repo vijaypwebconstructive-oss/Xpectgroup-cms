@@ -27,7 +27,7 @@ export const overlayFields = [
     id: "employeeSignature",
     page: 11,
     x: 500,
-    y: 257,
+    y: 270,
     width: 100,
   },
   {
@@ -75,11 +75,11 @@ export const overlayFields = [
     y: 382,
     width: 260,
   },
-  {
-    id: "OwnerDate",
-    page: 11,
-    x: 98,
-    y: 440,
-    width: 260,
-  },
+  // {
+  //   id: "OwnerDate",
+  //   page: 11,
+  //   x: 98,
+  //   y: 440,
+  //   width: 260,
+  // },
 ];

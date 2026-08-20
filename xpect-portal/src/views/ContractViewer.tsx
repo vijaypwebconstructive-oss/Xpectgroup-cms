@@ -3,50 +3,57 @@ import { useState, useRef, useEffect, forwardRef } from "react";
 
 import "react-pdf/dist/Page/TextLayer.css";
 import "react-pdf/dist/Page/AnnotationLayer.css";
-import { overlayFields } from "../utils/overlayFields";
-// pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-//   "pdfjs-dist/build/pdf.worker.min.mjs",
-//   import.meta.url,
-// ).href;
 
 pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.mjs`;
+
 interface Props {
   pdfUrl: string;
   invitation: any;
   personalDetails: any;
   employeeSignature: string | null;
+  overlayFields: any[];
 }
 
 const ContractViewer = forwardRef<HTMLDivElement, Props>(
-  ({ pdfUrl, invitation, personalDetails, employeeSignature }, ref) => {
+  (
+    { pdfUrl, invitation, personalDetails, employeeSignature, overlayFields },
+    ref,
+  ) => {
     const [numPages, setNumPages] = useState(0);
+
     const containerRef = useRef<HTMLDivElement>(null);
+
     const [pdfWidth, setPdfWidth] = useState(850);
+
+    /*
+     * ---------------------------------------------
+     * RESPONSIVE PDF WIDTH
+     * ---------------------------------------------
+     */
 
     useEffect(() => {
       const updateWidth = () => {
         if (!containerRef.current) return;
 
-        setPdfWidth(Math.min(containerRef.current.offsetWidth, 850));
+        const width = containerRef.current.clientWidth;
+
+        setPdfWidth(Math.min(width, 850));
       };
 
       updateWidth();
 
       window.addEventListener("resize", updateWidth);
 
-      return () => window.removeEventListener("resize", updateWidth);
+      return () => {
+        window.removeEventListener("resize", updateWidth);
+      };
     }, []);
 
-    useEffect(() => {
-      const page = document.querySelector(".react-pdf__Page");
-
-      if (!page) return;
-
-      console.log("Rendered Width:", page.clientWidth);
-      console.log("Rendered Height:", page.clientHeight);
-
-      console.log("Aspect Ratio:", page.clientHeight / page.clientWidth);
-    }, [pdfWidth]);
+    /*
+     * ---------------------------------------------
+     * OVERLAY DATA
+     * ---------------------------------------------
+     */
 
     const overlayData = {
       employeeName: personalDetails?.name || "",
@@ -73,98 +80,22 @@ const ContractViewer = forwardRef<HTMLDivElement, Props>(
       ownerSignature: null,
     };
 
-    console.log(invitation);
-
-    // const overlayFields = [
-    //   {
-    //     id: "employeeName",
-    //     page: 3,
-    //     x: 120,
-    //     y: 390,
-    //   },
-    //   {
-    //     id: "employeeAddress",
-    //     page: 3,
-    //     x: 135,
-    //     y: 423,
-    //   },
-    //   {
-    //     id: "contractDate",
-    //     page: 3,
-    //     x: 110,
-    //     y: 177,
-    //   },
-    //   {
-    //     id: "salary",
-    //     page: 5,
-    //     x: 160,
-    //     y: 344,
-    //   },
-    //   {
-    //     id: "employeeSignature",
-    //     page: 11,
-    //     x: 500,
-    //     y: 257,
-    //     width: 100,
-    //   },
-    //   {
-    //     id: "ownerSignature",
-    //     page: 11,
-    //     x: 140,
-    //     y: 257,
-    //     width: 100,
-    //   },
-    //   {
-    //     id: "Ownername",
-    //     page: 11,
-    //     x: 120,
-    //     y: 351,
-    //     width: 260,
-    //     height: 60,
-    //   },
-    //   {
-    //     id: "designation",
-    //     page: 11,
-    //     x: 160,
-    //     y: 381,
-    //     width: 260,
-    //     height: 60,
-    //   },
-    //   {
-    //     id: "ownerDate",
-    //     page: 11,
-    //     x: 115,
-    //     y: 411,
-    //     width: 260,
-    //     height: 60,
-    //   },
-    //   {
-    //     id: "employeeName",
-    //     page: 11,
-    //     x: 477,
-    //     y: 351,
-    //     width: 260,
-    //   },
-    //   {
-    //     id: "employeeDate",
-    //     page: 11,
-    //     x: 473,
-    //     y: 382,
-    //     width: 260,
-    //   },
-    //   {
-    //     id: "OwnerDate",
-    //     page: 11,
-    //     x: 78,
-    //     y: 440,
-    //     width: 260,
-    //   },
-    // ];
+    /*
+     * ---------------------------------------------
+     * GET OVERLAY VALUE
+     * ---------------------------------------------
+     */
 
     function getFieldValue(id: string) {
       const value = overlayData[id as keyof typeof overlayData];
 
-      if (!value) return null;
+      if (!value) {
+        return null;
+      }
+
+      /*
+       * Signature fields
+       */
 
       if (id === "employeeSignature" || id === "ownerSignature") {
         return (
@@ -175,6 +106,7 @@ const ContractViewer = forwardRef<HTMLDivElement, Props>(
               width: "100%",
               height: "100%",
               objectFit: "contain",
+              display: "block",
             }}
           />
         );
@@ -183,21 +115,50 @@ const ContractViewer = forwardRef<HTMLDivElement, Props>(
       return value;
     }
 
+    /*
+     * ---------------------------------------------
+     * PDF COORDINATE SYSTEM
+     * ---------------------------------------------
+     *
+     * All your overlay coordinates are based
+     * on an 850px wide PDF.
+     */
+
     const ORIGINAL_PDF_WIDTH = 850;
+
     const scale = pdfWidth / ORIGINAL_PDF_WIDTH;
-    const pageSignature = {
+
+    /*
+     * ---------------------------------------------
+     * GLOBAL EMPLOYEE SIGNATURE
+     * ---------------------------------------------
+     *
+     * This signature will appear on EVERY PAGE.
+     *
+     * Coordinates are based on 850px PDF width.
+     */
+
+    const signaturePosition = {
       width: 120,
       height: 50,
 
-      // Bottom-right position based on your original PDF width
-      x: ORIGINAL_PDF_WIDTH - 160,
-      y: 1080,
+      // Distance from left
+      right: 40,
+
+      // Distance from bottom
+      bottom: 35,
     };
+
+    /*
+     * ---------------------------------------------
+     * RENDER
+     * ---------------------------------------------
+     */
 
     return (
       <div
-        className="border rounded-xl overflow-hidden bg-gray-100"
         id="contract-viewer"
+        className="border  overflow-hidden bg-gray-100"
         ref={(node) => {
           containerRef.current = node;
 
@@ -220,41 +181,93 @@ const ContractViewer = forwardRef<HTMLDivElement, Props>(
           {Array.from(new Array(numPages), (_, index) => {
             const pageNumber = index + 1;
 
+            /*
+             * Only fields belonging to this page
+             */
+
+            const pageFields = overlayFields.filter(
+              (field) => field.page === pageNumber,
+            );
+
             return (
-              <div key={pageNumber} className="pdf-page relative mb-8">
+              <div
+                key={pageNumber}
+                className="pdf-page relative mb-8"
+                style={{
+                  width: pdfWidth,
+                }}
+              >
+                {/* ---------------------------------
+                      PDF PAGE
+                     --------------------------------- */}
+
                 <Page pageNumber={pageNumber} width={pdfWidth} />
 
-                {/* Overlay Fields */}
-                {overlayFields
-                  .filter((field) => field.page === pageNumber)
-                  .map((field) => (
+                {/* ---------------------------------
+                      DOCUMENT-SPECIFIC OVERLAYS
+                     --------------------------------- */}
+
+                {pageFields.map((field) => {
+                  const fieldValue = getFieldValue(field.id);
+
+                  if (!fieldValue) {
+                    return null;
+                  }
+
+                  return (
                     <div
                       key={`${field.id}-${field.page}-${field.x}-${field.y}`}
-                      className="absolute text-sm text-black"
+                      className="absolute text-black"
                       style={{
-                        left: field.x * scale,
-                        top: field.y * scale,
-                        width: field.width ? field.width * scale : undefined,
-                        height: field.height ? field.height * scale : undefined,
+                        left: `${field.x * scale}px`,
+
+                        top: `${field.y * scale}px`,
+
+                        width: field.width
+                          ? `${field.width * scale}px`
+                          : "auto",
+
+                        height: field.height
+                          ? `${field.height * scale}px`
+                          : "auto",
+
                         fontSize: `${14 * scale}px`,
+
+                        lineHeight: 1.2,
+
                         pointerEvents: "none",
+
                         whiteSpace: "pre-wrap",
+
                         fontWeight: 500,
+
+                        overflow: "hidden",
+
+                        zIndex: 10,
                       }}
                     >
-                      {getFieldValue(field.id)}
+                      {fieldValue}
                     </div>
-                  ))}
+                  );
+                })}
+
+                {/* ---------------------------------
+                      EMPLOYEE SIGNATURE
+                      EVERY PAGE
+                     --------------------------------- */}
 
                 {employeeSignature && (
                   <div
                     className="absolute"
                     style={{
-                      left: pageSignature.x * scale,
-                      top: pageSignature.y * scale,
-                      width: pageSignature.width * scale,
-                      height: pageSignature.height * scale,
+                      right: `${signaturePosition.right * scale}px`,
+                      bottom: `${signaturePosition.bottom * scale}px`,
+
+                      width: `${signaturePosition.width * scale}px`,
+                      height: `${signaturePosition.height * scale}px`,
+
                       pointerEvents: "none",
+                      zIndex: 20,
                     }}
                   >
                     <img
@@ -264,6 +277,7 @@ const ContractViewer = forwardRef<HTMLDivElement, Props>(
                         width: "100%",
                         height: "100%",
                         objectFit: "contain",
+                        display: "block",
                       }}
                     />
                   </div>
@@ -276,5 +290,7 @@ const ContractViewer = forwardRef<HTMLDivElement, Props>(
     );
   },
 );
+
+ContractViewer.displayName = "ContractViewer";
 
 export default ContractViewer;

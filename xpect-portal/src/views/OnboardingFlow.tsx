@@ -13,7 +13,8 @@ import api from "../services/api";
 import { clearEmployeeSession } from "../utils/auth";
 import EmploymentContractStep from "./EmploymentContractStep";
 import { generateContract } from "./generateContract";
-import { overlayFields } from "../utils/overlayFields";
+import { overlayFields as contractOverlayFields } from "../utils/overlayFields";
+import { ethicsOverlayFields } from "../utils/ethicsOverlayFields";
 
 interface OnboardingFlowProps {
   onComplete: () => void;
@@ -87,6 +88,8 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
   const [contractRead, setContractRead] = useState(false);
   const [contractAccepted, setContractAccepted] = useState(false);
   const [contractViewed, setContractViewed] = useState(false);
+  const [ethicsRead, setEthicsRead] = useState(false);
+  const [ethicsAccepted, setEthicsAccepted] = useState(false);
 
   const [employeeSignature, setEmployeeSignature] = useState<string | null>(
     null,
@@ -274,10 +277,15 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
       // Account
       accountDetails,
 
-      // Contract
+      // Employment Documents
       contractRead,
       contractAccepted,
       contractViewed,
+
+      ethicsRead,
+      ethicsAccepted,
+
+      employeeSignature,
 
       // Uploaded Files (Base64 + Original File Names)
 
@@ -821,10 +829,9 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
   const displayStep = currentStepIndex + 1;
 
   const handleNext = async () => {
-    const valid = checkStepValidity();
+    const valid = validateStep();
 
     if (!valid) {
-      validateStep();
       return;
     }
 
@@ -833,10 +840,6 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
 
       setValidationErrors({});
       setStep(nextStep);
-      console.log("========== NEXT ==========");
-      console.log("Current Step:", step);
-      console.log("Current Index:", currentStepIndex);
-      console.log("Active Steps:", activeSteps);
 
       if (inviteToken) {
         await saveProgressOnStepChange(step, true);
@@ -908,30 +911,63 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
       ownerSignature: null,
     };
 
-    const pdfBytes = await generateContract({
+    // ============================================================
+    // 1. GENERATE SIGNED EMPLOYMENT CONTRACT
+    // ============================================================
+
+    const contractPdfBytes = await generateContract({
       pdfUrl: "/contract.pdf",
-      overlayFields,
+      overlayFields: contractOverlayFields,
       overlayData,
       previewWidth: 850,
     });
 
-    // ✅ STEP 4 - Convert to Blob
-    const contractBlob = new Blob([pdfBytes], {
+    const contractBlob = new Blob([contractPdfBytes], {
       type: "application/pdf",
     });
 
-    // ✅ STEP 5 - Convert Blob to File
     const contractFile = new File([contractBlob], "EmploymentContract.pdf", {
+      type: "application/pdf",
+    });
+
+    // ============================================================
+    // 2. GENERATE SIGNED EMPLOYEE ETHICS DOCUMENT
+    // ============================================================
+
+    const ethicsPdfBytes = await generateContract({
+      pdfUrl: "/EmployeeEthics.pdf",
+      overlayFields: ethicsOverlayFields,
+      overlayData,
+      previewWidth: 850,
+    });
+
+    const ethicsBlob = new Blob([ethicsPdfBytes], {
+      type: "application/pdf",
+    });
+
+    const ethicsFile = new File([ethicsBlob], "EmployeeEthics.pdf", {
       type: "application/pdf",
     });
 
     const documents: Document[] = [];
 
+    // Signed Employment Contract
     documents.push(
       await createDocument(
         contractFile,
         `contract-${Date.now()}`,
         "Signed Employment Contract",
+        "PDF",
+        DocumentStatus.VERIFIED,
+      ),
+    );
+
+    // Signed Employee Ethics
+    documents.push(
+      await createDocument(
+        ethicsFile,
+        `ethics-${Date.now()}`,
+        "Signed Employee Ethics",
         "PDF",
         DocumentStatus.VERIFIED,
       ),
@@ -2723,6 +2759,10 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
             contractAccepted={contractAccepted}
             setContractRead={setContractRead}
             setContractAccepted={setContractAccepted}
+            ethicsRead={ethicsRead}
+            ethicsAccepted={ethicsAccepted}
+            setEthicsRead={setEthicsRead}
+            setEthicsAccepted={setEthicsAccepted}
             validationErrors={validationErrors}
             displayStep={displayStep}
             employeeSignature={employeeSignature}
@@ -3056,7 +3096,9 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
         isValid = false;
       }
     } else if (step === 10) {
-      // Employment Contract Validation
+      // ============================================
+      // EMPLOYMENT CONTRACT VALIDATION
+      // ============================================
 
       if (!contractRead) {
         errors.contractRead =
@@ -3070,9 +3112,29 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
         isValid = false;
       }
 
+      // ============================================
+      // EMPLOYEE ETHICS VALIDATION
+      // ============================================
+
+      if (!ethicsRead) {
+        errors.ethicsRead =
+          "Please confirm that you have read the Employee Ethics document.";
+        isValid = false;
+      }
+
+      if (!ethicsAccepted) {
+        errors.ethicsAccepted =
+          "You must accept the terms of the Employee Ethics document.";
+        isValid = false;
+      }
+
+      // ============================================
+      // SIGNATURE VALIDATION
+      // ============================================
+
       if (!employeeSignature) {
         errors.employeeSignature =
-          "Please sign the employment contract before continuing.";
+          "Please sign the employment documents before continuing.";
         isValid = false;
       }
     } else if (step === 11) {

@@ -1,4 +1,7 @@
-export function downloadGeneratedContract(pdfBytes: Uint8Array) {
+export function downloadGeneratedContract(
+  pdfBytes: Uint8Array,
+  fileName: string,
+) {
   const blob = new Blob([pdfBytes], {
     type: "application/pdf",
   });
@@ -8,8 +11,13 @@ export function downloadGeneratedContract(pdfBytes: Uint8Array) {
   const a = document.createElement("a");
 
   a.href = url;
-  a.download = "EmploymentContract.pdf";
+  a.download = fileName;
+
+  document.body.appendChild(a);
+
   a.click();
+
+  document.body.removeChild(a);
 
   URL.revokeObjectURL(url);
 }
