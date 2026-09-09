@@ -272,12 +272,12 @@ const SendInviteModal: React.FC<SendInviteModalProps> = ({
 
           <div>
             <label className="block text-sm font-bold text-[#0d121b] mb-2">
-              Salary Amount (€) <span className="text-red-500">*</span>
+              Salary Amount (£) <span className="text-red-500">*</span>
             </label>
 
             <div className="relative">
               <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-semibold">
-                €
+                £
               </span>
 
               <input

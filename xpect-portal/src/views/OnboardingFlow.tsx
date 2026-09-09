@@ -35,7 +35,7 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
   const [checkingToken, setCheckingToken] = useState(true);
   const [invitation, setInvitation] = useState<any>(null);
   const [step, setStep] = useState(1); // Start at step 1 - Citizenship/Immigration Status
-
+  const [showVideoModal, setShowVideoModal] = useState(false);
   // Personal details state
   const [personalDetails, setPersonalDetails] = useState({
     name: "",
@@ -3201,7 +3201,73 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
           </div>
         </div>
 
+        {/* new video section */}
+
         <div className="bg-white p-4 sm:p-8 rounded-2xl border border-[#e7ebf3] shadow-lg min-h-[400px] flex flex-col">
+          {/* Onboarding Help Video */}
+          <div className="bg-[#f7f9ff] border border-[#dfe6f5] rounded-2xl p-5 sm:p-6 flex flex-col sm:flex-row items-center gap-5 mb-9">
+            {/* Left Content */}
+            <div className="flex-1 flex gap-4 items-start">
+              <div className="w-12 h-12 rounded-full bg-[#e8efff] flex items-center justify-center shrink-0">
+                <span className="material-symbols-outlined text-[#135bec] text-3xl">
+                  description
+                </span>
+              </div>
+
+              <div>
+                <h3 className="text-xl font-bold text-[#0d121b]">
+                  Before you continue
+                </h3>
+
+                <p className="mt-2 text-sm sm:text-base text-[#667085] leading-relaxed">
+                  This step helps us verify your profile. Keep your passport and
+                  recent documents ready.
+                </p>
+
+                <button
+                  type="button"
+                  onClick={() => setShowVideoModal(true)}
+                  className="mt-4 flex items-center gap-2 text-[#135bec] font-semibold "
+                >
+                  Why do we need this?
+                  <span className="material-symbols-outlined text-xl">
+                    chevron_right
+                  </span>
+                </button>
+              </div>
+            </div>
+
+            {/* Video Thumbnail */}
+            <button
+              type="button"
+              onClick={() => setShowVideoModal(true)}
+              className="relative w-full sm:w-[270px] h-[160px] rounded-xl overflow-hidden group shrink-0"
+            >
+              <img
+                src="thumnail.png"
+                alt="Watch onboarding guide"
+                className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+              />
+
+              {/* Dark overlay */}
+              <div className="absolute inset-0 bg-black/20 group-hover:bg-black/30 transition-colors"></div>
+
+              {/* Play Button */}
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="w-8 h-8 rounded-full bg-transparent flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform border-2 border-[#ffffffd9] bg-[#00000078]">
+                  <span className="material-symbols-outlined text-[#fff] text-4xl">
+                    play_arrow
+                  </span>
+                </div>
+              </div>
+
+              {/* Video label */}
+              <div className="absolute bottom-3 left-3 text-white font-semibold text-sm drop-shadow">
+                Watch how to complete this step
+              </div>
+            </button>
+          </div>
+
           <div className="flex-1">{renderStep()}</div>
           <div className="flex justify-between mt-5 sm:mt-8 pt-4 sm:pt-8 border-t">
             <button
@@ -3262,6 +3328,39 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
           </div>
         </div>
       </div>
+      {/* Video Modal */}
+      {showVideoModal && (
+        <div
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 p-4"
+          onClick={() => setShowVideoModal(false)}
+        >
+          <div
+            className="relative w-full max-w-4xl bg-black rounded-2xl shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Close Button */}
+            <button
+              type="button"
+              onClick={() => setShowVideoModal(false)}
+              className="absolute top-[-15px] right-[-15px] bg-white text-black z-10 w-8 h-8 rounded-full flex items-center justify-center transition"
+              aria-label="Close video"
+            >
+              <span className="material-symbols-outlined">close</span>
+            </button>
+
+            {/* Video */}
+            <video
+              className="w-full aspect-video object-contain rounded-2xl"
+              controls
+              autoPlay
+              playsInline
+            >
+              <source src="demo-video.mp4" type="video/mp4" />
+              Your browser does not support the video tag.
+            </video>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

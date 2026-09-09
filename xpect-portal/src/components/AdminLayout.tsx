@@ -344,9 +344,9 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
       </div>
 
       {/* Nav links */}
-      <nav className="flex-1 px-3 py-5 space-y-1 overflow-y-auto">
+      <nav className="flex-1 px-3 py-5 space-y-1 overflow-y-auto side-bar-navigation">
         {/* Dashboard (Compliance Dashboard) */}
-        {canAccessModule(user, "dashboard") && (
+        {/* {canAccessModule(user, "dashboard") && (
           <button
             onClick={() => handleNav("DASHBOARD")}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all cursor-pointer ${
@@ -360,7 +360,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
             </span>
             Dashboard
           </button>
-        )}
+        )} */}
         {/* Employee Compliance — click to expand/collapse sub-modules */}
         {canAccessModule(user, "employee compliance") && (
           <div>
@@ -405,7 +405,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
                   </span>
                   Staff
                 </button>
-                <button
+                {/* <button
                   onClick={() => handleNav("TRAINING_CERTIFICATION")}
                   className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all cursor-pointer text-left ${
                     currentView === "TRAINING_CERTIFICATION"
@@ -417,7 +417,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
                     school
                   </span>
                   Training &amp; Certification
-                </button>
+                </button> */}
                 {/* <button
                 onClick={() => handleNav('PPE_LIST')}
                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all cursor-pointer ${
@@ -435,7 +435,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
         )}
 
         {/* Attendance */}
-        {(canAccessModule(user, "admin attendance") ||
+        {/* {(canAccessModule(user, "admin attendance") ||
           canAccessModule(user, "regularization") ||
           (user?.role !== "Admin" &&
             canAccessModule(user, "employee attendance"))) && (
@@ -530,9 +530,9 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
               </div>
             </div>
           </div>
-        )}
+        )} */}
         {/* Client & Site Management — click to expand/collapse */}
-        {(canAccessModule(user, "client") ||
+        {/* {(canAccessModule(user, "client") ||
           canAccessModule(user, "sites") ||
           canAccessModule(user, "site allocation") ||
           canAccessModule(user, "site inspection") ||
@@ -654,25 +654,13 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
                     </button>
                   );
                 })}
-                {/* <button
-                onClick={() => {handleNav('PPE_LIST')
-                  
-                }}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all cursor-pointer ${
-                  currentView === 'PPE_LIST'
-                    ? 'bg-white/15 text-white'
-                    : 'text-white/60 hover:bg-white/10 hover:text-white'
-                }`}
-              >
-                <span className="material-symbols-outlined text-[18px]">safety_check</span>
-                PPE Invoices
-              </button> */}
+                
               </div>
             </div>
           </div>
-        )}
+        )} */}
         {/* Incidents — click to expand/collapse */}
-        {canAccessModule(user, "incident") && (
+        {/* {canAccessModule(user, "incident") && (
           <div>
             <button
               type="button"
@@ -735,9 +723,9 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
               </div>
             </div>
           </div>
-        )}
+        )} */}
         {/* Risk & COSHH — click to expand/collapse */}
-        {canAccessModule(user, "risk") && (
+        {/* {canAccessModule(user, "risk") && (
           <div>
             <button
               type="button"
@@ -807,9 +795,9 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
               </div>
             </div>
           </div>
-        )}
+        )} */}
         {/* Document Control — click to expand/collapse */}
-        {canAccessModule(user, "document") && (
+        {/* {canAccessModule(user, "document") && (
           <div>
             <button
               type="button"
@@ -877,9 +865,9 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
               </div>
             </div>
           </div>
-        )}
+        )} */}
         {/* Finance — new module, last in nav */}
-        {canAccessModule(user, "finance") && (
+        {/* {canAccessModule(user, "finance") && (
           <div>
             <button
               type="button"
@@ -899,7 +887,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
               <span className="flex-1 text-left">Finance</span>
             </button>
           </div>
-        )}
+        )} */}
       </nav>
 
       {/* User Access — fixed bottom */}
@@ -933,7 +921,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
     <div className="flex min-h-screen bg-[#f2f6f9]">
       {/* Desktop sidebar — hidden for Finance module */}
       {!isFinanceRoute && (
-        <div className="hidden lg:flex flex-col fixed left-0 top-0 h-screen w-64 z-40 shadow-xl">
+        <div className="hidden lg:flex flex-col fixed left-0 top-0 h-screen w-64 z-40 shadow-xl sidebar-container">
           {sidebarContent}
         </div>
       )}

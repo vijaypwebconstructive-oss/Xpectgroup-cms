@@ -209,3 +209,13 @@ img.signature-image {
 /* .pdf-page .absolute.text-sm.text-black {
   background-color: #fff;
 } */
+
+/* .sidebar-container {
+  display: none;
+}
+
+.sidebar-container + .flex.flex-col.flex-1.min-h-screen.content-area.lg\:ml-64 {
+  min-width: 100% !important;
+  flex: unset;
+  margin-left: 0px;
+} */
