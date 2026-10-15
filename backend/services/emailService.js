@@ -27,8 +27,22 @@ export const sendInvitationEmail = async (
   employeeName,
   onboardingUrl,
   otp,
+  expiresAt = null,
 ) => {
   try {
+    // e.g. "Wednesday, 21 October 2026 at 10:00"
+    const expiryText = expiresAt
+      ? new Date(expiresAt).toLocaleString("en-GB", {
+          weekday: "long",
+          day: "numeric",
+          month: "long",
+          year: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+          timeZone: "Europe/London",
+        })
+      : "";
+
     // Validate email configuration
     if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) {
       console.error(
@@ -56,12 +70,40 @@ export const sendInvitationEmail = async (
             <h2 style="color: #2e4150; margin-top: 0;">Welcome to Xpect Group, ${employeeName}!</h2>
             
             <p>You have been invited to join Xpect Group. Please complete your onboarding by following the link below:</p>
-            
+
             <div style="background-color: #ffffff; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #2e4150;">
               <p style="margin: 0 0 10px 0; font-weight: bold; color: #2e4150;">Onboarding Link:</p>
               <a href="${onboardingUrl}" style="color: #135bec; text-decoration: none; word-break: break-all; font-size: 14px;">${onboardingUrl}</a>
+              ${
+                expiryText
+                  ? `<p style="margin: 10px 0 0 0; font-size: 13px; color: #b91c1c; font-weight: bold;">This link expires on ${expiryText} (UK time).</p>`
+                  : ""
+              }
             </div>
-            
+
+            <div style="background-color: #ffffff; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #dc2626;">
+              <p style="margin: 0 0 10px 0; font-weight: bold; color: #b91c1c; font-size: 16px;">Mandatory Onboarding – 3 Working Days</p>
+              <p style="margin: 0 0 12px 0; font-size: 14px;">
+                All Xpect Group Limited cleaners must complete their onboarding documents within <strong>3 Working Days</strong> of receipt or before their start date, whichever is earlier.
+              </p>
+              <p style="margin: 0 0 6px 0; font-size: 14px;">Failure to comply may result in:</p>
+              <ul style="margin: 0 0 12px 0; padding-left: 20px; font-size: 14px;">
+                <li>Start dates being postponed.</li>
+                <li>Existing cleaners being removed from shifts until compliance is completed.</li>
+                <li>Reduced monthly earnings due to missed shifts.</li>
+                <li>Payroll delays where required payment details are missing.</li>
+                <li>Review of ongoing work arrangements.</li>
+              </ul>
+              <p style="margin: 0 0 12px 0; font-size: 14px;">
+                <strong>Important:</strong> Right to Work verification is mandatory before employment begins. All documents must be approved by management. Payment for hours already worked will remain payable in accordance with the law.
+              </p>
+              <p style="margin: 0 0 12px 0; font-size: 14px;">Thank you for your cooperation.</p>
+              <p style="margin: 0; font-size: 14px;">
+                <strong>Xpect Group Limited</strong><br>
+                HR &amp; Compliance Team
+              </p>
+            </div>
+
             <div style="background-color: #fff3cd; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #f59e0b;">
               <p style="margin: 0 0 10px 0; font-weight: bold; color: #92400e;">Your OTP Code:</p>
               <p style="font-size: 24px; font-weight: bold; color: #2e4150; margin: 10px 0; letter-spacing: 4px; font-family: monospace;">${otp}</p>
@@ -92,6 +134,24 @@ You have been invited to join Xpect Group. Please complete your onboarding by fo
 
 Onboarding Link:
 ${onboardingUrl}
+${expiryText ? `This link expires on ${expiryText} (UK time).\n` : ""}
+MANDATORY ONBOARDING – 3 WORKING DAYS
+
+All Xpect Group Limited cleaners must complete their onboarding documents within 3 Working Days of receipt or before their start date, whichever is earlier.
+
+Failure to comply may result in:
+• Start dates being postponed.
+• Existing cleaners being removed from shifts until compliance is completed.
+• Reduced monthly earnings due to missed shifts.
+• Payroll delays where required payment details are missing.
+• Review of ongoing work arrangements.
+
+Important: Right to Work verification is mandatory before employment begins. All documents must be approved by management. Payment for hours already worked will remain payable in accordance with the law.
+
+Thank you for your cooperation.
+
+Xpect Group Limited
+HR & Compliance Team
 
 Your OTP Code: ${otp}
 
@@ -752,6 +812,7 @@ export const sendVerificationStatusEmail = async (
   status,
   rejectedDocs = [],
   auditorNotes = "",
+  username = "",
 ) => {
   try {
     if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) {
@@ -808,7 +869,17 @@ export const sendVerificationStatusEmail = async (
       //   </div>
       // `;
 
-      html = getRejectedTemplate(cleanerName, safeRejectedDocs, reasonText);
+      // ERP login link so the staff member can sign in with the username and
+      // password they set during onboarding
+      const loginUrl = `${process.env.FRONTEND_URL || "http://localhost:3000"}/login`;
+
+      html = getRejectedTemplate(
+        cleanerName,
+        safeRejectedDocs,
+        reasonText,
+        loginUrl,
+        username,
+      );
 
       text = [
         "Verification Update",
@@ -822,6 +893,11 @@ export const sendVerificationStatusEmail = async (
         "",
         "Reason:",
         reasonText,
+        "",
+        "Login to the ERP dashboard:",
+        loginUrl,
+        ...(username ? [`Username: ${username}`] : []),
+        "Password: The password you created during onboarding",
         "",
         "Regards,",
         "Xpect Group",
@@ -851,7 +927,13 @@ export const sendVerificationStatusEmail = async (
   }
 };
 
-const getRejectedTemplate = (cleanerName, rejectedDocs, reasonText) => {
+const getRejectedTemplate = (
+  cleanerName,
+  rejectedDocs,
+  reasonText,
+  loginUrl,
+  username,
+) => {
   return `
  <table width="100%" style="background:#f4f6f9;padding:40px 0;font-family:Arial, sans-serif;">
     <tr>
@@ -913,6 +995,29 @@ const getRejectedTemplate = (cleanerName, rejectedDocs, reasonText) => {
                 <b>Next Steps:</b><br/>
                 Please review the above feedback carefully and ensure that all required documents are accurate, clear, and up to date before resubmitting.
               </div>
+            </td>
+          </tr>
+
+          <!-- ERP Login -->
+          <tr>
+            <td align="center" style="padding-top:24px;">
+              <a href="${loginUrl}" target="_blank"
+                style="display:inline-block;background:#2e4150;color:#ffffff;text-decoration:none;font-size:14px;font-weight:bold;padding:12px 28px;border-radius:8px;">
+                Login to ERP Dashboard
+              </a>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding-top:16px;">
+              <div style="background:#f8fafc;border:1px solid #e5e7eb;border-radius:8px;padding:12px;font-size:13px;color:#374151;line-height:1.6;">
+                ${username ? `<b>Username:</b> ${username}<br/>` : ""}
+                <b>Password:</b> The password you created during onboarding
+              </div>
+              <p style="margin:10px 0 0 0;font-size:12px;color:#9ca3af;line-height:1.5;">
+                If the button does not work, copy this link into your browser:<br/>
+                <a href="${loginUrl}" style="color:#2563eb;">${loginUrl}</a>
+              </p>
             </td>
           </tr>
 

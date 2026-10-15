@@ -16,6 +16,10 @@ import { FinanceProvider } from "./context/FinanceContext";
 import { InspectionProvider } from "./context/InspectionContext";
 import { AuthProvider } from "./context/AuthContext";
 import { AttendanceProvider } from "./context/AttendanceContext";
+import { restoreEmployeeSession } from "./utils/auth";
+
+// Bring back an onboarding session if the applicant closed the tab by mistake
+restoreEmployeeSession();
 
 const rootElement = document.getElementById("root");
 if (!rootElement) {

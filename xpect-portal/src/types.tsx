@@ -39,6 +39,15 @@ export interface Document {
   status: DocumentStatus;
   fileUrl?: string; // Base64 or URL
   fileName?: string;
+  // Set when the employee re-uploaded this document after it was rejected
+  reuploadedAt?: string;
+  previousVersions?: {
+    fileUrl?: string;
+    fileName?: string;
+    uploadDate?: string;
+    status?: string;
+    replacedAt?: string;
+  }[];
 }
 
 export interface EmploymentContract {
@@ -99,6 +108,22 @@ export interface Cleaner {
   endDate?: string;
   preferredShiftPattern?: string;
   auditorNotes?: string;
+  // Applicant without a DBS certificate agreed a DBS check may be required
+  dbsCheckConsent?: boolean;
+  // National Insurance number ("QQ123456C"); noNiNumber = not issued yet
+  niNumber?: string;
+  noNiNumber?: boolean;
+  // UK bank details for salary payments (collected during onboarding)
+  bankDetails?: {
+    accountHolderName?: string;
+    bankName?: string;
+    sortCode?: string;
+    accountNumber?: string;
+    rollNumber?: string;
+  };
+  // Set when the employee re-submitted documents after "Docs Required"
+  resubmittedAt?: string;
+  resubmissionCount?: number;
   accountDetails: object;
 }
 
@@ -119,6 +144,10 @@ export interface StaffInvitation {
   onboardingProgress: number; // 0-100
   createdAt: string;
   verifiedAt?: string;
+  reminderCount?: number;
+  expiresAt?: string; // onboarding link deadline (3 working days)
+  currentStep?: number;
+  currentStepName?: string;
 }
 
 export interface ActivityLog {

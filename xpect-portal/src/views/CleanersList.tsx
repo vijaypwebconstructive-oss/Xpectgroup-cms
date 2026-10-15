@@ -763,6 +763,14 @@ const CleanersList: React.FC<CleanersListProps> = ({
                         >
                           {cleaner.verificationStatus}
                         </span>
+                        {/* Employee re-uploaded documents and is waiting for review */}
+                        {cleaner.resubmittedAt &&
+                          cleaner.verificationStatus ===
+                            VerificationStatus.PENDING && (
+                            <span className="block w-fit mt-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-blue-100 text-blue-700">
+                              Resubmitted
+                            </span>
+                          )}
                       </td>
                       <td className="px-[16px] sm:px-6 py-4 text-sm font-medium text-[#0d121b]">
                         {cleaner.employmentType}

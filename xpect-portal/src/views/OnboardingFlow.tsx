@@ -15,6 +15,87 @@ import EmploymentContractStep from "./EmploymentContractStep";
 import { generateContract } from "./generateContract";
 import { overlayFields as contractOverlayFields } from "../utils/overlayFields";
 import { ethicsOverlayFields } from "../utils/ethicsOverlayFields";
+import LinkExpiredPopup from "../components/LinkExpiredPopup";
+
+// National Insurance number: stored as "QQ123456C" (no spaces, uppercase)
+const normalizeNiNumber = (value: string) =>
+  value
+    .replace(/[^A-Za-z0-9]/g, "")
+    .toUpperCase()
+    .slice(0, 9);
+
+// Display as "QQ 12 34 56 C"
+const formatNiNumber = (value: string) => {
+  const n = normalizeNiNumber(value);
+  return [
+    n.slice(0, 2),
+    n.slice(2, 4),
+    n.slice(4, 6),
+    n.slice(6, 8),
+    n.slice(8),
+  ]
+    .filter(Boolean)
+    .join(" ");
+};
+
+// HMRC format: 2 prefix letters (with excluded letters/prefixes),
+// 6 digits and a suffix letter A–D
+const isValidNiNumber = (value: string) =>
+  /^(?!BG|GB|KN|NK|NT|TN|ZZ)[A-CEGHJ-PR-TW-Z][A-CEGHJ-NPR-TW-Z]\d{6}[A-D]$/.test(
+    normalizeNiNumber(value),
+  );
+
+// Format a UK sort code as "12-34-56" (digits only, max 6)
+const formatSortCode = (value: string) =>
+  value
+    .replace(/\D/g, "")
+    .slice(0, 6)
+    .replace(/(\d{2})(?=\d)/g, "$1-");
+
+// Validate UK bank details; returns field → error message
+const getBankDetailsErrors = (bank: {
+  accountHolderName: string;
+  bankName: string;
+  sortCode: string;
+  accountNumber: string;
+  rollNumber: string;
+}): Record<string, string> => {
+  const errors: Record<string, string> = {};
+
+  if (!bank.accountHolderName.trim()) {
+    errors.accountHolderName = "Account holder name is required";
+  } else if (
+    !/^[A-Za-z][A-Za-z\s.'-]{1,69}$/.test(bank.accountHolderName.trim())
+  ) {
+    errors.accountHolderName =
+      "Use letters only (spaces, hyphens and apostrophes are allowed)";
+  }
+
+  if (!bank.bankName.trim()) {
+    errors.bankName = "Bank or building society name is required";
+  }
+
+  if (!bank.sortCode.trim()) {
+    errors.sortCode = "Sort code is required";
+  } else if (!/^\d{2}-\d{2}-\d{2}$/.test(formatSortCode(bank.sortCode))) {
+    errors.sortCode = "Sort code must be 6 digits (e.g. 12-34-56)";
+  }
+
+  if (!bank.accountNumber.trim()) {
+    errors.accountNumber = "Account number is required";
+  } else if (!/^\d{8}$/.test(bank.accountNumber.trim())) {
+    errors.accountNumber = "Account number must be 8 digits";
+  }
+
+  if (
+    bank.rollNumber.trim() &&
+    !/^[A-Za-z0-9./ -]{1,18}$/.test(bank.rollNumber.trim())
+  ) {
+    errors.rollNumber = "Roll number can be up to 18 letters or numbers";
+  }
+
+  return errors;
+};
 
 interface OnboardingFlowProps {
   onComplete: () => void;
@@ -33,6 +114,8 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
   const [inviteToken, setInviteToken] = useState<string | null>(null);
   const [isVerified, setIsVerified] = useState(false);
   const [checkingToken, setCheckingToken] = useState(true);
+  // Invitation passed its 3-working-day deadline → show the expired popup
+  const [linkExpired, setLinkExpired] = useState(false);
   const [invitation, setInvitation] = useState<any>(null);
   const [step, setStep] = useState(1); // Start at step 1 - Citizenship/Immigration Status
   const [showVideoModal, setShowVideoModal] = useState(false);
@@ -77,6 +160,20 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
 
   // Employment Preferences state (Step 9)
   const [availabilityToStart, setAvailabilityToStart] = useState("");
+
+  // National Insurance number (Step 2). Kept outside personalDetails so older
+  // saved progress (without this field) still restores safely.
+  const [niNumber, setNiNumber] = useState("");
+  const [noNiNumber, setNoNiNumber] = useState(false);
+
+  // UK bank details for salary payments (Step 9)
+  const [bankDetails, setBankDetails] = useState({
+    accountHolderName: "",
+    bankName: "",
+    sortCode: "",
+    accountNumber: "",
+    rollNumber: "", // building society roll number (optional)
+  });
   const [preferredShiftPattern, setPreferredShiftPattern] = useState("");
 
   // Employment type state
@@ -97,6 +194,8 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
 
   // DBS state
   const [hasDBS, setHasDBS] = useState<boolean | null>(null);
+  // Consent required when the applicant has no DBS certificate
+  const [dbsConsent, setDbsConsent] = useState(false);
 
   // Declarations state
   const [declarations, setDeclarations] = useState({
@@ -111,22 +210,35 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
     Record<string, string>
   >({});
 
-  const validateUsername = async () => {
-    try {
-      if (!accountDetails.username.trim()) {
-        return false;
-      }
+  // Tracks the latest username sent for checking, so a slow older
+  // response cannot overwrite the result for what the user typed last.
+  const latestUsernameCheckRef = React.useRef("");
 
+  const validateUsername = async (): Promise<boolean> => {
+    const username = accountDetails.username.trim();
+
+    if (!username) {
+      return false;
+    }
+
+    latestUsernameCheckRef.current = username;
+
+    try {
       setCheckingUsername(true);
 
-      const res: any = await api.auth.checkUsername(accountDetails.username);
+      const res: any = await api.auth.checkUsername(username);
+
+      if (latestUsernameCheckRef.current !== username) {
+        return !res.exists;
+      }
 
       if (res.exists) {
         setUsernameExists(true);
 
         setValidationErrors((prev) => ({
           ...prev,
-          username: "Username already exists",
+          username:
+            "This username is already taken. Please choose a different username.",
         }));
 
         return false;
@@ -143,9 +255,19 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
     } catch (err) {
       console.error(err);
 
+      if (latestUsernameCheckRef.current === username) {
+        setValidationErrors((prev) => ({
+          ...prev,
+          username:
+            "Could not check if this username is available. Please try again.",
+        }));
+      }
+
       return false;
     } finally {
-      setCheckingUsername(false);
+      if (latestUsernameCheckRef.current === username) {
+        setCheckingUsername(false);
+      }
     }
   };
 
@@ -157,6 +279,7 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
     residenceCard?: File;
     drivingLicence?: File;
     termDatesDocument?: File;
+    acceptanceLetter?: File;
     dbsCertificate?: File;
     salarySlip?: File;
   }>({});
@@ -171,6 +294,9 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
   const [checkingUsername, setCheckingUsername] = useState(false);
 
   const [usernameExists, setUsernameExists] = useState(false);
+
+  // Prevents the application from being submitted twice
+  const submittingRef = React.useRef(false);
 
   // Cache for base64 conversions so we never re-encode the same file twice
   const fileCacheRef = React.useRef<Record<string, string>>({});
@@ -210,6 +336,7 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
       termDatesDocument,
       dbsCertificate,
       salarySlip,
+      acceptanceLetter,
     ] = await Promise.all([
       uploadedFiles.shareCodeScreenshot
         ? fileToBase64(uploadedFiles.shareCodeScreenshot)
@@ -236,6 +363,10 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
         : null,
 
       uploadedFiles.salarySlip ? fileToBase64(uploadedFiles.salarySlip) : null,
+
+      uploadedFiles.acceptanceLetter
+        ? fileToBase64(uploadedFiles.acceptanceLetter)
+        : null,
     ]);
 
     console.timeEnd("Collect Form Data");
@@ -268,8 +399,16 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
       preferredShiftPattern,
       employmentType,
 
+      // National Insurance
+      niNumber,
+      noNiNumber,
+
+      // Bank Details
+      bankDetails,
+
       // DBS
       hasDBS,
+      dbsConsent,
 
       // Declarations
       declarations,
@@ -307,6 +446,9 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
       termDatesDocument,
       termDatesDocumentName: uploadedFiles.termDatesDocument?.name ?? null,
 
+      acceptanceLetter,
+      acceptanceLetterName: uploadedFiles.acceptanceLetter?.name ?? null,
+
       dbsCertificate,
       dbsCertificateName: uploadedFiles.dbsCertificate?.name ?? null,
 
@@ -336,8 +478,20 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
       );
     } catch (err: any) {
       console.error("[OnboardingFlow] Failed to save progress:", err);
-      // Don't block user flow if save fails
+      // The link expired while the form was open → stop here
+      if (String(err?.message || "").toLowerCase().includes("expired")) {
+        handleLinkExpired(inviteToken);
+      }
+      // Otherwise don't block user flow if save fails
     }
+  };
+
+  // End the applicant's session and show the expired popup. The invite token
+  // is kept so a page refresh shows the same message on the link page.
+  const handleLinkExpired = (token: string | null) => {
+    clearEmployeeSession();
+    if (token) sessionStorage.setItem("onboardingToken", token);
+    setLinkExpired(true);
   };
 
   // Removed debounced autosave - now only saves on step transitions
@@ -428,6 +582,15 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
         if (formData.availabilityToStart !== undefined) {
           setAvailabilityToStart(formData.availabilityToStart);
         }
+        if (formData.bankDetails) {
+          setBankDetails((prev) => ({ ...prev, ...formData.bankDetails }));
+        }
+        if (formData.niNumber !== undefined) {
+          setNiNumber(formData.niNumber || "");
+        }
+        if (formData.noNiNumber !== undefined) {
+          setNoNiNumber(!!formData.noNiNumber);
+        }
         if (formData.preferredShiftPattern !== undefined) {
           setPreferredShiftPattern(formData.preferredShiftPattern);
         }
@@ -436,6 +599,9 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
         }
         if (formData.hasDBS !== undefined) {
           setHasDBS(formData.hasDBS);
+        }
+        if (formData.dbsConsent !== undefined) {
+          setDbsConsent(!!formData.dbsConsent);
         }
         if (formData.declarations) {
           setDeclarations(formData.declarations);
@@ -505,6 +671,13 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
             formData.termDatesDocumentName,
           );
           if (file) restoredFiles.termDatesDocument = file;
+        }
+        if (formData.acceptanceLetter && formData.acceptanceLetterName) {
+          const file = base64ToFile(
+            formData.acceptanceLetter,
+            formData.acceptanceLetterName,
+          );
+          if (file) restoredFiles.acceptanceLetter = file;
         }
         if (formData.dbsCertificate && formData.dbsCertificateName) {
           const file = base64ToFile(
@@ -636,6 +809,12 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
           // Load saved progress to resume from last step - MUST complete before setting checkingToken to false
           // Pass tokenFromStorage directly to avoid state timing issues
           const resumeStep = await loadSavedProgress(tokenFromStorage);
+
+          // Always use the invited email (older saved progress may contain a
+          // different, edited email)
+          if (data.email) {
+            setPersonalDetails((prev) => ({ ...prev, email: data.email }));
+          }
           // Always set the step (even if it's 1) to ensure it's set before component renders
 
           console.log(
@@ -650,10 +829,9 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
           // Invitation already completed - redirect to thank you page
           onNavigate("THANK_YOU");
         } else if (data.status === "EXPIRED") {
-          alert(
-            "This invitation has expired. Please contact your administrator.",
-          );
-          onNavigate("DASHBOARD");
+          // Show a popup instead of redirecting (a redirect would send the
+          // applicant straight back to the form)
+          handleLinkExpired(tokenFromStorage);
         } else {
           // For other statuses, still allow access if EmployeeRouteGuard verified the token
           setIsVerified(true);
@@ -702,6 +880,19 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
     }
   }, [isVerified, checkingToken, step]);
 
+  // Check username availability while the user types (debounced)
+  useEffect(() => {
+    if (step !== 2 || !accountDetails.username.trim()) {
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      validateUsername();
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [accountDetails.username, step]);
+
   // Removed continuous autosave - now only saves on step transitions (handleNext)
 
   // Show auth page if token exists but not verified
@@ -719,6 +910,11 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
         </div>
       </div>
     );
+  }
+
+  // Onboarding link expired (3 working days) → popup with no way back in
+  if (linkExpired) {
+    return <LinkExpiredPopup />;
   }
 
   const handlePhotoUpload = (file: File | null) => {
@@ -769,6 +965,7 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
       | "residenceCard"
       | "drivingLicence"
       | "termDatesDocument"
+      | "acceptanceLetter"
       | "dbsCertificate"
       | "salarySlip",
     file: File | null,
@@ -786,6 +983,7 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
       | "residenceCard"
       | "drivingLicence"
       | "termDatesDocument"
+      | "acceptanceLetter"
       | "dbsCertificate"
       | "salarySlip",
   ) => {
@@ -835,6 +1033,19 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
       return;
     }
 
+    // Username availability check on Personal Details step
+    if (step === 2) {
+      setIsNextLoading(true);
+
+      const usernameIsValid = await validateUsername();
+
+      setIsNextLoading(false);
+
+      if (!usernameIsValid) {
+        return;
+      }
+    }
+
     if (currentStepIndex < totalSteps - 1) {
       const nextStep = activeSteps[currentStepIndex + 1];
 
@@ -873,8 +1084,59 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
     };
   };
 
+  // Sends the user back to Personal Details with the username error shown
+  const showUsernameTakenError = (message: string) => {
+    setUsernameExists(true);
+    setValidationErrors({ username: message });
+    setStep(2);
+    alert(message);
+  };
+
   const submitApplication = async () => {
+    // Ignore repeated clicks while a submission is already running
+    if (submittingRef.current) {
+      return;
+    }
+
+    submittingRef.current = true;
     setIsSubmitting(true);
+
+    try {
+      // The onboarding link may have expired while the form was open
+      if (inviteToken) {
+        const latestInvitation: any =
+          await api.invitations.getByToken(inviteToken);
+        if (latestInvitation?.status === "EXPIRED") {
+          handleLinkExpired(inviteToken);
+          return;
+        }
+      }
+
+      // The username may have been taken since it was checked on step 2
+      const usernameCheck: any = await api.auth.checkUsername(
+        accountDetails.username.trim(),
+      );
+
+      if (usernameCheck.exists) {
+        showUsernameTakenError(
+          "This username is already taken. Please choose a different username.",
+        );
+        return;
+      }
+
+      await processApplication();
+    } catch (error: any) {
+      console.error("Failed to submit application:", error);
+      alert(
+        `Failed to submit application: ${error.message || "Unknown error"}`,
+      );
+    } finally {
+      submittingRef.current = false;
+      setIsSubmitting(false);
+    }
+  };
+
+  const processApplication = async () => {
     const applicationRef = `XPG-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
 
     // Helper function to convert file to base64
@@ -958,7 +1220,8 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
         `contract-${Date.now()}`,
         "Signed Employment Contract",
         "PDF",
-        DocumentStatus.VERIFIED,
+        // New application: every document waits for management approval
+        DocumentStatus.PENDING,
       ),
     );
 
@@ -969,7 +1232,7 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
         `ethics-${Date.now()}`,
         "Signed Employee Ethics",
         "PDF",
-        DocumentStatus.VERIFIED,
+        DocumentStatus.PENDING,
       ),
     );
 
@@ -1039,6 +1302,19 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
       );
     }
 
+    if (uploadedFiles.acceptanceLetter) {
+      documents.push(
+        await createDocument(
+          uploadedFiles.acceptanceLetter,
+          `acceptance-${Date.now()}`,
+          "University Acceptance Letter",
+          uploadedFiles.acceptanceLetter.type.startsWith("image/")
+            ? "IMG"
+            : "PDF",
+        ),
+      );
+    }
+
     if (uploadedFiles.dbsCertificate) {
       documents.push(
         await createDocument(
@@ -1046,7 +1322,7 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
           `dbs-${Date.now()}`,
           "DBS Certificate",
           "IMG",
-          hasDBS ? DocumentStatus.VERIFIED : DocumentStatus.PENDING,
+          DocumentStatus.PENDING,
         ),
       );
     }
@@ -1064,16 +1340,22 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
 
     const newCleaner: Cleaner = {
       id: Date.now().toString(),
+      applicationRef: applicationRef,
       name: personalDetails.name,
-      email: personalDetails.email,
+      // Use the invited address so the ERP access email reaches the invitee
+      email: (invitation?.email || personalDetails.email).trim().toLowerCase(),
       phoneNumber: personalDetails.phoneNumber,
       dob: personalDetails.dob,
       address: personalDetails.address,
       gender: personalDetails.gender || "Not specified",
+      niNumber: noNiNumber ? undefined : normalizeNiNumber(niNumber),
+      noNiNumber,
       startDate: new Date().toISOString().split("T")[0],
       employmentType: employmentType || EmploymentType.CONTRACTOR,
       verificationStatus: VerificationStatus.PENDING,
       dbsStatus: hasDBS ? DBSStatus.CLEARED : DBSStatus.NOT_STARTED,
+      // Consent that a DBS check may be required (only asked when "No")
+      dbsCheckConsent: hasDBS === false ? dbsConsent : undefined,
       location: "TBD",
       onboardingProgress: 100,
       citizenshipStatus: citizenshipStatus || "",
@@ -1109,7 +1391,17 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
         passportPhoto ||
         `https://ui-avatars.com/api/?name=${encodeURIComponent(personalDetails.name)}&background=2e4150&color=fff&size=150`,
       documents: documents,
-      accountDetails: accountDetails,
+      bankDetails: {
+        accountHolderName: bankDetails.accountHolderName.trim(),
+        bankName: bankDetails.bankName.trim(),
+        sortCode: formatSortCode(bankDetails.sortCode),
+        accountNumber: bankDetails.accountNumber.trim(),
+        rollNumber: bankDetails.rollNumber.trim() || undefined,
+      },
+      accountDetails: {
+        ...accountDetails,
+        username: accountDetails.username.trim(),
+      },
     };
 
     try {
@@ -1142,38 +1434,48 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
       clearEmployeeSession();
 
       // Store form data for PDF generation
-      const formData = {
-        applicationRef,
-        cleaner: newCleaner,
-        personalDetails,
-        citizenshipStatus,
-        visaType,
-        visaOther,
-        shareCode,
-        uniName,
-        courseName,
-        termStart,
-        termEnd,
-        workPreference,
-        employmentType,
-        hasDBS,
-        declarations,
-        uploadedFiles: Object.keys(uploadedFiles).reduce(
-          (acc, key) => {
-            const file = uploadedFiles[key as keyof typeof uploadedFiles];
-            if (file) {
-              acc[key] = { name: file.name, size: file.size, type: file.type };
-            }
-            return acc;
-          },
-          {} as Record<string, { name: string; size: number; type: string }>,
-        ),
-        passportPhoto: passportPhoto || null,
-      };
+      // Store only a lightweight reference to the submitted application.
+      // The complete application is already saved in the database.
 
-      sessionStorage.setItem("lastSubmittedForm", JSON.stringify(formData));
+      // Save only a small pointer to the submitted application
+      try {
+        const submittedApplication = {
+          cleanerId: newCleaner.id,
+          applicationRef: applicationRef,
+        };
 
-      // Redirect to thank you page after successful submission
+        sessionStorage.removeItem("lastSubmittedForm");
+
+        sessionStorage.setItem(
+          "lastSubmittedApplication",
+          JSON.stringify(submittedApplication),
+        );
+
+        // Also keep it in localStorage so the Thank You page still works
+        // in a new tab or when the invitation link is opened again.
+        localStorage.setItem(
+          "lastSubmittedApplication",
+          JSON.stringify(submittedApplication),
+        );
+
+        console.log(
+          "[OnboardingFlow] Saved submitted application:",
+          submittedApplication,
+        );
+
+        console.log(
+          "[OnboardingFlow] Verify sessionStorage:",
+          sessionStorage.getItem("lastSubmittedApplication"),
+        );
+      } catch (storageError) {
+        console.warn(
+          "Could not save submitted application reference:",
+          storageError,
+        );
+      }
+
+      // The application was already successfully saved to the database.
+      // A sessionStorage failure must NOT make submission appear to fail.
       setIsSubmitting(false);
       onNavigate("THANK_YOU");
     } catch (error: any) {
@@ -1182,7 +1484,12 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
       const errorMessage = error.message || "Unknown error";
 
       // Provide more helpful error messages
-      if (errorMessage.includes("Cannot connect to server")) {
+      if (
+        error.status === 409 &&
+        errorMessage.toLowerCase().includes("username")
+      ) {
+        showUsernameTakenError(errorMessage);
+      } else if (errorMessage.includes("Cannot connect to server")) {
         alert(
           `❌ Backend server is not running!\n\n${errorMessage}\n\nPlease start the backend server:\n1. Open terminal in the 'backend' folder\n2. Run: npm install (if not done)\n3. Run: npm run dev\n4. Make sure MongoDB is running`,
         );
@@ -1285,13 +1592,23 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
                       type="text"
                       placeholder="Enter username"
                       value={accountDetails.username}
-                      onChange={(e) =>
+                      onChange={(e) => {
                         setAccountDetails((prev) => ({
                           ...prev,
                           username: e.target.value,
-                        }))
-                      }
-                      className="h-12 rounded-xl border border-[#e7ebf3] bg-white px-4 outline-none"
+                        }));
+                        // Clear the previous result until the new value is checked
+                        setUsernameExists(false);
+                        setValidationErrors((prev) => ({
+                          ...prev,
+                          username: "",
+                        }));
+                      }}
+                      className={`h-12 rounded-xl border bg-white px-4 outline-none ${
+                        validationErrors.username
+                          ? "border-red-500"
+                          : "border-[#e7ebf3]"
+                      }`}
                     />
                     {validationErrors.username && (
                       <p className="text-sm text-red-500">
@@ -1323,6 +1640,11 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
                       }
                       className="h-12 rounded-xl border border-[#e7ebf3] bg-white px-4 outline-none"
                     />
+                    {validationErrors.password && (
+                      <p className="text-sm text-red-500">
+                        {validationErrors.password}
+                      </p>
+                    )}
                   </div>
                 </div>
 
@@ -1344,6 +1666,11 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
                     }
                     className="h-12 rounded-xl border border-[#e7ebf3] bg-white px-4 outline-none"
                   />
+                  {validationErrors.confirmPassword && (
+                    <p className="text-sm text-red-500">
+                      {validationErrors.confirmPassword}
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -1568,10 +1895,18 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
                     validationErrors.email
                       ? "border-red-500 bg-red-50"
                       : "border-[#e7ebf3] bg-[#f6f6f8]"
-                  } focus:ring-[#135bec]`}
+                  } focus:ring-[#135bec] read-only:text-gray-500 read-only:cursor-not-allowed`}
                   type="email"
                   placeholder="email@example.com"
                   value={personalDetails.email}
+                  // The account and ERP login email go to the invited address,
+                  // so it cannot be changed here
+                  readOnly={!!invitation?.email}
+                  title={
+                    invitation?.email
+                      ? "This is the email address your invitation was sent to"
+                      : undefined
+                  }
                   onChange={(e) => {
                     setPersonalDetails((prev) => ({
                       ...prev,
@@ -1586,6 +1921,57 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
                 {validationErrors.email && (
                   <p className="text-sm text-red-500">
                     {validationErrors.email}
+                  </p>
+                )}
+              </div>
+              <div className="flex flex-col gap-2 col-span-1 md:col-span-2">
+                <label className="text-base font-semibold text-gray-700">
+                  National Insurance Number{" "}
+                  {!noNiNumber && <span className="text-red-500">*</span>}
+                </label>
+                <input
+                  className={`form-input h-12 rounded-xl border px-4 py-2 outline-none uppercase tracking-wider ${
+                    validationErrors.niNumber
+                      ? "border-red-500 bg-red-50"
+                      : "border-[#e7ebf3] bg-[#f6f6f8]"
+                  } focus:ring-[#135bec] disabled:opacity-50`}
+                  type="text"
+                  autoComplete="off"
+                  placeholder="QQ 12 34 56 C"
+                  maxLength={13}
+                  disabled={noNiNumber}
+                  value={formatNiNumber(niNumber)}
+                  onChange={(e) => {
+                    setNiNumber(normalizeNiNumber(e.target.value));
+                    if (validationErrors.niNumber) {
+                      setValidationErrors((prev) => ({
+                        ...prev,
+                        niNumber: "",
+                      }));
+                    }
+                  }}
+                />
+                <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer w-fit">
+                  <input
+                    type="checkbox"
+                    className="size-4 rounded"
+                    checked={noNiNumber}
+                    onChange={(e) => {
+                      setNoNiNumber(e.target.checked);
+                      if (e.target.checked) setNiNumber("");
+                      if (validationErrors.niNumber) {
+                        setValidationErrors((prev) => ({
+                          ...prev,
+                          niNumber: "",
+                        }));
+                      }
+                    }}
+                  />
+                  I don't have a National Insurance number yet
+                </label>
+                {validationErrors.niNumber && (
+                  <p className="text-sm text-red-500">
+                    {validationErrors.niNumber}
                   </p>
                 )}
               </div>
@@ -1682,6 +2068,118 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
                   </div>
                 </div>
               </div> */}
+            </div>
+
+            {/* UK Bank Details */}
+            <div className="bg-[#f6f7fb] border border-[#e7ebf3] rounded-2xl p-5 sm:p-6 space-y-4">
+              <div>
+                <h3 className="text-sm font-bold text-[#2e4150]">
+                  Bank Details (for salary payments)
+                </h3>
+                <p className="text-xs text-gray-500 mt-1">
+                  Enter the UK bank or building society account your salary
+                  should be paid into. The account should be in your own name.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {(
+                  [
+                    {
+                      key: "accountHolderName",
+                      label: "Account Holder Name",
+                      placeholder: "As shown on your bank card",
+                      required: true,
+                      inputMode: "text",
+                    },
+                    {
+                      key: "bankName",
+                      label: "Bank / Building Society Name",
+                      placeholder: "e.g. Barclays, HSBC, Nationwide",
+                      required: true,
+                      inputMode: "text",
+                    },
+                    {
+                      key: "sortCode",
+                      label: "Sort Code",
+                      placeholder: "12-34-56",
+                      required: true,
+                      inputMode: "numeric",
+                    },
+                    {
+                      key: "accountNumber",
+                      label: "Account Number",
+                      placeholder: "8 digits",
+                      required: true,
+                      inputMode: "numeric",
+                    },
+                    {
+                      key: "rollNumber",
+                      label: "Building Society Roll Number",
+                      placeholder: "Only if your building society uses one",
+                      required: false,
+                      inputMode: "text",
+                    },
+                  ] as const
+                ).map((field) => (
+                  <div key={field.key} className="flex flex-col gap-2">
+                    <label className="text-sm font-semibold text-gray-700">
+                      {field.label}{" "}
+                      {field.required ? (
+                        <span className="text-red-500">*</span>
+                      ) : (
+                        <span className="text-gray-400 font-normal">
+                          (optional)
+                        </span>
+                      )}
+                    </label>
+                    <input
+                      type="text"
+                      inputMode={field.inputMode}
+                      autoComplete="off"
+                      maxLength={
+                        field.key === "sortCode"
+                          ? 8
+                          : field.key === "accountNumber"
+                            ? 8
+                            : field.key === "rollNumber"
+                              ? 18
+                              : 70
+                      }
+                      placeholder={field.placeholder}
+                      value={bankDetails[field.key]}
+                      onChange={(e) => {
+                        let value = e.target.value;
+                        if (field.key === "sortCode") {
+                          value = formatSortCode(value);
+                        } else if (field.key === "accountNumber") {
+                          value = value.replace(/\D/g, "").slice(0, 8);
+                        }
+                        setBankDetails((prev) => ({
+                          ...prev,
+                          [field.key]: value,
+                        }));
+                        if (validationErrors[field.key]) {
+                          setValidationErrors((prev) => ({
+                            ...prev,
+                            [field.key]: "",
+                          }));
+                        }
+                      }}
+                      className={`h-12 rounded-xl border bg-white px-4 text-sm font-semibold outline-none ${
+                        validationErrors[field.key]
+                          ? "border-red-500 bg-red-50"
+                          : "border-[#e7ebf3]"
+                      }`}
+                    />
+                    {validationErrors[field.key] && (
+                      <p className="text-sm text-red-500">
+                        {validationErrors[field.key]}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         );
@@ -2131,6 +2629,76 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
                 )}
               </div>
 
+              <div className="space-y-4">
+                <label className="text-xs font-black uppercase tracking-widest text-gray-700">
+                  Upload University Acceptance Letter{" "}
+                  <span className="normal-case tracking-normal font-semibold text-gray-400">
+                    (optional)
+                  </span>
+                </label>
+                <label
+                  className={`p-8 border-2 border-dashed rounded-2xl transition-all cursor-pointer group flex flex-col items-center justify-center text-center ${
+                    validationErrors.acceptanceLetter
+                      ? "border-red-500 bg-red-50"
+                      : "border-[#e7ebf3] bg-gray-50/50 hover:bg-gray-50 hover:border-[#135bec]"
+                  }`}
+                >
+                  <input
+                    type="file"
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        handleFileUpload("acceptanceLetter", file);
+                        if (validationErrors.acceptanceLetter) {
+                          setValidationErrors((prev) => ({
+                            ...prev,
+                            acceptanceLetter: "",
+                          }));
+                        }
+                      }
+                    }}
+                  />
+                  <span className="material-symbols-outlined text-4xl text-gray-300 group-hover:text-[#135bec] transition-colors mb-2">
+                    upload_file
+                  </span>
+                  <p className="text-sm font-bold text-gray-600 group-hover:text-gray-900">
+                    {uploadedFiles.acceptanceLetter ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <span className="truncate max-w-[200px]">
+                          {uploadedFiles.acceptanceLetter.name}
+                        </span>
+
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            removeUploadedFile("acceptanceLetter");
+                          }}
+                          className="text-red-500 hover:text-red-700 transition-colors"
+                        >
+                          <span className="material-symbols-outlined text-base">
+                            close
+                          </span>
+                        </button>
+                      </span>
+                    ) : (
+                      "Click to upload document"
+                    )}
+                  </p>
+                  <p className="text-[10px] text-gray-400 mt-1 uppercase tracking-tight">
+                    Offer / Acceptance Letter or CAS Statement (PDF, JPG, PNG)
+                  </p>
+                </label>
+                {validationErrors.acceptanceLetter && (
+                  <p className="text-sm text-red-500">
+                    {validationErrors.acceptanceLetter}
+                  </p>
+                )}
+              </div>
+
               <label
                 className={`flex items-start gap-4 p-5 border-2 rounded-2xl cursor-pointer transition-all group ${
                   validationErrors.hasAgreedToHours
@@ -2391,6 +2959,14 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
               Step {displayStep}: Employment Type
             </h2>
             <div className="space-y-6">
+              <div className="flex items-start gap-3 rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3">
+                <span className="material-symbols-outlined text-[#135bec] text-[20px] shrink-0">
+                  info
+                </span>
+                <p className="text-sm font-semibold text-[#2e4150] leading-relaxed">
+                  Please note: all current cleaners are subcontractors.
+                </p>
+              </div>
               <p className="text-base font-bold text-gray-800">
                 What type of employment are you applying for?{" "}
                 <span className="text-red-500">*</span>
@@ -2651,19 +3227,46 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
               )}
 
               {hasDBS === false && (
-                <div className="animate-in fade-in duration-500 p-6 bg-gray-50 border border-gray-100 rounded-2xl flex items-center gap-4">
-                  <div className="size-10 bg-white rounded-xl shadow-sm flex items-center justify-center text-[#135bec]">
-                    <span className="material-symbols-outlined">
-                      history_edu
+                <div className="animate-in fade-in duration-500 space-y-2">
+                  <label
+                    className={`flex items-start gap-4 p-5 border-2 rounded-2xl cursor-pointer transition-all ${
+                      validationErrors.dbsConsent
+                        ? "border-red-500 bg-red-50"
+                        : dbsConsent
+                          ? "border-[#000] bg-[#f2f6f9]"
+                          : "border-gray-100 bg-gray-50 hover:bg-gray-100"
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      className="size-5 rounded mt-0.5 shrink-0"
+                      checked={dbsConsent}
+                      onChange={(e) => {
+                        setDbsConsent(e.target.checked);
+                        if (validationErrors.dbsConsent) {
+                          setValidationErrors((prev) => ({
+                            ...prev,
+                            dbsConsent: "",
+                          }));
+                        }
+                      }}
+                    />
+                    <span className="text-sm text-gray-700 leading-relaxed">
+                      <span className="font-bold text-gray-900">
+                        DBS check consent <span className="text-red-500">*</span>
+                      </span>
+                      <br />
+                      I understand that a DBS check may be required depending
+                      on the cleaning requirements of the sites I am assigned
+                      to, and I consent to Xpect Group carrying out a DBS check
+                      if it is needed.
                     </span>
-                  </div>
-                  <p className="text-xs font-medium text-gray-600 leading-relaxed">
-                    Xpect Group will initiate a{" "}
-                    <span className="font-bold text-gray-900">
-                      Enhanced DBS Check
-                    </span>{" "}
-                    for you upon successful completion of your profile.
-                  </p>
+                  </label>
+                  {validationErrors.dbsConsent && (
+                    <p className="text-sm text-red-500">
+                      {validationErrors.dbsConsent}
+                    </p>
+                  )}
                 </div>
               )}
             </div>
@@ -2887,7 +3490,9 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
         personalDetails.dob &&
         personalDetails.address.trim() &&
         personalDetails.gender.trim() &&
-        (passportPhoto || passportPhotoFile)
+        (passportPhoto || passportPhotoFile) &&
+        (noNiNumber || isValidNiNumber(niNumber)) &&
+        Object.keys(getBankDetailsErrors(bankDetails)).length === 0
       );
     } else if (step === 3 && !isBritishOrIrish) {
       return !!(
@@ -2922,6 +3527,7 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
     } else if (step === 8) {
       if (hasDBS === null) return false;
       if (hasDBS === true && !uploadedFiles.dbsCertificate) return false;
+      if (hasDBS === false && !dbsConsent) return false;
       return true;
     } else if (step === 9) {
       return !!(
@@ -2956,18 +3562,27 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
     } else if (step === 2) {
       if (!accountDetails.username.trim()) {
         errors.username = "Username is required";
+        isValid = false;
+      } else if (usernameExists) {
+        errors.username =
+          "This username is already taken. Please choose a different username.";
+        isValid = false;
       }
 
       if (!accountDetails.password.trim()) {
         errors.password = "Password is required";
-      }
-
-      if (accountDetails.password.length < 6) {
+        isValid = false;
+      } else if (accountDetails.password.length < 6) {
         errors.password = "Password must be at least 6 characters";
+        isValid = false;
       }
 
-      if (accountDetails.password !== accountDetails.confirmPassword) {
+      if (!accountDetails.confirmPassword) {
+        errors.confirmPassword = "Please confirm your password";
+        isValid = false;
+      } else if (accountDetails.password !== accountDetails.confirmPassword) {
         errors.confirmPassword = "Passwords do not match";
+        isValid = false;
       }
       if (!personalDetails.name.trim()) {
         errors.name = "Full name is required";
@@ -2990,6 +3605,24 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
       }
       if (!personalDetails.address.trim()) {
         errors.address = "Current address is required";
+        isValid = false;
+      }
+      if (!noNiNumber) {
+        if (!niNumber.trim()) {
+          errors.niNumber =
+            "National Insurance number is required (or tick the box if you don't have one yet)";
+          isValid = false;
+        } else if (!isValidNiNumber(niNumber)) {
+          errors.niNumber =
+            "Enter a valid National Insurance number, e.g. QQ 12 34 56 C";
+          isValid = false;
+        }
+      }
+
+      // UK bank details
+      const bankErrors = getBankDetailsErrors(bankDetails);
+      if (Object.keys(bankErrors).length > 0) {
+        Object.assign(errors, bankErrors);
         isValid = false;
       }
       if (!passportPhoto && !passportPhotoFile) {
@@ -3081,6 +3714,11 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
       }
       if (hasDBS === true && !uploadedFiles.dbsCertificate) {
         errors.dbsCertificate = "Please upload your DBS certificate";
+        isValid = false;
+      }
+      if (hasDBS === false && !dbsConsent) {
+        errors.dbsConsent =
+          "Please confirm you understand a DBS check may be required";
         isValid = false;
       }
     } else if (step === 9) {
@@ -3246,6 +3884,8 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
               <img
                 src="thumnail.png"
                 alt="Watch onboarding guide"
+                loading="lazy"
+                decoding="async"
                 className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
               />
 
@@ -3349,15 +3989,13 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
             </button>
 
             {/* Video */}
-            <video
-              className="w-full aspect-video object-contain rounded-2xl"
-              controls
-              autoPlay
-              playsInline
-            >
-              <source src="demo-video.mp4" type="video/mp4" />
-              Your browser does not support the video tag.
-            </video>
+            <iframe
+              className="w-full aspect-video rounded-xl"
+              src="https://www.youtube.com/embed/zH4s1H2pHyM?autoplay=1"
+              title="Employee Onboarding Guide"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+            />
           </div>
         </div>
       )}

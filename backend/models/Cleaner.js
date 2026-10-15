@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 const DocumentSchema = new mongoose.Schema(
   {
     id: { type: String, required: true },
+
     name: { type: String, required: true },
     type: { type: String, enum: ["PDF", "IMG", "DOC"], required: true },
     uploadDate: { type: String, required: true },
@@ -14,6 +15,19 @@ const DocumentSchema = new mongoose.Schema(
     },
     fileUrl: { type: String },
     fileName: { type: String },
+    // Set when the employee re-uploads this document after it was rejected
+    reuploadedAt: { type: Date },
+    // Files this document replaced (kept for audit; files live on disk)
+    previousVersions: [
+      {
+        _id: false,
+        fileUrl: { type: String },
+        fileName: { type: String },
+        uploadDate: { type: String },
+        status: { type: String },
+        replacedAt: { type: Date },
+      },
+    ],
   },
   { _id: false },
 );
@@ -61,6 +75,11 @@ const ContractSchema = new mongoose.Schema(
 const CleanerSchema = new mongoose.Schema(
   {
     id: { type: String, required: true, unique: true },
+    applicationRef: {
+      type: String,
+      unique: true,
+      required: true,
+    },
     name: { type: String, required: true },
     email: { type: String, required: true, unique: true },
     phoneNumber: { type: String, required: true },
@@ -86,6 +105,8 @@ const CleanerSchema = new mongoose.Schema(
       default: "Not Started",
       required: true,
     },
+    // Applicant without a DBS certificate agreed a DBS check may be required
+    dbsCheckConsent: { type: Boolean },
     location: { type: String, default: "TBD" },
     onboardingProgress: { type: Number, default: 0 },
 
@@ -127,6 +148,29 @@ const CleanerSchema = new mongoose.Schema(
     endDate: { type: String },
     preferredShiftPattern: { type: String },
     auditorNotes: { type: String, default: "" },
+
+    // National Insurance number, stored as "QQ123456C"
+    niNumber: {
+      type: String,
+      uppercase: true,
+      trim: true,
+      match: /^[A-Z]{2}\d{6}[A-D]$/,
+    },
+    // True when the employee said they don't have an NI number yet
+    noNiNumber: { type: Boolean, default: false },
+
+    // UK bank details for salary payments (collected during onboarding)
+    bankDetails: {
+      accountHolderName: { type: String, trim: true },
+      bankName: { type: String, trim: true },
+      sortCode: { type: String, match: /^\d{2}-\d{2}-\d{2}$/ },
+      accountNumber: { type: String, match: /^\d{8}$/ },
+      rollNumber: { type: String, trim: true },
+    },
+
+    // Set when the employee re-submits documents after "Docs Required"
+    resubmittedAt: { type: Date },
+    resubmissionCount: { type: Number, default: 0 },
   },
   {
     timestamps: true,

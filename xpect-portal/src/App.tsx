@@ -34,13 +34,13 @@ import {
   getViewFromUrl,
   getUrlForView,
   navigateToUrl,
-  getFirstName,
-  createNameSlug,
+  findCleanerBySlug,
 } from "./utils/routing";
 import { isEmployee } from "./utils/auth";
 import { useAuth } from "./context/AuthContext";
 import { canAccessModule, viewToModuleKey } from "./utils/permissions";
 import AccessDenied from "./views/AccessDenied";
+import MyApplication from "./views/MyApplication";
 import Login from "./views/Login";
 import SiteDetail from "./modules/clients-sites/SiteDetail";
 import InspectionDetail from "./modules/clients-sites/InspectionDetail";
@@ -151,8 +151,24 @@ const App: React.FC = () => {
     string | null
   >(null);
   const [showSidebar, setShowSidebar] = useState<boolean>(false);
-  const [showVerificationPendingModal, setShowVerificationPendingModal] =
-    useState(false);
+  // Employees (users linked to a staff record) may only use the ERP once
+  // their verification is "Verified". Until checked, nothing is rendered.
+  const [verificationGate, setVerificationGate] = useState<{
+    state: "checking" | "allowed" | "blocked" | "docsRequired";
+    status?: string;
+    notes?: string;
+    resubmitted?: boolean;
+  }>(() => {
+    const path = window.location.pathname;
+    const isPublicPath =
+      path === "/login" ||
+      path.startsWith("/onboarding") ||
+      path === "/thank-you";
+    const storedUser = JSON.parse(localStorage.getItem("xpect_user") || "{}");
+    return storedUser?.cleanerId && !isPublicPath
+      ? { state: "checking" }
+      : { state: "allowed" };
+  });
   const goToClients = () => csNavigate("clients");
   const goToClient = (id: string) => csNavigate("client-detail", id);
   const goToSites = () => csNavigate("sites");
@@ -206,13 +222,9 @@ const App: React.FC = () => {
       };
     }
 
-    // Handle cleaner detail and report views - find cleaner by firstName slug
+    // Handle cleaner detail and report views - find cleaner by URL slug
     if ((view === "CLEANER_DETAIL" || view === "REPORT") && params?.firstName) {
-      const firstNameSlug = params.firstName;
-      const cleaner = cleaners.find((c) => {
-        const firstName = getFirstName(c.name);
-        return createNameSlug(firstName) === firstNameSlug;
-      });
+      const cleaner = findCleanerBySlug(cleaners, params.firstName);
 
       if (cleaner) {
         return {
@@ -235,29 +247,52 @@ const App: React.FC = () => {
 
   useEffect(() => {
     const checkVerification = async () => {
+      // Normal admin/custom users and public pages are not gated
+      if (verificationGate.state !== "checking") {
+        return;
+      }
+
       try {
-        // normal admin/custom users
-        if (!localUser?.cleanerId) {
+        // onboarding employee users — read their own application
+        const application: any = await api.myApplication.get();
+
+        const status = application?.verificationStatus?.trim() || "Pending";
+
+        if (status.toLowerCase() === "verified") {
+          setVerificationGate({ state: "allowed" });
+        } else if (status.toLowerCase() === "docs required") {
+          // Can log in to re-upload documents on the My Application page
+          setVerificationGate({ state: "docsRequired" });
+        } else {
+          // Pending or Rejected → no ERP access
+          setVerificationGate({
+            state: "blocked",
+            status,
+            notes: application?.auditorNotes || "",
+            resubmitted: !!application?.resubmittedAt,
+          });
+        }
+      } catch (err: any) {
+        console.error(err);
+        if (err?.status === 401) {
+          // Session expired → log in again
+          handleEmployeeLogout();
           return;
         }
-
-        // onboarding employee users
-        const cleaner = await api.cleaners.getById(localUser.cleanerId);
-
-        console.log("cleaner", cleaner);
-
-        const status = cleaner?.verificationStatus?.trim().toLowerCase();
-
-        if (status === "pending") {
-          setShowVerificationPendingModal(true);
-        }
-      } catch (err) {
-        console.error(err);
+        // If the status cannot be confirmed, do not grant access
+        setVerificationGate({ state: "blocked", status: "Unknown" });
       }
     };
 
     checkVerification();
   }, []);
+
+  const handleEmployeeLogout = () => {
+    localStorage.removeItem("xpect_authToken");
+    localStorage.removeItem("xpect_user");
+    localStorage.removeItem("xpect_currentUser");
+    window.location.href = "/login";
+  };
 
   // Initialize from URL on mount
   useEffect(() => {
@@ -659,20 +694,11 @@ const App: React.FC = () => {
                 <CleanersList onNavigate={navigateTo} cleaners={cleaners} />
               );
             case "CLEANER_DETAIL":
-              // Find cleaner by firstName slug from URL or use selectedCleaner
+              // Use the latest data for the selected cleaner (matched by id)
               const detailCleaner = selectedCleaner
-                ? cleaners.find((c) => {
-                    const firstName = getFirstName(c.name);
-                    const firstNameSlug = createNameSlug(firstName);
-                    const selectedFirstName = getFirstName(
-                      selectedCleaner.name,
-                    );
-                    const selectedSlug = createNameSlug(selectedFirstName);
-                    return firstNameSlug === selectedSlug;
-                  }) || selectedCleaner
-                : cleaners.length > 0
-                  ? cleaners[0]
-                  : undefined;
+                ? cleaners.find((c) => c.id === selectedCleaner.id) ||
+                  selectedCleaner
+                : undefined;
               if (!detailCleaner) {
                 return (
                   <div className="p-8 text-center">Employee not found</div>
@@ -685,20 +711,11 @@ const App: React.FC = () => {
                 />
               );
             case "REPORT":
-              // Find cleaner by firstName slug from URL or use selectedCleaner
+              // Use the latest data for the selected cleaner (matched by id)
               const reportCleaner = selectedCleaner
-                ? cleaners.find((c) => {
-                    const firstName = getFirstName(c.name);
-                    const firstNameSlug = createNameSlug(firstName);
-                    const selectedFirstName = getFirstName(
-                      selectedCleaner.name,
-                    );
-                    const selectedSlug = createNameSlug(selectedFirstName);
-                    return firstNameSlug === selectedSlug;
-                  }) || selectedCleaner
-                : cleaners.length > 0
-                  ? cleaners[0]
-                  : undefined;
+                ? cleaners.find((c) => c.id === selectedCleaner.id) ||
+                  selectedCleaner
+                : undefined;
               if (!reportCleaner) {
                 return (
                   <div className="p-8 text-center">Employee not found</div>
@@ -773,7 +790,45 @@ const App: React.FC = () => {
     );
   }
 
-  if (showVerificationPendingModal) {
+  if (verificationGate.state === "checking") {
+    return (
+      <div className="h-screen flex items-center justify-center bg-white">
+        <div className="text-sm text-gray-500">
+          Checking your verification status...
+        </div>
+      </div>
+    );
+  }
+
+  if (verificationGate.state === "docsRequired") {
+    return (
+      <MyApplication
+        onSubmitted={() =>
+          setVerificationGate({
+            state: "blocked",
+            status: "Pending",
+            resubmitted: true,
+          })
+        }
+        onLogout={handleEmployeeLogout}
+      />
+    );
+  }
+
+  if (verificationGate.state === "blocked") {
+    const gateStatus = (verificationGate.status || "").toLowerCase();
+    const isRejected = gateStatus === "rejected";
+    const isUnknown = gateStatus === "unknown";
+    const isResubmitted = !!verificationGate.resubmitted;
+
+    const title = isRejected
+      ? "Verification Rejected"
+      : isUnknown
+        ? "Unable to Check Verification"
+        : isResubmitted
+          ? "Documents Resubmitted"
+          : "Verification Pending";
+
     return (
       <div className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
         <div className="w-full max-w-xl rounded-3xl bg-white shadow-2xl overflow-hidden">
@@ -782,15 +837,15 @@ const App: React.FC = () => {
             <div className="flex items-center gap-4">
               <div className="w-14 h-14 rounded-2xl bg-white/10 flex items-center justify-center">
                 <span className="material-symbols-outlined text-[30px]">
-                  pending_actions
+                  {isRejected ? "gpp_bad" : "pending_actions"}
                 </span>
               </div>
 
               <div>
-                <h2 className="text-2xl font-bold">Verification Pending</h2>
+                <h2 className="text-2xl font-bold">{title}</h2>
 
                 <p className="text-sm text-white/80 mt-1">
-                  ERP access is temporarily restricted
+                  ERP access is restricted until your verification is approved
                 </p>
               </div>
             </div>
@@ -798,25 +853,47 @@ const App: React.FC = () => {
 
           {/* Body */}
           <div className="px-7 py-8">
-            <div className="flex items-start gap-4">
-              {/* <div className="w-16 h-16 rounded-2xl bg-amber-100 flex items-center justify-center shrink-0">
-                <span className="material-symbols-outlined text-[34px] text-amber-600">
-                  hourglass_top
-                </span>
-              </div> */}
+            <h3 className="text-xl font-bold text-[#0d121b]">
+              You have successfully logged in to XpectGroup ERP
+            </h3>
 
-              <div>
-                <h3 className="text-xl font-bold text-[#0d121b]">
-                  You have successfully logged in to XpectGroup ERP
-                </h3>
-
-                <p className="mt-4 text-base  leading-7 text-[#4c669a]">
-                  Your onboarding form has been submitted successfully.
+            {isRejected ? (
+              <>
+                <p className="mt-4 text-base leading-7 text-[#4c669a]">
+                  Unfortunately, your background verification has been
+                  rejected. Please check the email we sent you for details.
+                </p>
+                {verificationGate.notes && (
+                  <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 px-5 py-4">
+                    <p className="text-sm font-semibold text-red-700">
+                      Reason
+                    </p>
+                    <p className="mt-1 text-sm text-red-600 leading-6">
+                      {verificationGate.notes}
+                    </p>
+                  </div>
+                )}
+                <p className="mt-4 text-sm leading-6 text-[#4c669a]">
+                  Please contact the administration team if you need help.
+                </p>
+              </>
+            ) : isUnknown ? (
+              <p className="mt-4 text-base leading-7 text-[#4c669a]">
+                We couldn't confirm your verification status right now. Please
+                try again in a few minutes.
+              </p>
+            ) : (
+              <>
+                <p className="mt-4 text-base leading-7 text-[#4c669a]">
+                  {isResubmitted
+                    ? "Thank you — your updated documents have been submitted successfully."
+                    : "Your onboarding form has been submitted successfully."}
                 </p>
 
                 <p className="mt-3 text-base leading-7 text-[#4c669a]">
-                  However, your background verification is currently under
-                  review by the administration team.
+                  {isResubmitted
+                    ? "Your application status is pending while the administration team reviews your documents again."
+                    : "However, your application status is still pending while the administration team reviews it."}
                 </p>
 
                 <p className="mt-3 text-base leading-7 text-[#4c669a]">
@@ -832,7 +909,7 @@ const App: React.FC = () => {
 
                     <div>
                       <p className="text-sm font-semibold text-amber-700">
-                        Please check again after 5 hours.
+                        Please wait, or check back after 24 hours.
                       </p>
 
                       <p className="mt-1 text-xs text-amber-600 leading-6">
@@ -842,7 +919,19 @@ const App: React.FC = () => {
                     </div>
                   </div>
                 </div>
-              </div>
+              </>
+            )}
+
+            <div className="mt-8 flex justify-end">
+              <button
+                onClick={handleEmployeeLogout}
+                className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#2e4150] text-white text-sm font-semibold hover:bg-[#3a5268] transition-colors"
+              >
+                <span className="material-symbols-outlined text-[18px]">
+                  logout
+                </span>
+                Log out
+              </button>
             </div>
           </div>
         </div>

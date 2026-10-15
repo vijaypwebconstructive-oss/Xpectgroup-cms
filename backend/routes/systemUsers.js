@@ -73,11 +73,39 @@ router.get("/:id", async (req, res) => {
 
 router.patch("/:id", async (req, res) => {
   try {
-    const updated = await User.findByIdAndUpdate(req.params.id, req.body, {
-      new: true,
-    });
+    // Only access settings can be changed here (never username/password hash)
+    const allowedFields = ["role", "modules", "clientAccess", "siteAccess"];
+    const updates = {};
+    for (const field of allowedFields) {
+      if (req.body[field] !== undefined) updates[field] = req.body[field];
+    }
 
-    res.json(updated);
+    const updated = await User.findByIdAndUpdate(
+      req.params.id,
+      { $set: updates },
+      { new: true },
+    ).lean();
+
+    if (!updated) {
+      return res.status(404).json({
+        message: "User not found",
+      });
+    }
+
+    // Same shape as GET / so the frontend list stays consistent
+    res.json({
+      id: updated._id,
+      fullName: updated.username,
+      email: updated.email,
+      role: updated.role,
+      modules: updated.modules || [],
+      clientAccess: updated.clientAccess || [],
+      siteAccess: updated.siteAccess || [],
+      cleanerId: updated.cleanerId || "",
+      createdAt: updated.createdAt
+        ? new Date(updated.createdAt).toISOString().split("T")[0]
+        : "",
+    });
   } catch (err) {
     res.status(500).json({
       message: err.message,
@@ -97,16 +125,29 @@ router.post("/", async (req, res) => {
       siteAccess,
       cleanerId,
     } = req.body;
-    if (!fullName || !email || !role || !password) {
+    const username = fullName?.trim();
+
+    if (!username || !email || !role || !password) {
       return res.status(400).json({
         error: "fullName, email, role, password are required",
+        message: "Username, email, role and password are required.",
+      });
+    }
+
+    const existingUser = await User.findOne({ username }).lean();
+    if (existingUser) {
+      return res.status(409).json({
+        error: "Username taken",
+        field: "username",
+        message:
+          "This username is already taken. Please choose a different username.",
       });
     }
 
     const passwordHash = await bcrypt.hash(password, 10);
 
     const user = await User.create({
-      username: fullName,
+      username,
       email,
       passwordHash,
       role, // ✅ use selected role
@@ -130,6 +171,14 @@ router.post("/", async (req, res) => {
     });
   } catch (err) {
     console.error("Error creating user:", err);
+    if (err.code === 11000) {
+      return res.status(409).json({
+        error: "Username taken",
+        field: "username",
+        message:
+          "This username is already taken. Please choose a different username.",
+      });
+    }
     res.status(500).json({
       error: "Failed to create user",
       message: err.message,

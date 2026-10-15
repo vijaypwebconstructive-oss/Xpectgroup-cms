@@ -6,6 +6,16 @@ const API_BASE_URL =
 export const getBackendPublicOrigin = (): string =>
   String(API_BASE_URL).replace(/\/api\/?$/, "");
 
+/**
+ * Full URL for a stored document file. Onboarding documents are base64 data
+ * URLs (returned as-is); re-uploaded documents are server paths such as
+ * "/api/uploads/documents/x.pdf" and need the backend origin.
+ */
+export const resolveFileUrl = (url?: string | null): string => {
+  if (!url) return "";
+  return url.startsWith("/") ? `${getBackendPublicOrigin()}${url}` : url;
+};
+
 /** Full URL to view/download a payslip (uploaded file or generated PDF route) */
 export function getSalarySlipViewUrl(slip: {
   _id?: string;
@@ -80,6 +90,37 @@ async function fetchWithErrorHandling<T>(
 }
 
 export const api = {
+  // Logged-in employee's own application ("Docs Required" re-upload flow)
+  myApplication: {
+    get: () => fetchWithErrorHandling(`${API_BASE_URL}/my-application`),
+
+    updateDetails: (data: {
+      phoneNumber?: string;
+      address?: string;
+      shareCode?: string;
+    }) =>
+      fetchWithErrorHandling(`${API_BASE_URL}/my-application/details`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      }),
+
+    uploadDocument: (docId: string, file: File) => {
+      const formData = new FormData();
+      formData.append("file", file);
+      // No Content-Type header: the browser sets the multipart boundary
+      return fetchWithErrorHandling(
+        `${API_BASE_URL}/my-application/documents/${encodeURIComponent(docId)}`,
+        { method: "POST", body: formData },
+      );
+    },
+
+    submit: () =>
+      fetchWithErrorHandling(`${API_BASE_URL}/my-application/submit`, {
+        method: "POST",
+      }),
+  },
+
   auth: {
     checkUsername: (username: string) =>
       fetchWithErrorHandling(`${API_BASE_URL}/auth/check-username`, {

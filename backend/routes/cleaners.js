@@ -18,6 +18,7 @@ import {
   sendERPAccessEmail,
 } from "../services/emailService.js";
 import User from "../models/userModel.js";
+import { sendDocsRequiredEmail } from "../services/applicationEmails.js";
 import bcrypt from "bcrypt";
 import { getOnboardingSuccessTemplate } from "../services/onboardingSuccessTemplate.js";
 const router = express.Router();
@@ -71,9 +72,15 @@ router.patch("/bulk-action", async (req, res) => {
 
     Promise.all(
       cleaners.map((cleaner) =>
-        sendVerificationStatusEmail(cleaner.email, cleaner.name, status).catch(
-          (err) =>
-            console.error(`Email failed for ${cleaner.email}`, err.message),
+        sendVerificationStatusEmail(
+          cleaner.email,
+          cleaner.name,
+          status,
+          [],
+          "",
+          cleaner.accountDetails?.username,
+        ).catch((err) =>
+          console.error(`Email failed for ${cleaner.email}`, err.message),
         ),
       ),
     );
@@ -128,10 +135,32 @@ router.patch("/bulk-status", async (req, res) => {
       });
     }
 
+    // Staff whose status actually changes get a status email
+    const changedCleaners = await Cleaner.find({
+      id: { $in: validIds },
+      verificationStatus: { $ne: status },
+    }).lean();
+
     const result = await Cleaner.updateMany(
       { id: { $in: validIds } },
       { $set: { verificationStatus: status } },
     );
+
+    // Send emails (non-blocking), same as single-staff status updates
+    if (status === "Verified" || status === "Rejected") {
+      changedCleaners.forEach((cleaner) => {
+        sendVerificationStatusEmail(
+          cleaner.email,
+          cleaner.name,
+          status,
+          [],
+          "",
+          cleaner.accountDetails?.username,
+        ).catch((err) =>
+          console.error(`Email failed for ${cleaner.email}`, err.message),
+        );
+      });
+    }
 
     // Single activity log for the entire bulk operation
     try {
@@ -204,8 +233,10 @@ router.post("/bulk-delete", async (req, res) => {
       workerId: { $in: validIds },
     });
 
+    // Invitations are linked by email (they have no cleanerId), so the
+    // person can be invited again after being deleted
     await Invitation.deleteMany({
-      cleanerId: { $in: validIds },
+      email: { $in: cleaners.map((c) => c.email?.toLowerCase()) },
     });
 
     await User.deleteMany({
@@ -363,8 +394,10 @@ router.post("/", async (req, res) => {
       ...cleanerData
     } = req.body;
 
+    const username = accountDetails?.username?.trim();
+
     // Validate required fields
-    if (!accountDetails?.username || !accountDetails?.password) {
+    if (!username || !accountDetails?.password) {
       return res.status(400).json({
         error: "Missing credentials",
         message: "Username and password are required",
@@ -379,7 +412,19 @@ router.post("/", async (req, res) => {
     if (existingCleaner) {
       return res.status(400).json({
         error: "Cleaner already exists",
-        message: "A cleaner with this email or ID already exists",
+        message: "A staff member with this email address already exists.",
+      });
+    }
+
+    // Check username before creating anything
+    const existingUser = await User.findOne({ username }).lean();
+
+    if (existingUser) {
+      return res.status(409).json({
+        error: "Username taken",
+        field: "username",
+        message:
+          "This username is already taken. Please choose a different username.",
       });
     }
 
@@ -391,23 +436,30 @@ router.post("/", async (req, res) => {
       id,
       email,
       name,
-      accountDetails,
+      accountDetails: { ...accountDetails, username },
       ...cleanerData,
     });
 
-    // Save cleaner & create user simultaneously
-    await Promise.all([
-      cleaner.save(),
+    // Save cleaner first, then create the login user.
+    // If the user cannot be created, remove the cleaner again so a retry
+    // does not fail with "already exists".
+    await cleaner.save();
 
-      User.create({
-        username: accountDetails.username,
+    try {
+      await User.create({
+        username,
         email,
         passwordHash,
         role: "Default",
         modules: ["employee attendance"],
         cleanerId: id,
-      }),
-    ]);
+      });
+    } catch (userError) {
+      await Cleaner.deleteOne({ id }).catch((rollbackError) => {
+        console.error("Rollback Error:", rollbackError);
+      });
+      throw userError;
+    }
 
     // Return response immediately
     res.status(201).json({
@@ -423,7 +475,7 @@ router.post("/", async (req, res) => {
     sendERPAccessEmail(
       email,
       name,
-      accountDetails.username,
+      username,
       `${process.env.FRONTEND_URL}/login`,
     ).catch((err) => {
       console.error("Email Error:", err);
@@ -451,9 +503,26 @@ router.post("/", async (req, res) => {
     }
 
     if (error.code === 11000) {
+      console.error("DUPLICATE KEY ERROR:");
+      console.error("Collection:", error?.message);
+      console.error("Key Pattern:", error?.keyPattern);
+      console.error("Key Value:", error?.keyValue);
+
+      const duplicateField = Object.keys(error.keyPattern || {})[0];
+      const duplicateMessages = {
+        username:
+          "This username is already taken. Please choose a different username.",
+        email: "A staff member with this email address already exists.",
+      };
+
       return res.status(409).json({
         error: "Duplicate entry",
-        message: "Cleaner already exists.",
+        field: duplicateField,
+        message:
+          duplicateMessages[duplicateField] ||
+          "This application has already been submitted.",
+        keyPattern: error.keyPattern,
+        keyValue: error.keyValue,
       });
     }
 
@@ -548,8 +617,26 @@ router.patch("/:id", async (req, res) => {
             newStatus,
             rejectedDocs,
             auditorNotes,
+            cleaner.accountDetails?.username,
           ).catch(console.error);
         } else {
+          if (newStatus === "Docs Required") {
+            // Ask the employee to log in and re-upload the rejected documents
+            const rejectedDocs = Array.isArray(cleaner.documents)
+              ? cleaner.documents
+                  .filter((doc) => doc?.status === "Rejected")
+                  .map((doc) => doc?.name)
+                  .filter(Boolean)
+              : [];
+            sendDocsRequiredEmail(
+              cleaner.email,
+              cleaner.name,
+              rejectedDocs,
+              cleaner.auditorNotes || "",
+              cleaner.accountDetails?.username,
+            ).catch(console.error);
+          }
+
           // Log other status changes (Pending, Docs Required, etc.)
           await logActivity({
             actorId: "admin-001",
@@ -787,6 +874,14 @@ router.patch("/:id", async (req, res) => {
         .status(400)
         .json({ error: "Validation error", message: error.message });
     }
+    if (error.code === 11000) {
+      return res.status(409).json({
+        error: "Duplicate entry",
+        message: error.keyPattern?.email
+          ? "Another staff member already uses this email address."
+          : "This value is already used by another staff member.",
+      });
+    }
     res
       .status(500)
       .json({ error: "Failed to update cleaner", message: error.message });
@@ -832,9 +927,10 @@ router.delete("/:id", async (req, res) => {
       workerId: cleanerId,
     });
 
-    // Delete invitations
+    // Delete invitations (linked by email - they have no cleanerId), so the
+    // person can be invited again after being deleted
     await Invitation.deleteMany({
-      cleanerId,
+      email: cleaner.email?.toLowerCase(),
     });
 
     // Delete user account

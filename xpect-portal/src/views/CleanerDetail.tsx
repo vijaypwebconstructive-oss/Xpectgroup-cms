@@ -9,7 +9,7 @@ import {
 import { useCleaners } from "../context/CleanersContext";
 import { useFinance } from "../context/FinanceContext";
 import { navigateToUrl } from "../utils/routing";
-import api from "../services/api";
+import api, { resolveFileUrl } from "../services/api";
 import EmploymentAllocationCard, {
   PayType,
   ShiftType,
@@ -17,6 +17,7 @@ import EmploymentAllocationCard, {
   EmploymentDetails,
 } from "../components/EmploymentAllocationCard";
 import { useTraining } from "../context/TrainingContext";
+import LoadingOverlay from "../components/LoadingOverlay";
 
 interface CleanerDetailProps {
   cleaner?: Cleaner;
@@ -88,6 +89,7 @@ const CleanerDetail: React.FC<CleanerDetailProps> = ({
     file: File;
   } | null>(null);
   const [isEditingEmployment, setIsEditingEmployment] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState<string | null>(null);
 
   // Helper function to map preferredShiftPattern to shiftType
   const mapPreferredShiftPatternToShiftType = (
@@ -139,16 +141,37 @@ const CleanerDetail: React.FC<CleanerDetailProps> = ({
   }, [cleaners, cleaner.id]);
 
   const handleSave = async () => {
+    const name = (editedCleaner.name || "").trim();
+    const email = (editedCleaner.email || "").trim().toLowerCase();
+
+    if (!name) {
+      alert("Full name is required.");
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      alert("Please enter a valid email address.");
+      return;
+    }
+
     try {
+      setLoadingMessage("Saving profile...");
+      // Send only the personal details edited in this section. The
+      // verification status has its own "Update" button and must not be
+      // changed (or emailed) as a side effect of saving contact details.
       await updateCleaner(currentCleaner.id, {
-        ...editedCleaner,
-        verificationStatus,
+        name,
+        email,
+        dob: editedCleaner.dob,
+        phoneNumber: editedCleaner.phoneNumber,
+        address: editedCleaner.address,
       });
       setIsEditing(false);
       alert("Profile updated successfully!");
     } catch (error: any) {
       console.error("Failed to update profile:", error);
       alert(`Failed to update profile: ${error.message || "Unknown error"}`);
+    } finally {
+      setLoadingMessage(null);
     }
   };
 
@@ -172,6 +195,7 @@ const CleanerDetail: React.FC<CleanerDetailProps> = ({
 
   const handleStatusUpdate = async () => {
     try {
+      setLoadingMessage("Updating verification status...");
       await updateCleaner(currentCleaner.id, {
         verificationStatus,
         auditorNotes,
@@ -182,6 +206,8 @@ const CleanerDetail: React.FC<CleanerDetailProps> = ({
       alert(
         `Failed to update verification status: ${error.message || "Unknown error"}`,
       );
+    } finally {
+      setLoadingMessage(null);
     }
   };
 
@@ -192,6 +218,7 @@ const CleanerDetail: React.FC<CleanerDetailProps> = ({
       )
     ) {
       try {
+        setLoadingMessage("Revoking verification...");
         await updateCleaner(currentCleaner.id, {
           verificationStatus: VerificationStatus.REJECTED,
           auditorNotes,
@@ -203,6 +230,8 @@ const CleanerDetail: React.FC<CleanerDetailProps> = ({
         alert(
           `Failed to revoke verification: ${error.message || "Unknown error"}`,
         );
+      } finally {
+        setLoadingMessage(null);
       }
     }
   };
@@ -214,11 +243,14 @@ const CleanerDetail: React.FC<CleanerDetailProps> = ({
       )
     ) {
       try {
+        setLoadingMessage("Deleting staff member...");
         await deleteCleaner(currentCleaner.id);
+        setLoadingMessage(null);
         alert("Staff member deleted successfully.");
         // Navigate back to staff list after deletion
         onNavigate("CLEANERS_LIST");
       } catch (error: any) {
+        setLoadingMessage(null);
         console.error("Failed to delete cleaner:", error);
         alert(
           `Failed to delete staff member: ${error.message || "Unknown error"}`,
@@ -327,6 +359,7 @@ const CleanerDetail: React.FC<CleanerDetailProps> = ({
   const handleSaveDocumentStatuses = async () => {
     if (currentCleaner.documents) {
       try {
+        setLoadingMessage("Saving document statuses...");
         const updatedDocuments = currentCleaner.documents.map((doc) => ({
           ...doc,
           status: documentStatusUpdates[doc.id] || doc.status,
@@ -339,12 +372,15 @@ const CleanerDetail: React.FC<CleanerDetailProps> = ({
         alert(
           `Failed to update document statuses: ${error.message || "Unknown error"}`,
         );
+      } finally {
+        setLoadingMessage(null);
       }
     }
   };
 
   const handleSaveEmployment = async (details: EmploymentDetails) => {
     try {
+      setLoadingMessage("Saving employment details...");
       setEmploymentDetails(details);
       setIsEditingEmployment(false);
       // Save all employment details to the cleaner
@@ -365,6 +401,8 @@ const CleanerDetail: React.FC<CleanerDetailProps> = ({
       alert(
         `Failed to update employment details: ${error.message || "Unknown error"}`,
       );
+    } finally {
+      setLoadingMessage(null);
     }
   };
 
@@ -377,7 +415,7 @@ const CleanerDetail: React.FC<CleanerDetailProps> = ({
   const handleDownloadDocument = (doc: Document) => {
     if (doc.fileUrl) {
       const link = document.createElement("a");
-      link.href = doc.fileUrl;
+      link.href = resolveFileUrl(doc.fileUrl);
       link.download = doc.fileName || doc.name;
       document.body.appendChild(link);
       link.click();
@@ -403,6 +441,7 @@ const CleanerDetail: React.FC<CleanerDetailProps> = ({
               }
             : doc,
         );
+        setLoadingMessage("Uploading document...");
         updateCleaner(currentCleaner.id, { documents: updatedDocuments })
           .then(() => {
             setUploadingDocument(null);
@@ -414,7 +453,8 @@ const CleanerDetail: React.FC<CleanerDetailProps> = ({
               `Failed to upload document: ${error.message || "Unknown error"}`,
             );
             setUploadingDocument(null);
-          });
+          })
+          .finally(() => setLoadingMessage(null));
       }
     };
     reader.readAsDataURL(file);
@@ -450,6 +490,7 @@ const CleanerDetail: React.FC<CleanerDetailProps> = ({
               ...(currentCleaner.documents || []),
               newDoc,
             ];
+            setLoadingMessage("Adding document...");
             updateCleaner(currentCleaner.id, { documents: updatedDocuments })
               .then(() => {
                 alert("Document added successfully!");
@@ -459,7 +500,8 @@ const CleanerDetail: React.FC<CleanerDetailProps> = ({
                 alert(
                   `Failed to add document: ${error.message || "Unknown error"}`,
                 );
-              });
+              })
+              .finally(() => setLoadingMessage(null));
           };
           reader.readAsDataURL(file);
         }
@@ -484,6 +526,7 @@ const CleanerDetail: React.FC<CleanerDetailProps> = ({
 
   return (
     <div className="max-w-[1280px] mx-auto px-6 py-6 animate-in fade-in duration-500">
+      <LoadingOverlay message={loadingMessage} />
       <div className="flex items-center gap-2 mb-4 text-[#4c669a]">
         <button
           onClick={() => onNavigate("DASHBOARD")}
@@ -592,7 +635,11 @@ const CleanerDetail: React.FC<CleanerDetailProps> = ({
                 </h2>
               </div>
               <button
-                onClick={() => setIsEditing(!isEditing)}
+                onClick={() => {
+                  // Discard unsaved edits when cancelling
+                  if (isEditing) setEditedCleaner(currentCleaner);
+                  setIsEditing(!isEditing);
+                }}
                 className="text-[#000] text-xs font-bold cursor-pointer hover:text-[#135bec]"
               >
                 {isEditing ? "Cancel" : "Edit Details"}
@@ -687,6 +734,21 @@ const CleanerDetail: React.FC<CleanerDetailProps> = ({
                   </p>
                 )}
               </div>
+              <div>
+                <p className="text-[#4c669a] text-[12px] font-black uppercase tracking-wider mb-1">
+                  National Insurance Number
+                </p>
+                <p className="text-sm font-bold text-gray-900 tracking-wider">
+                  {currentCleaner.niNumber
+                    ? currentCleaner.niNumber.replace(
+                        /^(.{2})(.{2})(.{2})(.{2})(.)$/,
+                        "$1 $2 $3 $4 $5",
+                      )
+                    : currentCleaner.noNiNumber
+                      ? "Not issued yet (employee has applied / will apply)"
+                      : "Not provided"}
+                </p>
+              </div>
               <div className="col-span-1 md:col-span-2">
                 <p className="text-[#4c669a] text-[12px] font-black uppercase tracking-wider mb-1">
                   Current Residential Address
@@ -711,7 +773,11 @@ const CleanerDetail: React.FC<CleanerDetailProps> = ({
               {isEditing && (
                 <div className="col-span-1 md:col-span-2 flex justify-end gap-3 pt-4">
                   <button
-                    onClick={() => setIsEditing(false)}
+                    onClick={() => {
+                      // Discard unsaved edits
+                      setEditedCleaner(currentCleaner);
+                      setIsEditing(false);
+                    }}
                     className="px-4 py-2 rounded-full border border-gray-300 text-sm font-bold hover:bg-gray-50"
                   >
                     Cancel
@@ -846,6 +912,62 @@ const CleanerDetail: React.FC<CleanerDetailProps> = ({
             onSave={handleSaveEmployment}
           />
 
+          {/* BANK DETAILS SECTION */}
+          <div className="bg-white border border-[#e7ebf3] rounded-2xl overflow-hidden shadow-sm">
+            <div className="px-4 sm:px-6 py-4 border-b border-[#e7ebf3] bg-gray-50/30 flex items-center gap-2">
+              <span className="material-symbols-outlined text-[#000] text-xl">
+                account_balance
+              </span>
+              <h2 className="text-sm font-bold font-black uppercase tracking-widest text-gray-900">
+                Bank Details
+              </h2>
+            </div>
+            {currentCleaner.bankDetails?.accountNumber ? (
+              <div className="p-4 sm:p-6 grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-12">
+                {[
+                  {
+                    label: "Account Holder Name",
+                    value: currentCleaner.bankDetails.accountHolderName,
+                  },
+                  {
+                    label: "Bank / Building Society",
+                    value: currentCleaner.bankDetails.bankName,
+                  },
+                  {
+                    label: "Sort Code",
+                    value: currentCleaner.bankDetails.sortCode,
+                  },
+                  {
+                    label: "Account Number",
+                    value: currentCleaner.bankDetails.accountNumber,
+                  },
+                  ...(currentCleaner.bankDetails.rollNumber
+                    ? [
+                        {
+                          label: "Building Society Roll Number",
+                          value: currentCleaner.bankDetails.rollNumber,
+                        },
+                      ]
+                    : []),
+                ].map((item) => (
+                  <div key={item.label}>
+                    <p className="text-[#4c669a] text-[12px] font-black uppercase tracking-wider mb-1">
+                      {item.label}
+                    </p>
+                    <p className="text-sm font-bold text-gray-900">
+                      {item.value || "Not provided"}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="p-4 sm:p-6 text-sm text-gray-500">
+                No bank details on file. Staff who onboarded before bank
+                details were added to the form will not have them.
+              </p>
+            )}
+          </div>
+
           {/* DOCUMENTS SECTION */}
           <div className="bg-white border border-[#e7ebf3] rounded-2xl overflow-hidden shadow-sm">
             <div className="px-4 sm:px-6 py-4 border-b border-[#e7ebf3] flex flex-col sm:flex-row gap-4 align-start sm:align-center justify-start sm:justify-between bg-gray-50/30">
@@ -902,6 +1024,31 @@ const CleanerDetail: React.FC<CleanerDetailProps> = ({
                               },
                             )}
                           </p>
+                          {/* Employee re-uploaded this after it was rejected */}
+                          {doc.reuploadedAt &&
+                            currentStatus === DocumentStatus.PENDING && (
+                              <span className="inline-block mt-1 px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-700">
+                                Re-uploaded
+                              </span>
+                            )}
+                          {doc.previousVersions &&
+                            doc.previousVersions.length > 0 &&
+                            doc.previousVersions[
+                              doc.previousVersions.length - 1
+                            ].fileUrl && (
+                              <a
+                                href={resolveFileUrl(
+                                  doc.previousVersions[
+                                    doc.previousVersions.length - 1
+                                  ].fileUrl,
+                                )}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="block mt-1 text-[11px] font-semibold text-[#135bec] hover:underline"
+                              >
+                                View previous file
+                              </a>
+                            )}
                         </div>
                       </div>
                       <div className="flex flex-col items-end gap-2">
@@ -1180,6 +1327,15 @@ const CleanerDetail: React.FC<CleanerDetailProps> = ({
                   label: "GDPR Consent",
                   val: currentCleaner.declarations.gdpr,
                 },
+                // Only asked when the applicant had no DBS certificate
+                ...(currentCleaner.dbsCheckConsent !== undefined
+                  ? [
+                      {
+                        label: "DBS Check Consent",
+                        val: currentCleaner.dbsCheckConsent,
+                      },
+                    ]
+                  : []),
               ].map((dec) => (
                 <div
                   key={dec.label}
@@ -1207,6 +1363,24 @@ const CleanerDetail: React.FC<CleanerDetailProps> = ({
               </span>
               Verification Control
             </h2>
+            {currentCleaner.resubmittedAt &&
+              currentCleaner.verificationStatus ===
+                VerificationStatus.PENDING && (
+                <div className="mb-6 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-700">
+                  <p className="font-bold">Documents resubmitted</p>
+                  <p className="mt-1 text-xs leading-5">
+                    The employee re-uploaded their documents on{" "}
+                    {new Date(currentCleaner.resubmittedAt).toLocaleDateString(
+                      "en-GB",
+                      { day: "2-digit", month: "short", year: "numeric" },
+                    )}
+                    {currentCleaner.resubmissionCount
+                      ? ` (resubmission #${currentCleaner.resubmissionCount})`
+                      : ""}
+                    . Review the documents marked "Re-uploaded".
+                  </p>
+                </div>
+              )}
             <form className="space-y-6">
               <div>
                 <label className="block text-[10px] font-black uppercase tracking-widest text-[#4c669a] mb-2">
@@ -1232,6 +1406,16 @@ const CleanerDetail: React.FC<CleanerDetailProps> = ({
                     Rejected / Closed
                   </option>
                 </select>
+                {verificationStatus === VerificationStatus.DOCS_REQUIRED && (
+                  <p className="mt-2 text-xs leading-5 text-amber-700">
+                    Mark and save rejected documents first.
+                  </p>
+                )}
+                {verificationStatus === VerificationStatus.REJECTED && (
+                  <p className="mt-2 text-xs leading-5 text-red-600">
+                    Final — employee can't re-upload.
+                  </p>
+                )}
               </div>
               <div>
                 <label className="block text-[14px] font-black  tracking-widest text-[#4c669a] mb-2">
@@ -1296,7 +1480,7 @@ const CleanerDetail: React.FC<CleanerDetailProps> = ({
               {viewingDocument.fileUrl ? (
                 viewingDocument.type === "PDF" ? (
                   <iframe
-                    src={viewingDocument.fileUrl}
+                    src={resolveFileUrl(viewingDocument.fileUrl)}
                     className="w-full h-full min-h-[500px] border border-gray-200 rounded-lg bg-white"
                     title={viewingDocument.name}
                     style={{ minHeight: "500px" }}
@@ -1304,7 +1488,7 @@ const CleanerDetail: React.FC<CleanerDetailProps> = ({
                 ) : (
                   <div className="w-full h-full flex items-center justify-center">
                     <img
-                      src={viewingDocument.fileUrl}
+                      src={resolveFileUrl(viewingDocument.fileUrl)}
                       alt={viewingDocument.name}
                       className="max-w-full max-h-[70vh] object-contain rounded-lg shadow-lg"
                       style={{ maxHeight: "70vh" }}

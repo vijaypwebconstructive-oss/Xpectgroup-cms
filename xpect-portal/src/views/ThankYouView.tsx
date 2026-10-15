@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { AppView } from "../types";
+import api from "../services/api";
 
 interface ThankYouViewProps {
   onNavigate: (view: AppView) => void;
@@ -10,41 +11,120 @@ const ThankYouView: React.FC<ThankYouViewProps> = ({
 }) => {
   const [formData, setFormData] = useState<any>(null);
   const [applicationRef, setApplicationRef] = useState<string>("");
-  const [formdataReferes, setFormdataReferes] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
-    const stored = sessionStorage.getItem("lastSubmittedForm");
-    console.log("stored", stored);
-    if (stored) {
+    const loadSubmittedApplication = async () => {
       try {
-        const parsed = JSON.parse(stored);
-        setFormData(parsed);
-        setApplicationRef(
-          parsed.applicationRef ||
-            `XPG-${Math.random().toString(36).substring(2, 9).toUpperCase()}`,
+        setLoading(true);
+        setLoadError(null);
+
+        // sessionStorage only exists in the tab where the form was submitted,
+        // so fall back to localStorage (new tab / invitation link reopened).
+        const stored =
+          sessionStorage.getItem("lastSubmittedApplication") ||
+          localStorage.getItem("lastSubmittedApplication");
+
+        console.log("[ThankYouView] Submitted application reference:", stored);
+
+        if (!stored) {
+          throw new Error(
+            "Your application has already been submitted. Please contact your administrator if you need a copy of it.",
+          );
+        }
+
+        const { cleanerId, applicationRef: storedApplicationRef } =
+          JSON.parse(stored);
+
+        if (!cleanerId) {
+          throw new Error("Cleaner ID is missing from submitted application.");
+        }
+
+        console.log("[ThankYouView] cleanerId:", cleanerId);
+        console.log("[ThankYouView] applicationRef:", storedApplicationRef);
+
+        const cleaner = await api.cleaners.getById(cleanerId);
+
+        console.log("[ThankYouView] Submitted cleaner loaded:", cleaner);
+
+        const normalizedFormData = {
+          applicationRef: storedApplicationRef || cleaner.applicationRef || "",
+
+          personalDetails: {
+            name: cleaner.name || "",
+            dob: cleaner.dob || "",
+            email: cleaner.email || "",
+            phoneNumber: cleaner.phoneNumber || "",
+            address: cleaner.address || "",
+            gender: cleaner.gender || "",
+          },
+
+          citizenshipStatus: cleaner.citizenshipStatus || "",
+          visaType: cleaner.visaType || "",
+          visaOther: cleaner.visaOther || "",
+          shareCode: cleaner.shareCode || "",
+          uniName: cleaner.uniName || "",
+          courseName: cleaner.courseName || "",
+          termStart: cleaner.termStart || "",
+          termEnd: cleaner.termEnd || "",
+          workPreference: cleaner.workPreference || "",
+          employmentType: cleaner.employmentType || "",
+          hasDBS: cleaner.dbsStatus === "Cleared",
+          declarations: cleaner.declarations || {},
+          passportPhoto: cleaner.avatar || null,
+
+          uploadedFiles: Array.isArray(cleaner.documents)
+            ? cleaner.documents.reduce(
+                (acc: Record<string, any>, document: any) => {
+                  const key = document.name || document.fileName;
+
+                  if (key) {
+                    acc[key] = {
+                      name: document.fileName || document.name || "Document",
+                      size: document.size || 0,
+                      type: document.type || "",
+                    };
+                  }
+
+                  return acc;
+                },
+                {},
+              )
+            : {},
+        };
+
+        setFormData(normalizedFormData);
+
+        setApplicationRef(storedApplicationRef || cleaner.applicationRef || "");
+      } catch (error: any) {
+        console.error("Failed to load submitted application:", error);
+
+        setLoadError(
+          error.message || "Unable to load your submitted application.",
         );
-      } catch (e) {
-        console.error("Error parsing form data:", e);
-        setApplicationRef(
-          `XPG-${Math.random().toString(36).substring(2, 9).toUpperCase()}`,
-        );
+      } finally {
+        setLoading(false);
       }
-    } else {
-      setApplicationRef(
-        `XPG-${Math.random().toString(36).substring(2, 9).toUpperCase()}`,
-      );
-    }
-  }, [formdataReferes]);
+    };
+
+    // Small delay gives the onboarding navigation time
+    // to finish writing sessionStorage.
+    const timer = setTimeout(() => {
+      loadSubmittedApplication();
+    }, 100);
+
+    return () => clearTimeout(timer);
+  }, []);
 
   const handleDownload = () => {
     if (!formData) {
-      setFormdataReferes((i) => i + 1);
-      // alert("Form data not found. Please submit the form again.");
+      alert("Your application is still loading. Please try again.");
       return;
     }
 
-    // Create a new window for PDF generation
     const printWindow = window.open("", "_blank");
+
     if (!printWindow) {
       alert("Please allow popups to generate PDF");
       return;
@@ -68,331 +148,551 @@ const ThankYouView: React.FC<ThankYouViewProps> = ({
       uploadedFiles,
       passportPhoto,
     } = formData;
+
     const refToUse = storedRef || applicationRef;
 
     printWindow.document.write(`
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>Xpect Group - Employee Onboarding Form</title>
-          <style>
-            @page { margin: 1cm; }
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <title>Xpect Group - Employee Onboarding Form</title>
+
+        <style>
+          @page {
+            margin: 1cm;
+          }
+
+          body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+          }
+
+          .header {
+            border-bottom: 3px solid #2e4150;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+          }
+
+          .header-content {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 20px;
+          }
+
+          .header-text {
+            flex: 1;
+          }
+
+          .header h1 {
+            color: #2e4150;
+            margin: 0 0 10px 0;
+            font-size: 24px;
+          }
+
+          .header p {
+            color: #666;
+            margin: 5px 0;
+            font-size: 14px;
+          }
+
+          .photo-container {
+            flex-shrink: 0;
+          }
+
+          .photo-container img {
+            width: 120px;
+            height: 150px;
+            object-fit: cover;
+            border: 2px solid #2e4150;
+            border-radius: 8px;
+          }
+
+          .section {
+            margin-bottom: 30px;
+            page-break-inside: avoid;
+          }
+
+          .section-title {
+            background-color: #2e4150;
+            color: white;
+            padding: 10px 15px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            font-size: 18px;
+            text-transform: uppercase;
+          }
+
+          .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 15px;
+          }
+
+          .info-item {
+            margin-bottom: 10px;
+          }
+
+          .info-label {
+            font-weight: bold;
+            color: #4c669a;
+            font-size: 16px;
+            text-transform: uppercase;
+            margin-bottom: 3px;
+          }
+
+          .info-value {
+            font-size: 14px;
+            color: #333;
+          }
+
+          .full-width {
+            grid-column: 1 / -1;
+          }
+
+          .declarations {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 15px;
+          }
+
+          .declaration-item {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+          }
+
+          .check {
+            color: #34d399;
+            font-weight: bold;
+          }
+
+          .cross {
+            color: #ef4444;
+            font-weight: bold;
+          }
+
+          .footer {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 2px solid #e7ebf3;
+            text-align: center;
+            font-size: 14px;
+            color: #666;
+          }
+
+          .file-list {
+            margin-top: 10px;
+            padding-left: 20px;
+          }
+
+          .file-item {
+            margin: 5px 0;
+            font-size: 12px;
+            color: #555;
+          }
+
+          @media print {
             body {
-              font-family: 'Arial', sans-serif;
-              line-height: 1.6;
-              color: #333;
-              max-width: 800px;
-              margin: 0 auto;
-              padding: 20px;
+              margin: 0;
+              padding: 15px;
             }
-            .header {
-              border-bottom: 3px solid #2e4150;
-              padding-bottom: 20px;
-              margin-bottom: 30px;
-            }
-            .header-content {
-              display: flex;
-              align-items: flex-start;
-              justify-content: space-between;
-              gap: 20px;
-            }
-            .header-text {
-              flex: 1;
-              text-align: left;
-            }
-            .header h1 {
-              color: #2e4150;
-              margin: 0 0 10px 0;
-              font-size: 24px;
-            }
-            .header p {
-              color: #666;
-              margin: 5px 0;
-              font-size: 14px;
-            }
-            .photo-container {
-              flex-shrink: 0;
-            }
-            .photo-container img {
-              width: 120px;
-              height: 150px;
-              object-fit: cover;
-              border: 2px solid #2e4150;
-              border-radius: 8px;
-            }
-            .photo-label {
-              text-align: center;
-              font-size: 10px;
-              color: #666;
-              margin-top: 5px;
-            }
+
             .section {
-              margin-bottom: 30px;
               page-break-inside: avoid;
             }
-            .section-title {
-              background-color: #2e4150;
-              color: white;
-              padding: 10px 15px;
-              font-weight: bold;
-              margin-bottom: 15px;
-              font-size: 18px;
-              text-transform: uppercase;
-            }
-            .info-grid {
-              display: grid;
-              grid-template-columns: 1fr 1fr;
-              gap: 15px;
-              margin-bottom: 15px;
-            }
-            .info-item {
-              margin-bottom: 10px;
-            }
-            .info-label {
-              font-weight: bold;
-              color: #4c669a;
-              font-size: 16px;
-              text-transform: uppercase;
-              margin-bottom: 3px;
-            }
-            .info-value {
-              font-size: 14px;
-              color: #333;
-            }
-            .full-width {
-              grid-column: 1 / -1;
-            }
-            .declarations {
-              display: grid;
-              grid-template-columns: 1fr 1fr;
-              gap: 10px;
-              margin-top: 15px;
-            }
-            .declaration-item {
-              padding: 10px;
-              border: 1px solid #ddd;
-              border-radius: 5px;
-              display: flex;
-              align-items: center;
-              gap: 10px;
-            }
-            .check {
-              color: #34d399;
-              font-weight: bold;
-            }
-            .cross {
-              color: #ef4444;
-              font-weight: bold;
-            }
-            .footer {
-              margin-top: 40px;
-              padding-top: 20px;
-              border-top: 2px solid #e7ebf3;
-              text-align: center;
-              font-size: 14px;
-              color: #666;
-            }
-            .file-list {
-              margin-top: 10px;
-              padding-left: 20px;
-            }
-            .file-item {
-              margin: 5px 0;
-              font-size: 12px;
-              color: #555;
-            }
-            @media print {
-              body { margin: 0; padding: 15px; }
-              .section { page-break-inside: avoid; }
-            }
-          </style>
-        </head>
-        <body>
-          <div class="header">
-            <div class="header-content">
-              <div class="header-text">
-                <h1>XPECT GROUP</h1>
-                <p>Employee Onboarding Application Form</p>
-                <p>Application Reference: ${refToUse}</p>
-                <p>Submitted: ${new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" })}</p>
-              </div>
-              ${
-                passportPhoto
-                  ? `
-              <div class="photo-container">
-                <img src="${passportPhoto}" alt="Passport Photo" />
-              </div>
-              `
-                  : ""
-              }
-            </div>
-          </div>
+          }
+        </style>
+      </head>
 
-          <div class="section">
-            <div class="section-title">Personal Information</div>
-            <div class="info-grid">
-              <div class="info-item">
-                <div class="info-label">Full Name</div>
-                <div class="info-value">${personalDetails.name || "N/A"}</div>
-              </div>
-              <div class="info-item">
-                <div class="info-label">Date of Birth</div>
-                <div class="info-value">${personalDetails.dob || "N/A"}</div>
-              </div>
-              <div class="info-item">
-                <div class="info-label">Email Address</div>
-                <div class="info-value">${personalDetails.email || "N/A"}</div>
-              </div>
-              <div class="info-item">
-                <div class="info-label">Phone Number</div>
-                <div class="info-value">${personalDetails.phoneNumber || "N/A"}</div>
-              </div>
-              <div class="info-item full-width">
-                <div class="info-label">Address</div>
-                <div class="info-value">${personalDetails.address || "N/A"}</div>
-              </div>
-              ${
-                personalDetails.gender
-                  ? `
-              <div class="info-item">
-                <div class="info-label">Gender</div>
-                <div class="info-value">${personalDetails.gender}</div>
-              </div>
-              `
-                  : ""
-              }
-            </div>
-          </div>
+      <body>
 
-          <div class="section">
-            <div class="section-title">Citizenship & Immigration Status</div>
-            <div class="info-grid">
-              <div class="info-item">
-                <div class="info-label">Citizenship Status</div>
-                <div class="info-value">${citizenshipStatus || "N/A"}</div>
-              </div>
-              ${
-                visaType
-                  ? `
-              <div class="info-item">
-                <div class="info-label">Visa Type</div>
-                <div class="info-value">${visaType}${visaOther ? ` (${visaOther})` : ""}</div>
-              </div>
-              `
-                  : ""
-              }
-              ${
-                shareCode
-                  ? `
-              <div class="info-item">
-                <div class="info-label">RTW Share Code</div>
-                <div class="info-value">${shareCode}</div>
-              </div>
-              `
-                  : ""
-              }
+        <div class="header">
+          <div class="header-content">
+
+            <div class="header-text">
+              <h1>XPECT GROUP</h1>
+              <p>Employee Onboarding Application Form</p>
+              <p>Application Reference: ${refToUse}</p>
+              <p>
+                Submitted:
+                ${new Date().toLocaleDateString("en-GB", {
+                  day: "2-digit",
+                  month: "long",
+                  year: "numeric",
+                })}
+              </p>
             </div>
+
             ${
-              uniName
+              passportPhoto
                 ? `
-            <div style="margin-top: 15px; padding: 15px; background-color: #f0f9ff; border-left: 4px solid #135bec;">
-              <div style="font-weight: bold; margin-bottom: 10px; color: #135bec;">Student Visa Details</div>
-              <div class="info-grid">
-                <div class="info-item">
-                  <div class="info-label">University/College</div>
-                  <div class="info-value">${uniName}</div>
-                </div>
-                <div class="info-item">
-                  <div class="info-label">Course</div>
-                  <div class="info-value">${courseName || "N/A"}</div>
-                </div>
-                <div class="info-item">
-                  <div class="info-label">Term Start</div>
-                  <div class="info-value">${termStart || "N/A"}</div>
-                </div>
-                <div class="info-item">
-                  <div class="info-label">Term End</div>
-                  <div class="info-value">${termEnd || "N/A"}</div>
-                </div>
-              </div>
-            </div>
-            `
+                  <div class="photo-container">
+                    <img
+                      id="passport-photo"
+                      src="${passportPhoto}"
+                      alt="Passport Photo"
+                    />
+                  </div>
+                `
                 : ""
             }
-          </div>
 
-          <div class="section">
-            <div class="section-title">Employment Details</div>
-            <div class="info-grid">
-              <div class="info-item">
-                <div class="info-label">Employment Type</div>
-                <div class="info-value">${employmentType || "N/A"}</div>
-              </div>
-              <div class="info-item">
-                <div class="info-label">Work Preference</div>
-                <div class="info-value">${workPreference || "N/A"}</div>
-              </div>
-              <div class="info-item">
-                <div class="info-label">DBS Status</div>
-                <div class="info-value">${hasDBS ? "Certificate Provided" : "To be initiated"}</div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">Personal Information</div>
+
+          <div class="info-grid">
+
+            <div class="info-item">
+              <div class="info-label">Full Name</div>
+              <div class="info-value">
+                ${personalDetails?.name || "N/A"}
               </div>
             </div>
-          </div>
 
-          <div class="section">
-            <div class="section-title">Uploaded Documents</div>
-            <div class="file-list">
-              ${
-                Object.keys(uploadedFiles).length > 0
-                  ? Object.entries(uploadedFiles)
-                      .map(
-                        ([key, file]: [string, any]) =>
-                          `<div class="file-item">• ${key.replace(/([A-Z])/g, " $1").replace(/^./, (str) => str.toUpperCase())}: ${file.name} (${(file.size / 1024).toFixed(2)} KB)</div>`,
-                      )
-                      .join("")
-                  : '<div class="file-item">No documents uploaded</div>'
-              }
-            </div>
-          </div>
-
-          <div class="section">
-            <div class="section-title">Declarations</div>
-            <div class="declarations">
-              <div class="declaration-item">
-                <span class="${declarations.accuracy ? "check" : "cross"}">${declarations.accuracy ? "✓" : "✗"}</span>
-                <span>Information Accuracy Confirmed</span>
-              </div>
-              <div class="declaration-item">
-                <span class="${declarations.rtw ? "check" : "cross"}">${declarations.rtw ? "✓" : "✗"}</span>
-                <span>Right-to-Work Verification Consent</span>
-              </div>
-              <div class="declaration-item">
-                <span class="${declarations.approval ? "check" : "cross"}">${declarations.approval ? "✓" : "✗"}</span>
-                <span>Employment Subject to Approval</span>
-              </div>
-              <div class="declaration-item">
-                <span class="${declarations.gdpr ? "check" : "cross"}">${declarations.gdpr ? "✓" : "✗"}</span>
-                <span>GDPR Data Storage Consent</span>
+            <div class="info-item">
+              <div class="info-label">Date of Birth</div>
+              <div class="info-value">
+                ${personalDetails?.dob || "N/A"}
               </div>
             </div>
+
+            <div class="info-item">
+              <div class="info-label">Email Address</div>
+              <div class="info-value">
+                ${personalDetails?.email || "N/A"}
+              </div>
+            </div>
+
+            <div class="info-item">
+              <div class="info-label">Phone Number</div>
+              <div class="info-value">
+                ${personalDetails?.phoneNumber || "N/A"}
+              </div>
+            </div>
+
+            <div class="info-item full-width">
+              <div class="info-label">Address</div>
+              <div class="info-value">
+                ${personalDetails?.address || "N/A"}
+              </div>
+            </div>
+
+            ${
+              personalDetails?.gender
+                ? `
+                  <div class="info-item">
+                    <div class="info-label">Gender</div>
+                    <div class="info-value">
+                      ${personalDetails.gender}
+                    </div>
+                  </div>
+                `
+                : ""
+            }
+
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">
+            Citizenship & Immigration Status
           </div>
 
-          <div class="footer">
-            <p><strong>Confidential - Xpect Group Ltd</strong></p>
-            <p>This document is a digital representation of the submitted onboarding application.</p>
-            <p>Application Reference: ${refToUse} | Generated: ${new Date().toLocaleString("en-GB")}</p>
+          <div class="info-grid">
+
+            <div class="info-item">
+              <div class="info-label">Citizenship Status</div>
+              <div class="info-value">
+                ${citizenshipStatus || "N/A"}
+              </div>
+            </div>
+
+            ${
+              visaType
+                ? `
+                  <div class="info-item">
+                    <div class="info-label">Visa Type</div>
+                    <div class="info-value">
+                      ${visaType}${visaOther ? ` (${visaOther})` : ""}
+                    </div>
+                  </div>
+                `
+                : ""
+            }
+
+            ${
+              shareCode
+                ? `
+                  <div class="info-item">
+                    <div class="info-label">RTW Share Code</div>
+                    <div class="info-value">
+                      ${shareCode}
+                    </div>
+                  </div>
+                `
+                : ""
+            }
+
           </div>
-        </body>
-      </html>
-    `);
+
+          ${
+            uniName
+              ? `
+                <div
+                  style="
+                    margin-top: 15px;
+                    padding: 15px;
+                    background-color: #f0f9ff;
+                    border-left: 4px solid #135bec;
+                  "
+                >
+                  <div
+                    style="
+                      font-weight: bold;
+                      margin-bottom: 10px;
+                      color: #135bec;
+                    "
+                  >
+                    Student Visa Details
+                  </div>
+
+                  <div class="info-grid">
+
+                    <div class="info-item">
+                      <div class="info-label">
+                        University/College
+                      </div>
+                      <div class="info-value">
+                        ${uniName}
+                      </div>
+                    </div>
+
+                    <div class="info-item">
+                      <div class="info-label">Course</div>
+                      <div class="info-value">
+                        ${courseName || "N/A"}
+                      </div>
+                    </div>
+
+                    <div class="info-item">
+                      <div class="info-label">Term Start</div>
+                      <div class="info-value">
+                        ${termStart || "N/A"}
+                      </div>
+                    </div>
+
+                    <div class="info-item">
+                      <div class="info-label">Term End</div>
+                      <div class="info-value">
+                        ${termEnd || "N/A"}
+                      </div>
+                    </div>
+
+                  </div>
+                </div>
+              `
+              : ""
+          }
+
+        </div>
+
+        <div class="section">
+          <div class="section-title">Employment Details</div>
+
+          <div class="info-grid">
+
+            <div class="info-item">
+              <div class="info-label">Employment Type</div>
+              <div class="info-value">
+                ${employmentType || "N/A"}
+              </div>
+            </div>
+
+            <div class="info-item">
+              <div class="info-label">Work Preference</div>
+              <div class="info-value">
+                ${workPreference || "N/A"}
+              </div>
+            </div>
+
+            <div class="info-item">
+              <div class="info-label">DBS Status</div>
+              <div class="info-value">
+                ${hasDBS ? "Certificate Provided" : "To be initiated"}
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">Uploaded Documents</div>
+
+          <div class="file-list">
+
+            ${
+              Object.keys(uploadedFiles || {}).length > 0
+                ? Object.entries(uploadedFiles || {})
+                    .map(
+                      ([key, file]: [string, any]) =>
+                        `
+                          <div class="file-item">
+                            • ${key
+                              .replace(/([A-Z])/g, " $1")
+                              .replace(/^./, (str) => str.toUpperCase())}:
+                            ${file.name || "Document"}
+                            ${
+                              file.size
+                                ? `(${(file.size / 1024).toFixed(2)} KB)`
+                                : ""
+                            }
+                          </div>
+                        `,
+                    )
+                    .join("")
+                : `<div class="file-item">No documents uploaded</div>`
+            }
+
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-title">Declarations</div>
+
+          <div class="declarations">
+
+            <div class="declaration-item">
+              <span class="${declarations?.accuracy ? "check" : "cross"}">
+                ${declarations?.accuracy ? "✓" : "✗"}
+              </span>
+              <span>Information Accuracy Confirmed</span>
+            </div>
+
+            <div class="declaration-item">
+              <span class="${declarations?.rtw ? "check" : "cross"}">
+                ${declarations?.rtw ? "✓" : "✗"}
+              </span>
+              <span>Right-to-Work Verification Consent</span>
+            </div>
+
+            <div class="declaration-item">
+              <span class="${declarations?.approval ? "check" : "cross"}">
+                ${declarations?.approval ? "✓" : "✗"}
+              </span>
+              <span>Employment Subject to Approval</span>
+            </div>
+
+            <div class="declaration-item">
+              <span class="${declarations?.gdpr ? "check" : "cross"}">
+                ${declarations?.gdpr ? "✓" : "✗"}
+              </span>
+              <span>GDPR Data Storage Consent</span>
+            </div>
+
+          </div>
+        </div>
+
+        <div class="footer">
+          <p><strong>Confidential - Xpect Group Ltd</strong></p>
+          <p>
+            This document is a digital representation of the
+            submitted onboarding application.
+          </p>
+          <p>
+            Application Reference: ${refToUse} |
+            Generated: ${new Date().toLocaleString("en-GB")}
+          </p>
+        </div>
+
+      </body>
+    </html>
+  `);
 
     printWindow.document.close();
 
-    // Wait for content to load, then print
-    setTimeout(() => {
-      printWindow.print();
-    }, 250);
+    // Wait for all images before opening the print dialog.
+    const printWhenReady = () => {
+      setTimeout(() => {
+        printWindow.focus();
+        printWindow.print();
+      }, 300);
+    };
+
+    const images = Array.from(printWindow.document.images);
+
+    if (images.length === 0) {
+      printWhenReady();
+      return;
+    }
+
+    let loadedImages = 0;
+
+    const imageLoaded = () => {
+      loadedImages++;
+
+      if (loadedImages === images.length) {
+        printWhenReady();
+      }
+    };
+
+    images.forEach((img) => {
+      if (img.complete) {
+        imageLoaded();
+      } else {
+        img.onload = imageLoaded;
+        img.onerror = imageLoaded;
+      }
+    });
   };
+
+  if (loading) {
+    return (
+      <div className="flex-1 flex items-center justify-center min-h-[calc(100vh-160px)] bg-gray-50/50">
+        <div className="text-center">
+          <div className="size-12 border-4 border-gray-200 border-t-[#2e4150] rounded-full animate-spin mx-auto mb-4" />
+
+          <h2 className="text-lg font-bold text-[#2e4150]">
+            Preparing your application...
+          </h2>
+
+          <p className="text-sm text-gray-500 mt-2">
+            Please wait while we load your submitted form.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (loadError || !formData) {
+    return (
+      <div className="flex-1 flex items-center justify-center min-h-[calc(100vh-160px)] bg-gray-50/50 px-4">
+        <div className="max-w-md w-full bg-white rounded-3xl shadow-xl p-8 text-center">
+          <div className="text-red-500 text-4xl mb-4">!</div>
+
+          <h2 className="text-xl font-bold text-gray-900 mb-2">
+            Unable to load your application
+          </h2>
+
+          <p className="text-sm text-gray-500">
+            {loadError || "Your submitted application could not be loaded."}
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex-1 flex flex-col items-center justify-center py-8 px-4 bg-gray-50/50 min-h-[calc(100vh-160px)] animate-in fade-in zoom-in-95 duration-700">
@@ -462,8 +762,7 @@ const ThankYouView: React.FC<ThankYouViewProps> = ({
             Application Reference
           </p>
           <code className="bg-gray-50 px-4 py-1.5 rounded-full text-xs font-black text-gray-500 tracking-widest border border-gray-100">
-            {applicationRef ||
-              `XPG-${Math.random().toString(36).substring(2, 9).toUpperCase()}`}
+            {applicationRef || "N/A"}
           </code>
         </div>
       </div>

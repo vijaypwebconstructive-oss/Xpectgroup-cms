@@ -1,7 +1,17 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import { AppView, InvitationStatus, StaffInvitation } from "../types";
 import SendInviteModal from "../components/SendInviteModal";
+import LoadingOverlay from "../components/LoadingOverlay";
 import api from "../services/api";
+
+// e.g. "21 Oct, 10:00"
+const formatLinkDate = (value: string) =>
+  new Date(value).toLocaleString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 
 interface StaffInvitesProps {
   onNavigate: (view: AppView) => void;
@@ -13,6 +23,26 @@ const StaffInvites: React.FC<StaffInvitesProps> = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [loadingMessage, setLoadingMessage] = useState<string | null>(null);
+
+  // Floating message (top-right) instead of browser alerts
+  const [toast, setToast] = useState<{
+    type: "success" | "error";
+    message: string;
+  } | null>(null);
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const showToast = (type: "success" | "error", message: string) => {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    setToast({ type, message });
+    toastTimerRef.current = setTimeout(() => setToast(null), 4000);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    };
+  }, []);
 
   // Fetch invitations from backend
   const fetchInvitations = async (showLoading: boolean = false) => {
@@ -52,8 +82,9 @@ const StaffInvites: React.FC<StaffInvitesProps> = () => {
     senderDesignation: string,
     salaryType: string,
     salaryAmount: number,
-  ) => {
+  ): Promise<boolean> => {
     try {
+      setLoadingMessage("Sending invitation...");
       await api.invitations.send({
         employeeName: name,
         email,
@@ -66,20 +97,36 @@ const StaffInvites: React.FC<StaffInvitesProps> = () => {
       // Refresh invitations list
       await fetchInvitations();
 
-      alert(`Onboarding invitation has been sent successfully to ${email}.`);
+      showToast(
+        "success",
+        `Onboarding invitation has been sent successfully to ${email}.`,
+      );
+      return true;
     } catch (err: any) {
-      alert(`Failed to send invitation: ${err.message || "Unknown error"}`);
+      showToast(
+        "error",
+        `Failed to send invitation: ${err.message || "Unknown error"}`,
+      );
+      return false;
+    } finally {
+      setLoadingMessage(null);
     }
   };
 
   const handleResendOtp = async (invitation: StaffInvitation) => {
     try {
+      setLoadingMessage("Resending OTP...");
       await api.invitations.resendOtp(invitation.id);
-      alert(`OTP resent to ${invitation.email}!.`);
+      showToast("success", `OTP resent to ${invitation.email}.`);
       // Refresh invitations to show updated status
       await fetchInvitations();
     } catch (err: any) {
-      alert(`Failed to resend OTP: ${err.message || "Unknown error"}`);
+      showToast(
+        "error",
+        `Failed to resend OTP: ${err.message || "Unknown error"}`,
+      );
+    } finally {
+      setLoadingMessage(null);
     }
   };
 
@@ -87,7 +134,7 @@ const StaffInvites: React.FC<StaffInvitesProps> = () => {
     const url = generateInvitationUrl(invitation.inviteToken);
     try {
       await navigator.clipboard.writeText(url);
-      alert("Invitation link copied to clipboard!");
+      showToast("success", "Invitation link copied to clipboard.");
     } catch (err) {
       // Fallback for older browsers
       const textArea = document.createElement("textarea");
@@ -96,7 +143,7 @@ const StaffInvites: React.FC<StaffInvitesProps> = () => {
       textArea.select();
       document.execCommand("copy");
       document.body.removeChild(textArea);
-      alert("Invitation link copied to clipboard!");
+      showToast("success", "Invitation link copied to clipboard.");
     }
   };
 
@@ -111,16 +158,24 @@ const StaffInvites: React.FC<StaffInvitesProps> = () => {
     }
 
     try {
+      setLoadingMessage("Deleting invitation...");
       await api.invitations.delete(invitation.id);
 
       // Refresh invitations list without showing loading spinner
       await fetchInvitations();
 
-      // Show success message (optional - you can remove this if you prefer no alert)
-      // The list will automatically update, so alert might be redundant
+      showToast(
+        "success",
+        `Invitation for ${invitation.employeeName} deleted.`,
+      );
     } catch (err: any) {
       console.error("Failed to delete invitation:", err);
-      alert(`Failed to delete invitation: ${err.message || "Unknown error"}`);
+      showToast(
+        "error",
+        `Failed to delete invitation: ${err.message || "Unknown error"}`,
+      );
+    } finally {
+      setLoadingMessage(null);
     }
   };
 
@@ -151,6 +206,47 @@ const StaffInvites: React.FC<StaffInvitesProps> = () => {
 
   return (
     <div className="flex-1 flex flex-col w-full py-[15px] sm:py-8 px-4 sm:px-6 md:px-10 animate-in slide-in-from-bottom-4 duration-500 min-h-[calc(100vh-160px)]">
+      <LoadingOverlay message={loadingMessage} />
+
+      {/* Floating message */}
+      {toast && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="fixed top-5 right-5 left-5 sm:left-auto z-[9999] animate-in slide-in-from-top-3 duration-300"
+        >
+          <div
+            className={`sm:min-w-[320px] sm:max-w-[420px] rounded-2xl px-5 py-4 shadow-2xl border flex items-start gap-3 ${
+              toast.type === "success"
+                ? "bg-green-50 border-green-200 text-green-700"
+                : "bg-red-50 border-red-200 text-red-600"
+            }`}
+          >
+            <span className="material-symbols-outlined text-[22px] shrink-0">
+              {toast.type === "success" ? "check_circle" : "error"}
+            </span>
+            <div className="flex-1">
+              <p className="text-sm font-bold">
+                {toast.type === "success" ? "Success" : "Error"}
+              </p>
+              <p className="text-sm mt-0.5 leading-6 break-words">
+                {toast.message}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setToast(null)}
+              className="shrink-0 opacity-60 hover:opacity-100"
+              aria-label="Close message"
+            >
+              <span className="material-symbols-outlined text-[18px]">
+                close
+              </span>
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="w-full space-y-6">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex flex-col gap-1">
@@ -224,14 +320,17 @@ const StaffInvites: React.FC<StaffInvitesProps> = () => {
                   <th className="px-[16px] sm:px-6 py-4 text-sm font-medium text-[#0d121b] capitalize">
                     Status
                   </th>
+                  <th className="px-[16px] whitespace-nowrap sm:px-6 py-4 text-sm font-medium text-[#0d121b] capitalize">
+                    Current Step
+                  </th>
                   <th className="px-[16px] sm:px-6 py-4 text-sm font-medium text-[#0d121b] capitalize">
                     Type
                   </th>
                   <th className="px-[16px] sm:px-6 py-4 text-sm font-medium text-[#0d121b] capitalize">
                     Progress
                   </th>
-                  <th className="px-[16px] sm:px-6 py-4 text-sm font-medium text-[#0d121b] capitalize">
-                    Reminders
+                  <th className="px-[16px] whitespace-nowrap sm:px-6 py-4 text-sm font-medium text-[#0d121b] capitalize">
+                    Link Status
                   </th>
                   <th className="px-[16px] sm:px-6 py-4 text-right text-sm font-medium text-[#0d121b] capitalize">
                     Actions
@@ -267,10 +366,9 @@ const StaffInvites: React.FC<StaffInvitesProps> = () => {
                       >
                         {invitation.status}
                       </span>
-
-                      <p className="  sm:text-base font-bold text-xs text-gray-500 mt-1">
-                        {invitation.currentStepName}
-                      </p>
+                    </td>
+                    <td className="px-[16px] sm:px-6 py-4 text-sm font-semibold text-gray-600 whitespace-nowrap">
+                      {invitation.currentStepName || "—"}
                     </td>
                     <td className="px-[16px] sm:px-6 py-4 text-sm font-medium text-[#0d121b]">
                       Onboarding
@@ -290,40 +388,52 @@ const StaffInvites: React.FC<StaffInvitesProps> = () => {
                         </span>
                       </div>
                     </td>
-                    <td className="px-[16px] sm:px-6 py-4">
+                    <td className="px-[16px] sm:px-6 py-4 whitespace-nowrap">
+                      {/* Onboarding link: active until 3 working days after sending */}
                       {invitation.status === InvitationStatus.COMPLETED ? (
                         <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-green-100 text-green-700">
                           Completed
                         </span>
+                      ) : invitation.status === InvitationStatus.EXPIRED ? (
+                        <>
+                          <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-red-100 text-red-700">
+                            Expired
+                          </span>
+                          {invitation.expiresAt && (
+                            <p className="text-[11px] text-gray-500 mt-1.5">
+                              on {formatLinkDate(invitation.expiresAt)}
+                            </p>
+                          )}
+                        </>
                       ) : (
-                        <span
-                          className={`
-        px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider
-        ${
-          (invitation.reminderCount || 0) === 0
-            ? "bg-gray-100 text-gray-700"
-            : (invitation.reminderCount || 0) === 1
-              ? "bg-blue-100 text-blue-700"
-              : (invitation.reminderCount || 0) === 2
-                ? "bg-amber-100 text-amber-700"
-                : "bg-red-100 text-red-700"
-        }
-      `}
-                        >
-                          {invitation.reminderCount || 0}/3
-                        </span>
+                        <>
+                          <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-blue-100 text-blue-700">
+                            Active
+                          </span>
+                          {invitation.expiresAt && (
+                            <p className="text-[11px] text-gray-500 mt-1.5">
+                              Expires {formatLinkDate(invitation.expiresAt)}
+                            </p>
+                          )}
+                        </>
                       )}
                     </td>
                     <td className="px-[16px] sm:px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-2">
-                        <button
-                          onClick={() => handleResendOtp(invitation)}
-                          className="text-[#2e4150] font-bold text-xs cursor-pointer hover:text-[#135bec] transition-colors"
-                          title="Resend OTP"
-                        >
-                          Resend OTP
-                        </button>
-                        <span className="text-gray-300">|</span>
+                        {/* OTP cannot be resent once onboarding is completed */}
+                        {invitation.status !== InvitationStatus.COMPLETED &&
+                          invitation.status !== InvitationStatus.EXPIRED && (
+                          <>
+                            <button
+                              onClick={() => handleResendOtp(invitation)}
+                              className="text-[#2e4150] font-bold text-xs cursor-pointer hover:text-[#135bec] transition-colors"
+                              title="Resend OTP"
+                            >
+                              Resend OTP
+                            </button>
+                            <span className="text-gray-300">|</span>
+                          </>
+                        )}
                         <button
                           onClick={() => handleCopyLink(invitation)}
                           className="text-[#2e4150] font-bold text-xs cursor-pointer hover:text-[#135bec] transition-colors"

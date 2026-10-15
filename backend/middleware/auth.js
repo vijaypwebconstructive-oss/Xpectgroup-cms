@@ -1,4 +1,5 @@
 import jwt from "jsonwebtoken";
+import User from "../models/userModel.js";
 
 const JWT_SECRET =
   process.env.JWT_SECRET || "xpect-onboarding-secret-key-change-in-production";
@@ -106,6 +107,49 @@ export const authenticate = (req, res, next) => {
     return res.status(401).json({
       error: "Unauthorized",
       message: "Invalid or expired token",
+    });
+  }
+};
+
+/**
+ * Verify the ERP login JWT of an employee (a User linked to a staff record).
+ * Attaches req.employeeUser = { userId, cleanerId, username }.
+ * Used by /api/my-application so employees can only access their own record.
+ */
+export const authenticateEmployeeUser = async (req, res, next) => {
+  const header = req.headers.authorization || "";
+  if (!header.startsWith("Bearer ")) {
+    return res.status(401).json({
+      error: "Unauthorized",
+      message: "Please log in again.",
+    });
+  }
+
+  try {
+    // Read the secret at request time: .env is loaded after route modules
+    const secret =
+      process.env.JWT_SECRET ||
+      "xpect-onboarding-secret-key-change-in-production";
+    const decoded = jwt.verify(header.slice(7), secret);
+
+    const user = await User.findById(decoded?.id).lean();
+    if (!user || !user.cleanerId) {
+      return res.status(403).json({
+        error: "Forbidden",
+        message: "This account is not linked to a staff record.",
+      });
+    }
+
+    req.employeeUser = {
+      userId: String(user._id),
+      cleanerId: user.cleanerId,
+      username: user.username,
+    };
+    next();
+  } catch {
+    return res.status(401).json({
+      error: "Unauthorized",
+      message: "Your session has expired. Please log in again.",
     });
   }
 };

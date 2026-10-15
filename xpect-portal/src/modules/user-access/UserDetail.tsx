@@ -1,7 +1,8 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useUserAccess } from "../../context/UserAccessContext";
 import { useCurrentUser } from "../../hook/useCurrentUser";
 import { useClientsSites } from "../../context/ClientsSitesContext";
+import LoadingOverlay from "../../components/LoadingOverlay";
 import {
   UserRole,
   AccountStatus,
@@ -66,7 +67,8 @@ const roleBadge = (role: UserRole) => {
       icon: "badge",
     },
   };
-  return map[role];
+  // Fallback so an unexpected role from the database cannot crash the page
+  return map[role] || map.Custom;
 };
 
 const statusBadge = (status: AccountStatus) => {
@@ -117,7 +119,12 @@ const fmtDateTime = (d?: string) => {
 };
 
 const UserDetail: React.FC<Props> = ({ userId, onBack }) => {
-  const { getUserById, updateUser, deleteUser } = useUserAccess();
+  const {
+    getUserById,
+    updateUser,
+    deleteUser,
+    loading: usersLoading,
+  } = useUserAccess();
   const { clients, sites } = useClientsSites();
   const clientsLoaded = clients.length > 0;
   const sitesLoaded = sites.length > 0;
@@ -128,6 +135,22 @@ const UserDetail: React.FC<Props> = ({ userId, onBack }) => {
     clientAccess: user?.clientAccess || [],
     siteAccess: user?.siteAccess || [],
   });
+
+  // When the page is opened directly (or refreshed) the user list loads after
+  // the first render. Fill the form once the user is available, otherwise
+  // "Save Changes" would overwrite their access with the empty defaults.
+  const loadedUserId = user?.id;
+  useEffect(() => {
+    if (!user) return;
+    setEditData({
+      role: user.role || "Custom",
+      modules: user.modules || [],
+      clientAccess: user.clientAccess || [],
+      siteAccess: user.siteAccess || [],
+    });
+    // Only reset when a different user is loaded, not after every save
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loadedUserId]);
   const [localStatus, setLocalStatus] = useState<AccountStatus | null>(null);
 
   // const ALL_MODULES = [
@@ -259,6 +282,7 @@ const UserDetail: React.FC<Props> = ({ userId, onBack }) => {
   ];
   const [successMsg, setSuccessMsg] = useState("");
   const [alertType, setAlertType] = useState<"success" | "error">("success");
+  const [loadingMessage, setLoadingMessage] = useState<string | null>(null);
 
   const flash = (msg: string) => {
     setSuccessMsg(msg);
@@ -273,7 +297,9 @@ const UserDetail: React.FC<Props> = ({ userId, onBack }) => {
     if (!confirmDelete) return;
 
     try {
+      setLoadingMessage("Deleting user...");
       await deleteUser(id);
+      setLoadingMessage(null);
 
       setAlertType("success");
 
@@ -284,6 +310,7 @@ const UserDetail: React.FC<Props> = ({ userId, onBack }) => {
         onBack();
       }, 800);
     } catch (err) {
+      setLoadingMessage(null);
       console.error(err);
 
       setAlertType("error");
@@ -295,6 +322,21 @@ const UserDetail: React.FC<Props> = ({ userId, onBack }) => {
       }, 3000);
     }
   };
+
+  if (!user && usersLoading) {
+    return (
+      <div className="min-h-full bg-[#f6f7fb] flex items-center justify-center py-20">
+        <div className="text-center">
+          <span className="material-symbols-outlined animate-spin text-[#2e4150] text-4xl">
+            progress_activity
+          </span>
+          <p className="text-sm font-semibold text-[#6b7a99] mt-3">
+            Loading user...
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   if (!user) {
     return (
@@ -354,11 +396,17 @@ const UserDetail: React.FC<Props> = ({ userId, onBack }) => {
   const toggleStatus = async () => {
     const next = currentStatus === "active" ? "disabled" : "active";
     setLocalStatus(next);
-    await updateUser(user.id, { status: next });
+    setLoadingMessage("Updating status...");
+    try {
+      await updateUser(user.id, { status: next });
+    } finally {
+      setLoadingMessage(null);
+    }
   };
 
   const handleSaveAccess = async () => {
     try {
+      setLoadingMessage("Saving access...");
       await updateUser(user.id, {
         role: editData.role,
         modules: editData.modules,
@@ -383,11 +431,14 @@ const UserDetail: React.FC<Props> = ({ userId, onBack }) => {
       setTimeout(() => {
         setSuccessMsg("");
       }, 3000);
+    } finally {
+      setLoadingMessage(null);
     }
   };
 
   return (
     <div className="min-h-full bg-[#f6f7fb] w-screen sm:w-full sm:max-w-full">
+      <LoadingOverlay message={loadingMessage} />
       {/* Header */}
       <div className="bg-white border-b border-[#e7ebf3] sm:px-8 px-4 sm:py-5 py-3">
         <button

@@ -66,6 +66,30 @@ export const createNameSlug = (name: string): string => {
     .replace(/^-+|-+$/g, "");
 };
 
+// Unique URL slug for a staff member: first name + id (e.g. "john-1712345678901").
+// The id keeps two staff with the same first name from opening the same profile.
+export const createCleanerSlug = (cleaner: {
+  name: string;
+  id: string;
+}): string => {
+  return `${createNameSlug(getFirstName(cleaner.name))}-${createNameSlug(cleaner.id)}`;
+};
+
+// Find the staff member a /staff/:slug URL points to.
+// Falls back to the old first-name-only slug when that name is unambiguous.
+export const findCleanerBySlug = <T extends { name: string; id: string }>(
+  cleaners: T[],
+  slug: string,
+): T | undefined => {
+  const exact = cleaners.find((c) => createCleanerSlug(c) === slug);
+  if (exact) return exact;
+
+  const byFirstName = cleaners.filter(
+    (c) => createNameSlug(getFirstName(c.name)) === slug,
+  );
+  return byFirstName.length === 1 ? byFirstName[0] : undefined;
+};
+
 // Parse URL to determine view and extract parameters
 export const getViewFromUrl = (
   pathname: string,
@@ -323,17 +347,13 @@ export const getUrlForView = (
 
     case "CLEANER_DETAIL":
       if (params?.cleaner) {
-        const firstName = getFirstName(params.cleaner.name);
-        const firstNameSlug = createNameSlug(firstName);
-        return `/staff/${firstNameSlug}`;
+        return `/staff/${createCleanerSlug(params.cleaner)}`;
       }
       return "/staff";
 
     case "REPORT":
       if (params?.cleaner) {
-        const firstName = getFirstName(params.cleaner.name);
-        const firstNameSlug = createNameSlug(firstName);
-        return `/staff/${firstNameSlug}/report`;
+        return `/staff/${createCleanerSlug(params.cleaner)}/report`;
       }
       return "/staff";
     case "LOGIN":

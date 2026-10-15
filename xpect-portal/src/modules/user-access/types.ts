@@ -35,6 +35,13 @@ export interface SystemUser {
   lastLogin?: string;
 
   password: string;
+
+  // Returned by /api/users
+  modules?: string[];
+  clientAccess?: string[];
+  siteAccess?: string[];
+  cleanerId?: string;
+  createdAt?: string;
 }
 
 export interface ModulePermission {

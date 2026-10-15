@@ -33,6 +33,69 @@ export const clearEmployeeSession = (): void => {
   sessionStorage.removeItem("onboardingToken");
   sessionStorage.removeItem("onboardingEmail");
   sessionStorage.removeItem("onboardingEmployeeName");
+  try {
+    localStorage.removeItem(PERSISTED_SESSION_KEY);
+  } catch {
+    /* storage unavailable */
+  }
+};
+
+/**
+ * The onboarding session lives in sessionStorage, which the browser clears
+ * when the tab is closed. A copy is kept in localStorage so an applicant who
+ * closes the tab by mistake can come back without verifying the OTP again
+ * (until the token expires).
+ */
+const PERSISTED_SESSION_KEY = "xpect_onboarding_session";
+const SESSION_KEYS = [
+  "employeeJWT",
+  "onboardingToken",
+  "onboardingEmail",
+  "onboardingEmployeeName",
+];
+
+/** Copy the current onboarding session into localStorage */
+export const persistEmployeeSession = (): void => {
+  try {
+    const data: Record<string, string> = {};
+    SESSION_KEYS.forEach((key) => {
+      const value = sessionStorage.getItem(key);
+      if (value !== null) data[key] = value;
+    });
+    if (data.employeeJWT) {
+      localStorage.setItem(PERSISTED_SESSION_KEY, JSON.stringify(data));
+    }
+  } catch {
+    /* storage unavailable */
+  }
+};
+
+/**
+ * Restore the onboarding session after the tab was closed and reopened.
+ * Call once at startup, before the app renders. Expired sessions are removed.
+ */
+export const restoreEmployeeSession = (): void => {
+  try {
+    // Only on onboarding pages, so an admin tab in the same browser is
+    // never treated as an applicant session
+    if (!window.location.pathname.startsWith("/onboarding")) return;
+    if (sessionStorage.getItem("employeeJWT")) return;
+
+    const raw = localStorage.getItem(PERSISTED_SESSION_KEY);
+    if (!raw) return;
+
+    const data = JSON.parse(raw) as Record<string, string>;
+    if (!data.employeeJWT || isTokenExpired(data.employeeJWT)) {
+      localStorage.removeItem(PERSISTED_SESSION_KEY);
+      return;
+    }
+
+    SESSION_KEYS.forEach((key) => {
+      if (data[key] != null) sessionStorage.setItem(key, data[key]);
+    });
+  } catch {
+    /* storage unavailable or corrupt data */
+  }
 };
 
 /**

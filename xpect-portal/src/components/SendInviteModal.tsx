@@ -10,7 +10,7 @@ interface SendInviteModalProps {
     senderDesignation: string,
     salaryType: string,
     salaryAmount: number,
-  ) => void;
+  ) => Promise<boolean>;
 }
 const SendInviteModal: React.FC<SendInviteModalProps> = ({
   isOpen,
@@ -37,7 +37,7 @@ const SendInviteModal: React.FC<SendInviteModalProps> = ({
     return emailRegex.test(email);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const newErrors: { name?: string; email?: string } = {};
 
@@ -73,7 +73,9 @@ const SendInviteModal: React.FC<SendInviteModalProps> = ({
       return;
     }
 
-    onSend(
+    // Close the modal only when the invitation was sent, so the typed
+    // details are kept if sending fails (e.g. invitation already exists)
+    const sent = await onSend(
       employeeName.trim(),
       employeeEmail.trim(),
       senderName.trim(),
@@ -81,6 +83,8 @@ const SendInviteModal: React.FC<SendInviteModalProps> = ({
       salaryType,
       Number(salaryAmount),
     );
+    if (!sent) return;
+
     setEmployeeName("");
     setEmployeeEmail("");
     setSalaryType("Monthly");

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { getEmployeeToken, isTokenExpired, decodeToken, clearEmployeeSession } from '../utils/auth';
 import api from '../services/api';
 
@@ -17,7 +17,16 @@ const EmployeeRouteGuard: React.FC<EmployeeRouteGuardProps> = ({
   const [isChecking, setIsChecking] = useState<boolean>(true);
   const [error, setError] = useState<string>('');
 
+  // App passes a new onRedirectToAuth function on every render. Keep it in a
+  // ref so a parent re-render does not re-run verification, which would
+  // unmount the onboarding form (e.g. in the middle of submitting).
+  const onRedirectToAuthRef = useRef(onRedirectToAuth);
+  onRedirectToAuthRef.current = onRedirectToAuth;
+
   useEffect(() => {
+    const onRedirectToAuth = (token: string) =>
+      onRedirectToAuthRef.current(token);
+
     const verifyAccess = async () => {
       setIsChecking(true);
       setError('');
@@ -95,7 +104,7 @@ const EmployeeRouteGuard: React.FC<EmployeeRouteGuardProps> = ({
     };
 
     verifyAccess();
-  }, [inviteToken, onRedirectToAuth]);
+  }, [inviteToken]);
 
   if (isChecking) {
     return (

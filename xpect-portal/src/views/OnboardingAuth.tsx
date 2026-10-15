@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { AppView } from '../types';
 import api from '../services/api';
+import { clearEmployeeSession, persistEmployeeSession } from '../utils/auth';
+import LinkExpiredPopup from '../components/LinkExpiredPopup';
 
 interface OnboardingAuthProps {
   inviteToken: string;
@@ -45,15 +47,18 @@ const OnboardingAuth: React.FC<OnboardingAuthProps> = ({ inviteToken, onNavigate
             await api.invitations.verifyEmployeeToken(existingJWT, inviteToken);
             sessionStorage.setItem('onboardingToken', inviteToken);
             sessionStorage.setItem('onboardingEmail', data.email ?? '');
+            persistEmployeeSession();
             onNavigate('ONBOARDING');
             return;
           } catch (err) {
-            // JWT expired or invalid, need to verify OTP again
-            sessionStorage.removeItem('employeeJWT');
+            // JWT expired, invalid or for another invitation → verify OTP again
+            clearEmployeeSession();
           }
         } else if (data.status === 'COMPLETED') {
           setError('This invitation has already been completed.');
         } else if (data.status === 'EXPIRED') {
+          // Expired link → end any saved session; the popup is shown below
+          clearEmployeeSession();
           setError('This invitation has expired. Please contact your administrator.');
         }
       } catch (err: unknown) {
@@ -129,7 +134,10 @@ const OnboardingAuth: React.FC<OnboardingAuthProps> = ({ inviteToken, onNavigate
         sessionStorage.setItem('onboardingToken', inviteToken);
         sessionStorage.setItem('onboardingEmail', result.data?.email ?? '');
         sessionStorage.setItem('onboardingEmployeeName', result.data?.employeeName ?? '');
-        
+
+        // Keep the session if the tab is closed by mistake
+        persistEmployeeSession();
+
         // Verify tokens are stored
         const storedJWT = sessionStorage.getItem('employeeJWT');
         const storedToken = sessionStorage.getItem('onboardingToken');
@@ -169,6 +177,11 @@ const OnboardingAuth: React.FC<OnboardingAuthProps> = ({ inviteToken, onNavigate
         </div>
       </div>
     );
+  }
+
+  // Onboarding link expired (3 working days) → popup, no OTP form
+  if (invitation?.status === 'EXPIRED') {
+    return <LinkExpiredPopup />;
   }
 
   if (!invitation) {

@@ -9,6 +9,7 @@ import {
 } from "./types";
 import { useCleaners } from "../../context/CleanersContext";
 import { useClientsSites } from "../../context/ClientsSitesContext";
+import LoadingOverlay from "../../components/LoadingOverlay";
 
 interface Props {
   onSelectUser: (id: string) => void;
@@ -35,7 +36,8 @@ const roleBadge = (role: UserRole) => {
       icon: "badge",
     },
   };
-  return map[role];
+  // Fallback so an unexpected role from the database cannot crash the table
+  return map[role] || map.Custom;
 };
 
 const statusBadge = (status: AccountStatus) => {
@@ -121,7 +123,8 @@ const UsersList: React.FC<Props> = ({ onSelectUser }) => {
   const [form, setForm] = useState<UserForm>({ ...emptyForm });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [successMsg, setSuccessMsg] = useState("");
-  const setField = (key: keyof UserForm, val: string) => {
+  const [loadingMessage, setLoadingMessage] = useState<string | null>(null);
+  const setField =(key: keyof UserForm, val: string) => {
     setForm((f) => ({ ...f, [key]: val }));
     setFormErrors((e) => {
       const n = { ...e };
@@ -141,8 +144,13 @@ const UsersList: React.FC<Props> = ({ onSelectUser }) => {
     );
     if (!confirm) return;
 
-    await deleteUser(id);
-    flash("User deleted successfully");
+    setLoadingMessage("Deleting user...");
+    try {
+      await deleteUser(id);
+      flash("User deleted successfully");
+    } finally {
+      setLoadingMessage(null);
+    }
   };
 
   const validate = (): Record<string, string> => {
@@ -160,6 +168,11 @@ const UsersList: React.FC<Props> = ({ onSelectUser }) => {
     const allEmails = usersList.map((u) => u.email?.toLowerCase());
     if (form.email && allEmails.includes(form.email.toLowerCase().trim()))
       e.email = "This email is already in use.";
+    // The username is the login name, so it must be unique
+    const allUsernames = usersList.map((u) => u.fullName);
+    if (form.fullName.trim() && allUsernames.includes(form.fullName.trim()))
+      e.fullName =
+        "This username is already taken. Please choose a different username.";
     return e;
   };
 
@@ -170,21 +183,34 @@ const UsersList: React.FC<Props> = ({ onSelectUser }) => {
       return;
     }
 
-    const newUser = await addUser({
-      fullName: form.fullName.trim(),
-      email: form.email.trim().toLowerCase(),
-      role: form.role as UserRole,
-      status: form.status,
-      password: form.password,
-      modules: form.modules, // ✅
-      clientAccess: form.clientAccess,
-      siteAccess: form.siteAccess,
-      cleanerId: form.cleanerId,
-    });
-    setForm({ ...emptyForm });
-    setFormErrors({});
-    setIsModalOpen(false);
-    flash(`User "${newUser.fullName}" created successfully.`);
+    setLoadingMessage("Creating user...");
+    try {
+      const newUser = await addUser({
+        fullName: form.fullName.trim(),
+        email: form.email.trim().toLowerCase(),
+        role: form.role as UserRole,
+        status: form.status,
+        password: form.password,
+        modules: form.modules, // ✅
+        clientAccess: form.clientAccess,
+        siteAccess: form.siteAccess,
+        cleanerId: form.cleanerId,
+      });
+      setForm({ ...emptyForm });
+      setFormErrors({});
+      setIsModalOpen(false);
+      flash(`User "${newUser.fullName}" created successfully.`);
+    } catch (err: any) {
+      // Keep the modal open and show why the user could not be created
+      const message = err?.message || "Failed to create user.";
+      setFormErrors(
+        message.toLowerCase().includes("username")
+          ? { fullName: message }
+          : { submit: message },
+      );
+    } finally {
+      setLoadingMessage(null);
+    }
   };
 
   const openModal = () => {
@@ -199,8 +225,8 @@ const UsersList: React.FC<Props> = ({ onSelectUser }) => {
     if (search)
       list = list.filter(
         (u) =>
-          u.fullName.toLowerCase().includes(search.toLowerCase()) ||
-          u.email.toLowerCase().includes(search.toLowerCase()),
+          (u.fullName || "").toLowerCase().includes(search.toLowerCase()) ||
+          (u.email || "").toLowerCase().includes(search.toLowerCase()),
       );
     if (roleFilter) list = list.filter((u) => u.role === roleFilter);
     if (statusFilter) list = list.filter((u) => u.status === statusFilter);
@@ -244,6 +270,7 @@ const UsersList: React.FC<Props> = ({ onSelectUser }) => {
   ];
   return (
     <div className="min-h-full bg-[#f6f7fb] w-screen sm:w-full sm:max-w-full">
+      <LoadingOverlay message={loadingMessage} />
       {/* Header */}
       <div className="bg-white border-b border-[#e7ebf3] sm:px-8 px-4 sm:py-6 py-3">
         <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -950,11 +977,15 @@ const UsersList: React.FC<Props> = ({ onSelectUser }) => {
                   info
                 </span>
                 <span>
-                  Login credentials will be sent to the user's email address.
-                  Password is stored securely and cannot be viewed after
+                  Share the username and password with the user — no email is
+                  sent. Password is stored securely and cannot be viewed after
                   creation.
                 </span>
               </div>
+
+              {formErrors.submit && (
+                <p className="text-sm text-red-500">{formErrors.submit}</p>
+              )}
             </div>
 
             {/* Footer */}

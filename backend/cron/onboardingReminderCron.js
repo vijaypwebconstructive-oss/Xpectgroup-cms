@@ -10,13 +10,20 @@ cron.schedule("0 * * * *", async () => {
   try {
     const invitations = await Invitation.find({
       status: {
-        $ne: "COMPLETED",
+        $nin: ["COMPLETED", "EXPIRED"],
       },
     });
 
     const now = new Date();
 
     for (const invite of invitations) {
+      // Past the 3-working-day deadline: mark expired, no more reminders
+      if (invite.isExpired()) {
+        invite.status = "EXPIRED";
+        await invite.save();
+        continue;
+      }
+
       const lastActivity = new Date(invite.lastActivityAt || invite.createdAt);
 
       const diffHours =
@@ -41,7 +48,8 @@ cron.schedule("0 * * * *", async () => {
 
       if (!shouldSend) continue;
 
-      const onboardingUrl = `${process.env.FRONTEND_URL}/onboarding/${invite.inviteToken}`;
+      // Same link as the invitation email (/onboarding/auth/:token)
+      const onboardingUrl = `${process.env.FRONTEND_URL}/onboarding/auth/${invite.inviteToken}`;
 
       await sendOnboardingReminderEmail(
         invite.email,

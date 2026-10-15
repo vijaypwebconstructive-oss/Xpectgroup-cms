@@ -30,6 +30,7 @@ import performanceRoutes from "./routes/performanceRoutes.js";
 import attendanceRegularizationRoutes from "./routes/attendanceRegularization.js";
 import authRoutes from "./routes/auth.js";
 import timesheetRoutes from "./routes/timesheets.js";
+import myApplicationRoutes from "./routes/myApplication.js";
 import { authenticate } from "./middleware/auth.js";
 import { allowModule } from "./middleware/rbac.js";
 
@@ -87,6 +88,7 @@ app.use("/api/inspections", inspectionRoutes);
 app.use("/uploads", express.static("uploads"));
 app.use("/api/performance", performanceRoutes);
 app.use("/api/timesheets", timesheetRoutes);
+app.use("/api/my-application", myApplicationRoutes);
 // ✅ Serve frontend (React build)
 // app.use(express.static(path.join(__dirname, "../public_html")));
 

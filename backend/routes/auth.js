@@ -165,7 +165,7 @@ router.post("/reset-password", async (req, res) => {
 
 router.post("/check-username", async (req, res) => {
   try {
-    const { username } = req.body;
+    const username = req.body.username?.trim();
 
     if (!username) {
       return res.status(400).json({

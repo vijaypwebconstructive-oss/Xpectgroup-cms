@@ -1,7 +1,7 @@
 import express from "express";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
-import Invitation from "../models/Invitation.js";
+import Invitation, { getInvitationExpiryDate } from "../models/Invitation.js";
 import OnboardingProgress from "../models/OnboardingProgress.js";
 import Cleaner from "../models/Cleaner.js";
 import { getStepName } from "../constants/onboardingSteps.js";
@@ -19,7 +19,9 @@ const router = express.Router();
 // JWT secret (should be in .env in production)
 const JWT_SECRET =
   process.env.JWT_SECRET || "xpect-onboarding-secret-key-change-in-production";
-const JWT_EXPIRY = "15m"; // 15 minutes
+// Long enough that an applicant who closes the tab can come back and continue
+// without verifying the OTP again (the session is also kept in the browser)
+const JWT_EXPIRY = "24h";
 
 // Generate 6-digit OTP
 const generateOTP = () => {
@@ -113,10 +115,16 @@ router.post("/send", async (req, res) => {
     });
 
     if (existingInvitation) {
-      return res.status(400).json({
-        error: "Invitation exists",
-        message: "Invitation already sent to this email.",
-      });
+      // An expired invitation (3 working days passed) no longer blocks a new one
+      if (existingInvitation.isExpired()) {
+        existingInvitation.status = "EXPIRED";
+        await existingInvitation.save();
+      } else {
+        return res.status(400).json({
+          error: "Invitation exists",
+          message: "Invitation already sent to this email.",
+        });
+      }
     }
 
     // Condition 2: Check if email already belongs to existing staff
@@ -157,8 +165,14 @@ router.post("/send", async (req, res) => {
     // Generate onboarding URL
     const onboardingUrl = `${process.env.FRONTEND_URL || "http://localhost:5173"}/onboarding/auth/${invitation.inviteToken}`;
 
-    // Send REAL email using Gmail SMTP
-    await sendInvitationEmail(email, employeeName, onboardingUrl, otp);
+    // Send REAL email using Gmail SMTP (includes the 3-working-day deadline)
+    await sendInvitationEmail(
+      email,
+      employeeName,
+      onboardingUrl,
+      otp,
+      getInvitationExpiryDate(invitation.createdAt),
+    );
 
     // Log activity: Admin sent invitation
     await logInvitationActivity.sent(
@@ -302,16 +316,6 @@ router.post("/verify-otp", async (req, res) => {
 });
 
 router.get("/", async (req, res) => {
-  console.time("Invitation API");
-
-  const invitations = await Invitation.find();
-
-  console.timeEnd("Invitation API");
-
-  res.json(invitations);
-});
-
-router.get("/", async (req, res) => {
   try {
     const invitations = await Invitation.find()
       .sort({ createdAt: -1 })
@@ -339,10 +343,21 @@ router.get("/", async (req, res) => {
 
       const currentStep = progress?.currentStep || 1;
 
+      // Show invitations past their 3-working-day deadline as EXPIRED
+      const isExpired =
+        invitation.status !== "COMPLETED" &&
+        new Date() > getInvitationExpiryDate(invitation.createdAt);
+
       return {
         ...invitation,
+        status: isExpired ? "EXPIRED" : invitation.status,
+        expiresAt: getInvitationExpiryDate(invitation.createdAt),
         currentStep,
-        currentStepName: getStepName(currentStep),
+        // Progress is cleared once onboarding is submitted
+        currentStepName:
+          invitation.status === "COMPLETED"
+            ? "Submitted"
+            : getStepName(progress?.currentStep),
       };
     });
 
@@ -637,21 +652,9 @@ router.post("/:inviteToken/progress", async (req, res) => {
     const isFirstSave = !existingProgress;
 
     if (existingProgress) {
-      // User can progress forward (step >= lastCompletedStep) but not backward beyond lastCompletedStep
-      // Note: Steps can be conditional (e.g., step 3 skipped for UK/Irish citizens),
-      // so we allow any step >= lastCompletedStep to support conditional step flow
-      console.log("Incoming Step:", step);
-
-      console.log("Existing Progress:", existingProgress?.lastCompletedStep);
-      if (step < existingProgress.lastCompletedStep) {
-        // Don't allow going backwards beyond last completed step
-        return res.status(400).json({
-          error: "Step order violation",
-          message: `Cannot go backwards. Last completed step is ${existingProgress.lastCompletedStep}.`,
-          lastCompletedStep: existingProgress.lastCompletedStep,
-        });
-      }
-      // Allow forward movement (step >= lastCompletedStep) - conditional steps are handled by frontend
+      // The user may go Back to an earlier step and edit it. Saving that step is
+      // allowed so the edit is kept; lastCompletedStep never moves backwards
+      // (see Math.max below).
     } else {
       // First save - must start at step 1
       if (step > 1) {

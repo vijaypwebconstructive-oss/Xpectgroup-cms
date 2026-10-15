@@ -101,11 +101,27 @@ InvitationSchema.methods.isOtpValid = function () {
   return new Date() < this.otpExpiresAt;
 };
 
-// Method to check if invitation is expired (30 days)
+// Onboarding must be completed within 3 working days (Saturday and Sunday
+// are not counted). E.g. sent Friday 10:00 → expires Wednesday 10:00.
+export const ONBOARDING_WORKING_DAYS = 3;
+
+export const getInvitationExpiryDate = (createdAt) => {
+  const deadline = new Date(createdAt || Date.now());
+  let workingDaysAdded = 0;
+  while (workingDaysAdded < ONBOARDING_WORKING_DAYS) {
+    deadline.setDate(deadline.getDate() + 1);
+    const day = deadline.getDay(); // 0 = Sunday, 6 = Saturday
+    if (day !== 0 && day !== 6) workingDaysAdded++;
+  }
+  return deadline;
+};
+
+// Method to check if invitation is expired (3 working days, excl. weekends)
 InvitationSchema.methods.isExpired = function () {
-  const thirtyDaysAgo = new Date();
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-  return this.createdAt < thirtyDaysAgo && this.status !== "COMPLETED";
+  return (
+    this.status !== "COMPLETED" &&
+    new Date() > getInvitationExpiryDate(this.createdAt)
+  );
 };
 
 const Invitation = mongoose.model("Invitation", InvitationSchema);

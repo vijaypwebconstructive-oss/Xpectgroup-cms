@@ -43,6 +43,10 @@ const ActivityLogSchema = new mongoose.Schema({
       // Staff / Cleaner Profile Actions
       'CLEANER_CREATED',
       'CLEANER_UPDATED',
+      'CLEANER_DELETED',
+      'DOCUMENT_REUPLOADED',
+      'APPLICATION_DETAILS_UPDATED',
+      'DOCUMENTS_RESUBMITTED',
       'EMPLOYMENT_ALLOCATION_UPDATED',
       'HOURLY_PAY_RATE_UPDATED',
       'EMPLOYMENT_STATUS_CHANGED',

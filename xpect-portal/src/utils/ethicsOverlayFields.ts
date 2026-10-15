@@ -1,54 +1,55 @@
+// Employee Declaration is on page 10 of the updated EmployeeEthics.pdf
 export const ethicsOverlayFields = [
   {
     id: "employeeName",
-    page: 9,
-    x: 485,
-    y: 456,
+    page: 10,
+    x: 467,
+    y: 508,
     width: 260,
     height: 30,
   },
 
   {
     id: "employeeSignature",
-    page: 9,
-    x: 500,
-    y: 380,
+    page: 10,
+    x: 491,
+    y: 441,
     width: 120,
     height: 50,
   },
 
   {
     id: "employeeDate",
-    page: 9,
-    x: 475,
-    y: 483,
+    page: 10,
+    x: 459,
+    y: 538,
     width: 120,
     height: 30,
   },
 
   {
     id: "designation",
-    page: 9,
-    x: 210,
-    y: 483,
+    page: 10,
+    x: 191,
+    y: 538,
     width: 260,
     height: 30,
   },
 
   {
     id: "Ownername",
-    page: 9,
-    x: 160,
-    y: 453,
+    page: 10,
+    x: 153,
+    y: 508,
     width: 260,
     height: 30,
   },
 
   {
     id: "ownerDate",
-    page: 9,
-    x: 148,
-    y: 510,
+    page: 10,
+    x: 145,
+    y: 568,
     width: 260,
     height: 30,
   },

@@ -360,6 +360,22 @@ export const logCleanerActivity = {
       message: `Admin updated auditor notes for ${cleanerName}`,
       metadata: { cleanerName }
     });
+  },
+
+  /**
+   * Cleaner profile deleted
+   */
+  deleted: async (actorId, actorName, cleanerId, cleanerName) => {
+    await logActivity({
+      actorId,
+      actorRole: 'admin',
+      actorName,
+      actionType: 'CLEANER_DELETED',
+      entityType: 'Cleaner',
+      entityId: cleanerId,
+      message: `Admin deleted staff profile for ${cleanerName}`,
+      metadata: { cleanerName }
+    });
   }
 };
 

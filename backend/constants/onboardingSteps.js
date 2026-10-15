@@ -8,7 +8,8 @@ export const ONBOARDING_STEPS = {
   7: "Employment Type",
   8: "DBS Check",
   9: "Employment Preferences",
-  10: "Declarations",
+  10: "Employment Contract",
+  11: "Declarations",
 };
 
 export const getStepName = (step) => {
