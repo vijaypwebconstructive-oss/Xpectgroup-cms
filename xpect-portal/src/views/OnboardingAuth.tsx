@@ -192,13 +192,10 @@ const OnboardingAuth: React.FC<OnboardingAuthProps> = ({ inviteToken, onNavigate
             <span className="material-symbols-outlined text-red-500 text-4xl">error</span>
           </div>
           <h2 className="text-xl font-black text-gray-900 mb-2">Invalid Invitation</h2>
-          <p className="text-gray-600 mb-6">{error || 'This invitation link is invalid or has expired.'}</p>
-          <button
-            onClick={() => onNavigate('DASHBOARD')}
-            className="px-6 py-3 bg-[#2e4150] text-white font-bold rounded-full hover:bg-[#2e4150]/90 transition-colors"
-          >
-            Go to Home
-          </button>
+          <p className="text-gray-600">{error || 'This invitation link is invalid or has expired.'}</p>
+          <p className="text-sm text-gray-500 mt-4">
+            Please contact your administrator for a new invitation.
+          </p>
         </div>
       </div>
     );

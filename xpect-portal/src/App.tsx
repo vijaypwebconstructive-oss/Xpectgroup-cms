@@ -845,7 +845,9 @@ const App: React.FC = () => {
                 <h2 className="text-2xl font-bold">{title}</h2>
 
                 <p className="text-sm text-white/80 mt-1">
-                  ERP access is restricted until your verification is approved
+                  {isRejected
+                    ? "You cannot access the ERP"
+                    : "ERP access is restricted until your verification is approved"}
                 </p>
               </div>
             </div>
@@ -854,14 +856,17 @@ const App: React.FC = () => {
           {/* Body */}
           <div className="px-7 py-8">
             <h3 className="text-xl font-bold text-[#0d121b]">
-              You have successfully logged in to XpectGroup ERP
+              {isRejected
+                ? "Your application has been rejected"
+                : "You have successfully logged in to XpectGroup ERP"}
             </h3>
 
             {isRejected ? (
               <>
                 <p className="mt-4 text-base leading-7 text-[#4c669a]">
-                  Unfortunately, your background verification has been
-                  rejected. Please check the email we sent you for details.
+                  Unfortunately, your application was not approved, so you
+                  cannot log in to the XpectGroup ERP. Please check the email
+                  we sent you for details.
                 </p>
                 {verificationGate.notes && (
                   <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 px-5 py-4">

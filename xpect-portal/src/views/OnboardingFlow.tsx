@@ -103,12 +103,115 @@ interface OnboardingFlowProps {
   onNavigate: (view: AppView) => void;
 }
 
+const onboardingVideos: Record<
+  number,
+  { title: string; description: string; videoUrl: string; thumbnail: string }
+> = {
+  1: {
+    title: "Citizenship / Immigration Status",
+    description: "Learn how to select your citizenship status.",
+    videoUrl: "https://www.youtube.com/embed/VIDEO_ID_1",
+    thumbnail: "/videos/thumbnails/step-1.jpg",
+  },
+  2: {
+    title: "Personal Details",
+    description:
+      "Learn how to complete your personal details, login, National Insurance and bank details.",
+    videoUrl: "https://www.youtube.com/embed/VIDEO_ID_2",
+    thumbnail: "/videos/thumbnails/step-2.jpg",
+  },
+  3: {
+    title: "Right to Work",
+    description: "Learn how to provide your right-to-work details.",
+    videoUrl: "https://www.youtube.com/embed/VIDEO_ID_3",
+    thumbnail: "/videos/thumbnails/step-3.jpg",
+  },
+  4: {
+    title: "Visa Type",
+    description: "Learn how to select your visa type.",
+    videoUrl: "https://www.youtube.com/embed/VIDEO_ID_4",
+    thumbnail: "/videos/thumbnails/step-4.jpg",
+  },
+  5: {
+    title: "Student Visa Details",
+    description: "Learn how to enter your student visa details.",
+    videoUrl: "https://www.youtube.com/embed/VIDEO_ID_5",
+    thumbnail: "/videos/thumbnails/step-5.jpg",
+  },
+  6: {
+    title: "Identity Proof",
+    description: "Learn how to upload your identity documents.",
+    videoUrl: "https://www.youtube.com/embed/VIDEO_ID_6",
+    thumbnail: "/videos/thumbnails/step-6.jpg",
+  },
+  7: {
+    title: "Employment Type",
+    description: "Learn how to choose your employment type.",
+    videoUrl: "https://www.youtube.com/embed/VIDEO_ID_7",
+    thumbnail: "/videos/thumbnails/step-7.jpg",
+  },
+  8: {
+    title: "DBS Check",
+    description: "Learn how to complete the DBS section.",
+    videoUrl: "https://www.youtube.com/embed/VIDEO_ID_8",
+    thumbnail: "/videos/thumbnails/step-8.jpg",
+  },
+  9: {
+    title: "Employment Preferences",
+    description: "Learn how to choose your availability and shift pattern.",
+    videoUrl: "https://www.youtube.com/embed/VIDEO_ID_9",
+    thumbnail: "/videos/thumbnails/step-9.jpg",
+  },
+  10: {
+    title: "Employment Documents",
+    description:
+      "Learn how to read and sign your employment contract and ethics agreement.",
+    videoUrl: "https://www.youtube.com/embed/VIDEO_ID_10",
+    thumbnail: "/videos/thumbnails/step-10.jpg",
+  },
+  11: {
+    title: "Declarations",
+    description: "Learn how to review and accept the final declarations.",
+    videoUrl: "https://www.youtube.com/embed/VIDEO_ID_11",
+    thumbnail: "/videos/thumbnails/step-11.jpg",
+  },
+};
+
+// General guide used for any step whose video ID has not been added yet
+const DEFAULT_GUIDE_VIDEO_URL = "https://www.youtube.com/embed/zH4s1H2pHyM";
+const DEFAULT_GUIDE_THUMBNAIL = "/thumnail.png";
+
+// Video + thumbnail for the current step. A step still using a "VIDEO_ID_x"
+// placeholder falls back to the general guide video.
+const getStepVideo = (step: number) => {
+  const config = onboardingVideos[step];
+  const hasOwnVideo = !!config && !config.videoUrl.includes("VIDEO_ID");
+  const videoUrl = hasOwnVideo ? config.videoUrl : DEFAULT_GUIDE_VIDEO_URL;
+  const youtubeId = videoUrl.match(/embed\/([^?/]+)/)?.[1];
+
+  return {
+    title: config?.title || "Onboarding Guide",
+    description:
+      config?.description ||
+      "Keep your passport and recent documents ready before you continue.",
+    videoUrl,
+    thumbnail: hasOwnVideo ? config.thumbnail : DEFAULT_GUIDE_THUMBNAIL,
+    // Used if the step's thumbnail image does not exist
+    fallbackThumbnail:
+      hasOwnVideo && youtubeId
+        ? `https://img.youtube.com/vi/${youtubeId}/hqdefault.jpg`
+        : DEFAULT_GUIDE_THUMBNAIL,
+  };
+};
+
 const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
   onComplete: _onComplete,
   onCancel,
   onNavigate,
 }) => {
   const { addCleaner } = useCleaners();
+
+  // const currentVideo = onboardingVideos[step];
 
   // ALL HOOKS MUST BE DECLARED FIRST - before any conditional returns
   const [inviteToken, setInviteToken] = useState<string | null>(null);
@@ -479,7 +582,11 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
     } catch (err: any) {
       console.error("[OnboardingFlow] Failed to save progress:", err);
       // The link expired while the form was open → stop here
-      if (String(err?.message || "").toLowerCase().includes("expired")) {
+      if (
+        String(err?.message || "")
+          .toLowerCase()
+          .includes("expired")
+      ) {
         handleLinkExpired(inviteToken);
       }
       // Otherwise don't block user flow if save fails
@@ -3253,13 +3360,13 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
                     />
                     <span className="text-sm text-gray-700 leading-relaxed">
                       <span className="font-bold text-gray-900">
-                        DBS check consent <span className="text-red-500">*</span>
+                        DBS check consent{" "}
+                        <span className="text-red-500">*</span>
                       </span>
-                      <br />
-                      I understand that a DBS check may be required depending
-                      on the cleaning requirements of the sites I am assigned
-                      to, and I consent to Xpect Group carrying out a DBS check
-                      if it is needed.
+                      <br />I understand that a DBS check may be required
+                      depending on the cleaning requirements of the sites I am
+                      assigned to, and I consent to Xpect Group carrying out a
+                      DBS check if it is needed.
                     </span>
                   </label>
                   {validationErrors.dbsConsent && (
@@ -3810,6 +3917,9 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
 
   const isLastStep = displayStep === totalSteps;
 
+  // Guide video shown in "Before you continue" for the current step
+  const currentVideo = getStepVideo(step);
+
   return (
     <div className="flex-1 flex flex-col items-center py-4 sm:py-10 px-4 animate-in fade-in zoom-in-95 duration-500">
       <div className="w-full max-w-[800px] flex flex-col gap-4 sm:gap-8">
@@ -3856,10 +3966,12 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
                 <h3 className="text-xl font-bold text-[#0d121b]">
                   Before you continue
                 </h3>
+                <p className="mt-1 text-sm font-semibold text-[#135bec]">
+                  {currentVideo.title}
+                </p>
 
                 <p className="mt-2 text-sm sm:text-base text-[#667085] leading-relaxed">
-                  This step helps us verify your profile. Keep your passport and
-                  recent documents ready.
+                  {currentVideo.description}
                 </p>
 
                 <button
@@ -3882,10 +3994,20 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
               className="relative w-full sm:w-[270px] h-[160px] rounded-xl overflow-hidden group shrink-0"
             >
               <img
-                src="thumnail.png"
-                alt="Watch onboarding guide"
+                key={currentVideo.thumbnail}
+                src={currentVideo.thumbnail}
+                alt={`Watch: ${currentVideo.title}`}
                 loading="lazy"
                 decoding="async"
+                onError={(e) => {
+                  // Step thumbnail missing → YouTube thumbnail → default image
+                  const img = e.currentTarget;
+                  if (!img.src.endsWith(currentVideo.fallbackThumbnail)) {
+                    img.src = currentVideo.fallbackThumbnail;
+                  } else if (!img.src.endsWith(DEFAULT_GUIDE_THUMBNAIL)) {
+                    img.src = DEFAULT_GUIDE_THUMBNAIL;
+                  }
+                }}
                 className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
               />
 
@@ -3991,8 +4113,8 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({
             {/* Video */}
             <iframe
               className="w-full aspect-video rounded-xl"
-              src="https://www.youtube.com/embed/zH4s1H2pHyM?autoplay=1"
-              title="Employee Onboarding Guide"
+              src={`${currentVideo.videoUrl}?autoplay=1`}
+              title={currentVideo.title}
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
               allowFullScreen
             />

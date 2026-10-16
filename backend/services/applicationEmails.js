@@ -1,22 +1,12 @@
-import nodemailer from "nodemailer";
-
 /**
  * Emails for the "Docs Required" → re-upload → resubmit flow.
- * Uses the same Gmail SMTP configuration as emailService.js.
+ * Uses the shared transport in mailer.js (Hostinger SMTP or Gmail fallback).
  */
-
-const createTransporter = () => {
-  return nodemailer.createTransport({
-    service: "gmail",
-    auth: {
-      user: process.env.GMAIL_USER,
-      pass: process.env.GMAIL_APP_PASSWORD,
-    },
-  });
-};
-
-const isEmailConfigured = () =>
-  !!(process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD);
+import {
+  createTransporter,
+  isEmailConfigured,
+  getFromAddress,
+} from "./mailer.js";
 
 const getLoginUrl = () =>
   `${process.env.FRONTEND_URL || "http://localhost:3000"}/login`;
@@ -141,7 +131,7 @@ export const sendDocsRequiredEmail = async (
     ].join("\n");
 
     await createTransporter().sendMail({
-      from: `"Xpect Group" <${process.env.GMAIL_USER}>`,
+      from: getFromAddress(),
       to: email,
       subject: "Action Required: Please Re-upload Your Documents - Xpect Group",
       html,
@@ -233,7 +223,7 @@ export const sendDocumentsResubmittedEmail = async (
     ].join("\n");
 
     await createTransporter().sendMail({
-      from: `"Xpect Group" <${process.env.GMAIL_USER}>`,
+      from: getFromAddress(),
       to: adminEmails.join(","),
       subject: `Documents resubmitted for review - ${cleanerName}`,
       html,

@@ -1,19 +1,13 @@
-import nodemailer from "nodemailer";
 import fs from "fs";
 import dotenv from "dotenv";
+// Shared transport: Hostinger (SMTP_*) or Gmail fallback — see mailer.js
+import {
+  createTransporter,
+  isEmailConfigured,
+  getFromAddress,
+} from "./mailer.js";
 
 dotenv.config();
-
-// Create reusable transporter using Gmail SMTP
-const createTransporter = () => {
-  return nodemailer.createTransport({
-    service: "gmail",
-    auth: {
-      user: process.env.GMAIL_USER,
-      pass: process.env.GMAIL_APP_PASSWORD,
-    },
-  });
-};
 
 /**
  * Send invitation email with onboarding link and OTP
@@ -44,9 +38,9 @@ export const sendInvitationEmail = async (
       : "";
 
     // Validate email configuration
-    if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) {
+    if (!isEmailConfigured()) {
       console.error(
-        "❌ Gmail credentials not configured. Please set GMAIL_USER and GMAIL_APP_PASSWORD in .env",
+        "❌ Email not configured. Set SMTP_HOST, SMTP_USER and SMTP_PASS (or GMAIL_USER and GMAIL_APP_PASSWORD) in .env",
       );
       throw new Error("Email service not configured");
     }
@@ -54,7 +48,7 @@ export const sendInvitationEmail = async (
     const transporter = createTransporter();
 
     const mailOptions = {
-      from: `"Xpect Group" <${process.env.GMAIL_USER}>`,
+      from: getFromAddress(),
       to: email,
       subject: "Xpect Group – Employee Onboarding Invitation",
       html: `
@@ -79,6 +73,12 @@ export const sendInvitationEmail = async (
                   ? `<p style="margin: 10px 0 0 0; font-size: 13px; color: #b91c1c; font-weight: bold;">This link expires on ${expiryText} (UK time).</p>`
                   : ""
               }
+
+              <div style="margin-top: 16px; padding: 14px 16px; background-color: #fff3cd; border-radius: 8px;">
+                <p style="margin: 0; font-weight: bold; color: #92400e; font-size: 13px;">Your OTP Code:</p>
+                <p style="font-size: 24px; font-weight: bold; color: #2e4150; margin: 6px 0; letter-spacing: 4px; font-family: monospace;">${otp}</p>
+                <p style="margin: 0; font-size: 12px; color: #92400e;">This OTP will expire in 10 minutes.</p>
+              </div>
             </div>
 
             <div style="background-color: #ffffff; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #dc2626;">
@@ -104,12 +104,6 @@ export const sendInvitationEmail = async (
               </p>
             </div>
 
-            <div style="background-color: #fff3cd; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #f59e0b;">
-              <p style="margin: 0 0 10px 0; font-weight: bold; color: #92400e;">Your OTP Code:</p>
-              <p style="font-size: 24px; font-weight: bold; color: #2e4150; margin: 10px 0; letter-spacing: 4px; font-family: monospace;">${otp}</p>
-              <p style="margin: 10px 0 0 0; font-size: 12px; color: #92400e;">⚠️ This OTP will expire in 10 minutes.</p>
-            </div>
-            
             <p style="margin-top: 30px; font-size: 14px; color: #666;">
               <strong>Instructions:</strong><br>
               1. Click the onboarding link above<br>
@@ -135,7 +129,10 @@ You have been invited to join Xpect Group. Please complete your onboarding by fo
 Onboarding Link:
 ${onboardingUrl}
 ${expiryText ? `This link expires on ${expiryText} (UK time).\n` : ""}
-MANDATORY ONBOARDING – 3 WORKING DAYS
+Your OTP Code: ${otp}
+This OTP will expire in 10 minutes.
+
+Mandatory Onboarding – 3 Working Days
 
 All Xpect Group Limited cleaners must complete their onboarding documents within 3 Working Days of receipt or before their start date, whichever is earlier.
 
@@ -152,10 +149,6 @@ Thank you for your cooperation.
 
 Xpect Group Limited
 HR & Compliance Team
-
-Your OTP Code: ${otp}
-
-⚠️ This OTP will expire in 10 minutes.
 
 Instructions:
 1. Click the onboarding link above
@@ -205,7 +198,7 @@ export const sendOnboardingReminderEmail = async (
           : "Final Reminder";
 
     const mailOptions = {
-      from: `"Xpect Group" <${process.env.GMAIL_USER}>`,
+      from: getFromAddress(),
 
       to: email,
 
@@ -292,7 +285,7 @@ export const sendOTPResendEmail = async (
   otp,
 ) => {
   try {
-    if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) {
+    if (!isEmailConfigured()) {
       console.error("❌ Gmail credentials not configured");
       throw new Error("Email service not configured");
     }
@@ -300,7 +293,7 @@ export const sendOTPResendEmail = async (
     const transporter = createTransporter();
 
     const mailOptions = {
-      from: `"Xpect Group" <${process.env.GMAIL_USER}>`,
+      from: getFromAddress(),
       to: email,
       subject: "Xpect Group – Your Onboarding OTP",
       html: `
@@ -386,7 +379,7 @@ export const sendTrainingExpiryReminder = async (
   expiryDate,
 ) => {
   try {
-    if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) {
+    if (!isEmailConfigured()) {
       console.error("❌ Gmail credentials not configured");
       throw new Error("Email service not configured");
     }
@@ -401,7 +394,7 @@ export const sendTrainingExpiryReminder = async (
       : expiryDate;
 
     const mailOptions = {
-      from: `"Xpect Group" <${process.env.GMAIL_USER}>`,
+      from: getFromAddress(),
       to: email,
       subject: "Xpect Group – Training Certification Expiring Soon",
       html: `
@@ -487,7 +480,7 @@ export const sendPPEInvoice = async (
   attachmentBase64,
 ) => {
   try {
-    if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) {
+    if (!isEmailConfigured()) {
       console.error("❌ Gmail credentials not configured");
       throw new Error("Email service not configured");
     }
@@ -507,7 +500,7 @@ export const sendPPEInvoice = async (
     }
 
     const mailOptions = {
-      from: `"Xpect Group" <${process.env.GMAIL_USER}>`,
+      from: getFromAddress(),
       to: email,
       subject: "PPE Invoice – Xpect Group",
       html: `
@@ -584,7 +577,7 @@ export const sendFinanceInvoice = async (
   }
 
   const mailOptions = {
-    from: `"Xpect Group" <${process.env.GMAIL_USER}>`,
+    from: getFromAddress(),
     to: email,
     subject: `Invoice ${invoice.invoiceNumber} – Xpect Group`,
     html: `<p>Please find your invoice attached.</p>`,
@@ -612,7 +605,7 @@ export const sendQuotationEmail = async (
   }
 
   const mailOptions = {
-    from: `"Xpect Group" <${process.env.GMAIL_USER}>`,
+    from: getFromAddress(),
     to: email,
     subject: `Quotation ${quotation.quotationNumber}`,
     html: `<p>Please find your quotation attached.</p>`,
@@ -629,7 +622,7 @@ export const sendQuotationEmail = async (
  */
 export const sendSalarySlip = async (email, cleanerName, record) => {
   try {
-    if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) {
+    if (!isEmailConfigured()) {
       console.warn(
         "⚠️ Gmail credentials not configured – skipping salary slip email",
       );
@@ -661,7 +654,7 @@ export const sendSalarySlip = async (email, cleanerName, record) => {
     const paidDate = record.paymentDate || "";
 
     const mailOptions = {
-      from: `"Xpect Group" <${process.env.GMAIL_USER}>`,
+      from: getFromAddress(),
       to: email,
       subject: `Salary Slip – ${monthLabel} ${year} – Xpect Group`,
       html: `
@@ -716,7 +709,7 @@ export const sendSalarySlipWithPdf = async (
   pdfFilename,
 ) => {
   try {
-    if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) {
+    if (!isEmailConfigured()) {
       console.warn(
         "⚠️ Gmail credentials not configured – skipping salary slip email",
       );
@@ -752,7 +745,7 @@ export const sendSalarySlipWithPdf = async (
     const paidDate = record.paymentDate || "";
 
     const mailOptions = {
-      from: `"Xpect Group" <${process.env.GMAIL_USER}>`,
+      from: getFromAddress(),
       to: email,
       subject: `Salary Slip – ${monthLabel} ${year} – Xpect Group`,
       html: `
@@ -815,7 +808,7 @@ export const sendVerificationStatusEmail = async (
   username = "",
 ) => {
   try {
-    if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) {
+    if (!isEmailConfigured()) {
       console.warn("⚠️ Email not configured – skipping verification email");
       return { success: false, skipped: true };
     }
@@ -827,7 +820,7 @@ export const sendVerificationStatusEmail = async (
     let text = "";
 
     if (status === "Verified") {
-      subject = "🎉 Verification Approved – Xpect Group";
+      subject = "Verification Approved – Xpect Group";
 
       // html = `
       //   <div class="verification-email-container" style="font-family: Arial; padding: 20px;">
@@ -844,7 +837,7 @@ export const sendVerificationStatusEmail = async (
     }
 
     if (status === "Rejected") {
-      subject = "⚠️ Verification Update – Xpect Group";
+      subject = "Verification Update – Xpect Group";
 
       const safeRejectedDocs = Array.isArray(rejectedDocs)
         ? rejectedDocs.filter(Boolean)
@@ -907,7 +900,7 @@ export const sendVerificationStatusEmail = async (
     if (!subject) return;
 
     const info = await transporter.sendMail({
-      from: `"Xpect Group" <${process.env.GMAIL_USER}>`,
+      from: getFromAddress(),
       to: email,
       subject,
       html,
@@ -1096,7 +1089,7 @@ export const sendERPAccessEmail = async (
   loginUrl,
 ) => {
   try {
-    if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) {
+    if (!isEmailConfigured()) {
       console.warn("⚠️ Email not configured");
       return { success: false };
     }
@@ -1104,7 +1097,7 @@ export const sendERPAccessEmail = async (
     const transporter = createTransporter();
 
     const mailOptions = {
-      from: `"Xpect Group" <${process.env.GMAIL_USER}>`,
+      from: getFromAddress(),
       to: email,
       subject: "Your ERP Portal Access is Ready",
 
@@ -1240,7 +1233,7 @@ export const sendAttendanceAlert = async ({
   attendanceTime,
 }) => {
   try {
-    if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) {
+    if (!isEmailConfigured()) {
       console.error("❌ Gmail credentials not configured");
 
       return;
@@ -1257,7 +1250,7 @@ export const sendAttendanceAlert = async ({
     const minutesLabel = isLate ? "Late By" : "Early By";
 
     const mailOptions = {
-      from: `"Xpect Group" <${process.env.GMAIL_USER}>`,
+      from: getFromAddress(),
 
       to: emails.join(","),
 
@@ -1327,7 +1320,7 @@ export const sendAttendanceAlert = async ({
 
 export const sendPasswordResetOTP = async (email, username, otp) => {
   try {
-    if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) {
+    if (!isEmailConfigured()) {
       console.warn("⚠️ Email not configured");
 
       return {
@@ -1338,7 +1331,7 @@ export const sendPasswordResetOTP = async (email, username, otp) => {
     const transporter = createTransporter();
 
     const mailOptions = {
-      from: `"Xpect Group" <${process.env.GMAIL_USER}>`,
+      from: getFromAddress(),
 
       to: email,
 
